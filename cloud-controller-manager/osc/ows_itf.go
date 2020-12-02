@@ -18,49 +18,58 @@ package osc
 
 import (
 	"github.com/aws/aws-sdk-go/aws/ec2metadata"
-	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/aws/aws-sdk-go/service/elb"
+
+    "context"
+
+	"github.com/outscale/osc-sdk-go/osc"
 )
 
 // ********************* CCM API interfaces *********************
 
-// EC2 is an abstraction over AWS', to allow mocking/other implementations
+// OSC is an abstraction over AWS', to allow mocking/other implementations
 // Note that the DescribeX functions return a list, so callers don't need to deal with paging
-// TODO: Should we rename this to AWS (EBS & ELB are not technically part of EC2)
-type EC2 interface {
-	// Query EC2 for instances matching the filter
-	DescribeInstances(request *ec2.DescribeInstancesInput) ([]*ec2.Instance, error)
+type OSC interface {
+	// Query OSC for instances matching the filter
+	ReadVms(*osc.ReadVmsOpts) ([]osc.Vm, error)
+	ReadSecurityGroups(*osc.ReadSecurityGroupsOpts) ([]osc.SecurityGroups, error)
 
-	DescribeSecurityGroups(request *ec2.DescribeSecurityGroupsInput) ([]*ec2.SecurityGroup, error)
+    CreateSecurityGroup(*osc.CreateSecurityGroupOpts) (osc.CreateSecurityGroupResponse, error)
+    DeleteSecurityGroup(*osc.DeleteSecurityGroupOpts) (osc.DeleteSecurityGroupResponse, error)
 
-	CreateSecurityGroup(*ec2.CreateSecurityGroupInput) (*ec2.CreateSecurityGroupOutput, error)
-	DeleteSecurityGroup(request *ec2.DeleteSecurityGroupInput) (*ec2.DeleteSecurityGroupOutput, error)
+    CreateSecurityGroupRule(*osc.CreateSecurityGroupRuleOpts) (osc.CreateSecurityGroupRuleResponse, error)
+    DeleteSecurityGroupRule(*osc.DeleteSecurityGroupRuleOpts) (osc.DeleteSecurityGroupRuleResponse, error)
 
-	AuthorizeSecurityGroupIngress(*ec2.AuthorizeSecurityGroupIngressInput) (*ec2.AuthorizeSecurityGroupIngressOutput, error)
-	RevokeSecurityGroupIngress(*ec2.RevokeSecurityGroupIngressInput) (*ec2.RevokeSecurityGroupIngressOutput, error)
+    ReadSubnets(*osc.ReadSubnetsOpts) ([]osc.Subnet, error)
 
-	DescribeSubnets(*ec2.DescribeSubnetsInput) ([]*ec2.Subnet, error)
+    CreateTags(*osc.CreateTagsOpts) (osc.CreateTagsResponse, error)
 
-	CreateTags(*ec2.CreateTagsInput) (*ec2.CreateTagsOutput, error)
+    ReadRouteTables(*osc.ReadRouteTablesOpts) ([]osc.RouteTables, error)
+    CreateRouteTable(*osc.CreateRouteTableOpts) (osc.CreateRouteTableResponse, error)
+    DeleteRouteTable(*osc.DeleteRouteTableOpts) (osc.DeleteRouteTableResponse, error)
 
-	DescribeRouteTables(request *ec2.DescribeRouteTablesInput) ([]*ec2.RouteTable, error)
-	CreateRoute(request *ec2.CreateRouteInput) (*ec2.CreateRouteOutput, error)
-	DeleteRoute(request *ec2.DeleteRouteInput) (*ec2.DeleteRouteOutput, error)
+    UpdateVm(*osc.UpdateVmOpts) (osc.UpdateVmResponse, error)
 
-	ModifyInstanceAttribute(request *ec2.ModifyInstanceAttributeInput) (*ec2.ModifyInstanceAttributeOutput, error)
-
-	DescribeVpcs(input *ec2.DescribeVpcsInput) (*ec2.DescribeVpcsOutput, error)
+    ReadNets(*osc.ReadNetsOpts) (osc.ReadNetsResponse, error)
 }
 
-// ELB is a simple pass-through of AWS' ELB client interface, which allows for testing
-type ELB interface {
-	CreateLoadBalancer(*elb.CreateLoadBalancerInput) (*elb.CreateLoadBalancerOutput, error)
-	DeleteLoadBalancer(*elb.DeleteLoadBalancerInput) (*elb.DeleteLoadBalancerOutput, error)
-	DescribeLoadBalancers(*elb.DescribeLoadBalancersInput) (*elb.DescribeLoadBalancersOutput, error)
-	AddTags(*elb.AddTagsInput) (*elb.AddTagsOutput, error)
-	RegisterInstancesWithLoadBalancer(*elb.RegisterInstancesWithLoadBalancerInput) (*elb.RegisterInstancesWithLoadBalancerOutput, error)
-	DeregisterInstancesFromLoadBalancer(*elb.DeregisterInstancesFromLoadBalancerInput) (*elb.DeregisterInstancesFromLoadBalancerOutput, error)
-	CreateLoadBalancerPolicy(*elb.CreateLoadBalancerPolicyInput) (*elb.CreateLoadBalancerPolicyOutput, error)
+// LBU is a simple pass-through of OSC' LBU client interface, which allows for testing
+type LBU interface {
+    CreateLoadBalancer(*osc.CreateLoadBalancerOpts) (osc.CreateLoadBalancerResponse, error)
+    DeleteLoadBalancer(*osc.DeleteLoadBalancerOpts) (osc.DeleteLoadBalancerResponse, error)
+    ReadLoadBalancerTags(*osc.ReadLoadBalancerTagsOpts) (osc.ReadLoadBalancerTagsResponse, error)
+    CreateLoadBalancerTags(*osc.CreateLoadBalancerTagsOpts) (osc.CreateLoadBalancerTagsResponse, error)
+    RegisterVmsInLoadBalancer(*osc.RegisterVmsInLoadBalancerOpts) (osc.RegisterVmsInLoadBalancerResponse, error)
+    DeregisterVmsInLoadBalancer(*osc.DeregisterVmsInLoadBalancerOpts) (osc.DeregisterVmsInLoadBalancerResponse, error)
+    CreateLoadBalancerPolicy(*osc.CreateLoadBalancerPolicyOpts) (osc.CreateLoadBalancerPolicyResponse, error)
+
+
+	//CreateLoadBalancer(*elb.CreateLoadBalancerInput) (*elb.CreateLoadBalancerOutput, error)
+	//DeleteLoadBalancer(*elb.DeleteLoadBalancerInput) (*elb.DeleteLoadBalancerOutput, error)
+	//DescribeLoadBalancers(*elb.DescribeLoadBalancersInput) (*elb.DescribeLoadBalancersOutput, error)
+	//AddTags(*elb.AddTagsInput) (*elb.AddTagsOutput, error)
+	//RegisterInstancesWithLoadBalancer(*elb.RegisterInstancesWithLoadBalancerInput) (*elb.RegisterInstancesWithLoadBalancerOutput, error)
+	//DeregisterInstancesFromLoadBalancer(*elb.DeregisterInstancesFromLoadBalancerInput) (*elb.DeregisterInstancesFromLoadBalancerOutput, error)
+	//CreateLoadBalancerPolicy(*elb.CreateLoadBalancerPolicyInput) (*elb.CreateLoadBalancerPolicyOutput, error)
 	SetLoadBalancerPoliciesForBackendServer(*elb.SetLoadBalancerPoliciesForBackendServerInput) (*elb.SetLoadBalancerPoliciesForBackendServerOutput, error)
 	SetLoadBalancerPoliciesOfListener(input *elb.SetLoadBalancerPoliciesOfListenerInput) (*elb.SetLoadBalancerPoliciesOfListenerOutput, error)
 	DescribeLoadBalancerPolicies(input *elb.DescribeLoadBalancerPoliciesInput) (*elb.DescribeLoadBalancerPoliciesOutput, error)
