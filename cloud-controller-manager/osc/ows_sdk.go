@@ -20,28 +20,29 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/outscale/osc-sdk-go"
 )
 
-// ********************* CCM awsSdkEC2 Def & functions *********************
+// ********************* CCM oscSdkOSC Def & functions *********************
 
-// awsSdkEC2 is an implementation of the EC2 interface, backed by aws-sdk-go
-type awsSdkEC2 struct {
-	ec2 *ec2.EC2
+// oscSdkOSC is an implementation of the OSC interface, backed by osc-sdk-go
+type oscSdkOSC struct {
+	config *osc.Configuration
+	auth   context.Context
+	api    *osc.APIClient
 }
 
-// Implementation of EC2.Instances
-func (s *awsSdkEC2) DescribeInstances(request *ec2.DescribeInstancesInput) ([]*ec2.Instance, error) {
+// Implementation of OSC.Instances
+func (s *oscSdkOSC) ReadVms(ctx context.Context, request *osc.DescribeInstancesInput) ([]*osc.Instance, error) {
 	// Instances are paged
-	results := []*ec2.Instance{}
+	results := []*osc.Instance{}
 	var nextToken *string
 	requestTime := time.Now()
 	for {
-		response, err := s.ec2.DescribeInstances(request)
+		response, err := s.api.VmApi.ReadVms(s.auth.request)
 		if err != nil {
 			recordAWSMetric("describe_instance", 0, err)
-			return nil, fmt.Errorf("error listing AWS instances: %q", err)
+			return nil, fmt.Errorf("error listing OSC instances: %q", err)
 		}
 
 		for _, reservation := range response.Reservations {
@@ -59,14 +60,14 @@ func (s *awsSdkEC2) DescribeInstances(request *ec2.DescribeInstancesInput) ([]*e
 	return results, nil
 }
 
-// Implements EC2.DescribeSecurityGroups
-func (s *awsSdkEC2) DescribeSecurityGroups(request *ec2.DescribeSecurityGroupsInput) ([]*ec2.SecurityGroup, error) {
+// Implements OSC.DescribeSecurityGroups
+func (s *oscSdkOSC) DescribeSecurityGroups(ctx context.Context, request *osc.DescribeSecurityGroupsInput) ([]*osc.SecurityGroup, error) {
 	// Security groups are paged
-	results := []*ec2.SecurityGroup{}
+	results := []*osc.SecurityGroup{}
 	var nextToken *string
 	requestTime := time.Now()
 	for {
-		response, err := s.ec2.DescribeSecurityGroups(request)
+		response, err := s.oscIf.DescribeSecurityGroups(request)
 		if err != nil {
 			recordAWSMetric("describe_security_groups", 0, err)
 			return nil, fmt.Errorf("error listing AWS security groups: %q", err)
@@ -85,46 +86,46 @@ func (s *awsSdkEC2) DescribeSecurityGroups(request *ec2.DescribeSecurityGroupsIn
 	return results, nil
 }
 
-func (s *awsSdkEC2) DescribeSubnets(request *ec2.DescribeSubnetsInput) ([]*ec2.Subnet, error) {
+func (s *oscSdkOSC) DescribeSubnets(ctx context.Context, request *osc.DescribeSubnetsInput) ([]*osc.Subnet, error) {
 	// Subnets are not paged
-	response, err := s.ec2.DescribeSubnets(request)
+	response, err := s.oscIf.DescribeSubnets(request)
 	if err != nil {
 		return nil, fmt.Errorf("error listing AWS subnets: %q", err)
 	}
 	return response.Subnets, nil
 }
 
-func (s *awsSdkEC2) CreateSecurityGroup(request *ec2.CreateSecurityGroupInput) (*ec2.CreateSecurityGroupOutput, error) {
-	return s.ec2.CreateSecurityGroup(request)
+func (s *oscSdkOSC) CreateSecurityGroup(ctx context.Context, request *osc.CreateSecurityGroupInput) (*osc.CreateSecurityGroupOutput, error) {
+	return s.oscIf.CreateSecurityGroup(request)
 }
 
-func (s *awsSdkEC2) DeleteSecurityGroup(request *ec2.DeleteSecurityGroupInput) (*ec2.DeleteSecurityGroupOutput, error) {
-	return s.ec2.DeleteSecurityGroup(request)
+func (s *oscSdkOSC) DeleteSecurityGroup(ctx context.Context, request *osc.DeleteSecurityGroupInput) (*osc.DeleteSecurityGroupOutput, error) {
+	return s.oscIf.DeleteSecurityGroup(request)
 }
 
-func (s *awsSdkEC2) AuthorizeSecurityGroupIngress(request *ec2.AuthorizeSecurityGroupIngressInput) (*ec2.AuthorizeSecurityGroupIngressOutput, error) {
-	return s.ec2.AuthorizeSecurityGroupIngress(request)
+func (s *oscSdkOSC) AuthorizeSecurityGroupIngress(ctx context.Context, request *osc.AuthorizeSecurityGroupIngressInput) (*osc.AuthorizeSecurityGroupIngressOutput, error) {
+	return s.oscIf.AuthorizeSecurityGroupIngress(request)
 }
 
-func (s *awsSdkEC2) RevokeSecurityGroupIngress(request *ec2.RevokeSecurityGroupIngressInput) (*ec2.RevokeSecurityGroupIngressOutput, error) {
-	return s.ec2.RevokeSecurityGroupIngress(request)
+func (s *oscSdkOSC) RevokeSecurityGroupIngress(ctx context.Context, request *osc.RevokeSecurityGroupIngressInput) (*osc.RevokeSecurityGroupIngressOutput, error) {
+	return s.oscIf.RevokeSecurityGroupIngress(request)
 }
 
-func (s *awsSdkEC2) CreateTags(request *ec2.CreateTagsInput) (*ec2.CreateTagsOutput, error) {
+func (s *oscSdkOSC) CreateTags(ctx context.Context, request *osc.CreateTagsInput) (*osc.CreateTagsOutput, error) {
 	debugPrintCallerFunctionName()
 	requestTime := time.Now()
-	resp, err := s.ec2.CreateTags(request)
+	resp, err := s.osc.CreateTags(request)
 	timeTaken := time.Since(requestTime).Seconds()
 	recordAWSMetric("create_tags", timeTaken, err)
 	return resp, err
 }
 
-func (s *awsSdkEC2) DescribeRouteTables(request *ec2.DescribeRouteTablesInput) ([]*ec2.RouteTable, error) {
-	results := []*ec2.RouteTable{}
+func (s *oscSdkOSC) DescribeRouteTables(ctx context.Context, request *osc.DescribeRouteTablesInput) ([]*osc.RouteTable, error) {
+	results := []*osc.RouteTable{}
 	var nextToken *string
 	requestTime := time.Now()
 	for {
-		response, err := s.ec2.DescribeRouteTables(request)
+		response, err := s.oscIf.DescribeRouteTables(request)
 		if err != nil {
 			recordAWSMetric("describe_route_tables", 0, err)
 			return nil, fmt.Errorf("error listing AWS route tables: %q", err)
@@ -143,18 +144,18 @@ func (s *awsSdkEC2) DescribeRouteTables(request *ec2.DescribeRouteTablesInput) (
 	return results, nil
 }
 
-func (s *awsSdkEC2) CreateRoute(request *ec2.CreateRouteInput) (*ec2.CreateRouteOutput, error) {
-	return s.ec2.CreateRoute(request)
+func (s *oscSdkOSC) CreateRoute(ctx context.Context, request *osc.CreateRouteInput) (*osc.CreateRouteOutput, error) {
+	return s.oscIf.CreateRoute(request)
 }
 
-func (s *awsSdkEC2) DeleteRoute(request *ec2.DeleteRouteInput) (*ec2.DeleteRouteOutput, error) {
-	return s.ec2.DeleteRoute(request)
+func (s *oscSdkOSC) DeleteRoute(ctx context.Context, request *osc.DeleteRouteInput) (*osc.DeleteRouteOutput, error) {
+	return s.oscIf.DeleteRoute(request)
 }
 
-func (s *awsSdkEC2) ModifyInstanceAttribute(request *ec2.ModifyInstanceAttributeInput) (*ec2.ModifyInstanceAttributeOutput, error) {
-	return s.ec2.ModifyInstanceAttribute(request)
+func (s *oscSdkOSC) ModifyInstanceAttribute(ctx context.Context, request *osc.ModifyInstanceAttributeInput) (*osc.ModifyInstanceAttributeOutput, error) {
+	return s.oscIf.ModifyInstanceAttribute(request)
 }
 
-func (s *awsSdkEC2) DescribeVpcs(request *ec2.DescribeVpcsInput) (*ec2.DescribeVpcsOutput, error) {
-	return s.ec2.DescribeVpcs(request)
+func (s *oscSdkOSC) DescribeVpcs(ctx context.Context, request *osc.DescribeVpcsInput) (*osc.DescribeVpcsOutput, error) {
+	return s.oscIf.DescribeVpcs(request)
 }

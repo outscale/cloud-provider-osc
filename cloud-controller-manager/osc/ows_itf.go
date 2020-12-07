@@ -30,37 +30,37 @@ import (
 // Note that the DescribeX functions return a list, so callers don't need to deal with paging
 type OSC interface {
 	// Query OSC for instances matching the filter
-	ReadVms(*osc.ReadVmsOpts) ([]osc.Vm, error)
-	ReadSecurityGroups(*osc.ReadSecurityGroupsOpts) ([]osc.SecurityGroups, error)
+	ReadVms(context.Context, *osc.ReadVmsOpts) ([]osc.Vm, error)
+	ReadSecurityGroups(context.Context, *osc.ReadSecurityGroupsOpts) ([]osc.SecurityGroups, error)
 
-    CreateSecurityGroup(*osc.CreateSecurityGroupOpts) (osc.CreateSecurityGroupResponse, error)
-    DeleteSecurityGroup(*osc.DeleteSecurityGroupOpts) (osc.DeleteSecurityGroupResponse, error)
+    CreateSecurityGroup(context.Context, *osc.CreateSecurityGroupOpts) (osc.CreateSecurityGroupResponse, error)
+    DeleteSecurityGroup(context.Context, *osc.DeleteSecurityGroupOpts) (osc.DeleteSecurityGroupResponse, error)
 
-    CreateSecurityGroupRule(*osc.CreateSecurityGroupRuleOpts) (osc.CreateSecurityGroupRuleResponse, error)
-    DeleteSecurityGroupRule(*osc.DeleteSecurityGroupRuleOpts) (osc.DeleteSecurityGroupRuleResponse, error)
+    CreateSecurityGroupRule(context.Context, *osc.CreateSecurityGroupRuleOpts) (osc.CreateSecurityGroupRuleResponse, error)
+    DeleteSecurityGroupRule(context.Context, *osc.DeleteSecurityGroupRuleOpts) (osc.DeleteSecurityGroupRuleResponse, error)
 
-    ReadSubnets(*osc.ReadSubnetsOpts) ([]osc.Subnet, error)
+    ReadSubnets(context.Context, *osc.ReadSubnetsOpts) ([]osc.Subnet, error)
 
-    CreateTags(*osc.CreateTagsOpts) (osc.CreateTagsResponse, error)
+    CreateTags(context.Context, *osc.CreateTagsOpts) (osc.CreateTagsResponse, error)
 
-    ReadRouteTables(*osc.ReadRouteTablesOpts) ([]osc.RouteTables, error)
-    CreateRouteTable(*osc.CreateRouteTableOpts) (osc.CreateRouteTableResponse, error)
-    DeleteRouteTable(*osc.DeleteRouteTableOpts) (osc.DeleteRouteTableResponse, error)
+    ReadRouteTables(context.Context, *osc.ReadRouteTablesOpts) ([]osc.RouteTables, error)
+    CreateRouteTable(context.Context, *osc.CreateRouteTableOpts) (osc.CreateRouteTableResponse, error)
+    DeleteRouteTable(context.Context, *osc.DeleteRouteTableOpts) (osc.DeleteRouteTableResponse, error)
 
-    UpdateVm(*osc.UpdateVmOpts) (osc.UpdateVmResponse, error)
+    UpdateVm(context.Context, *osc.UpdateVmOpts) (osc.UpdateVmResponse, error)
 
-    ReadNets(*osc.ReadNetsOpts) (osc.ReadNetsResponse, error)
+    ReadNets(context.Context, *osc.ReadNetsOpts) (osc.ReadNetsResponse, error)
 }
 
 // LBU is a simple pass-through of OSC' LBU client interface, which allows for testing
 type LBU interface {
-    CreateLoadBalancer(*osc.CreateLoadBalancerOpts) (osc.CreateLoadBalancerResponse, error)
-    DeleteLoadBalancer(*osc.DeleteLoadBalancerOpts) (osc.DeleteLoadBalancerResponse, error)
-    ReadLoadBalancerTags(*osc.ReadLoadBalancerTagsOpts) (osc.ReadLoadBalancerTagsResponse, error)
-    CreateLoadBalancerTags(*osc.CreateLoadBalancerTagsOpts) (osc.CreateLoadBalancerTagsResponse, error)
-    RegisterVmsInLoadBalancer(*osc.RegisterVmsInLoadBalancerOpts) (osc.RegisterVmsInLoadBalancerResponse, error)
-    DeregisterVmsInLoadBalancer(*osc.DeregisterVmsInLoadBalancerOpts) (osc.DeregisterVmsInLoadBalancerResponse, error)
-    CreateLoadBalancerPolicy(*osc.CreateLoadBalancerPolicyOpts) (osc.CreateLoadBalancerPolicyResponse, error)
+    CreateLoadBalancer(context.Context, *osc.CreateLoadBalancerOpts) (osc.CreateLoadBalancerResponse, error)
+    DeleteLoadBalancer(context.Context, *osc.DeleteLoadBalancerOpts) (osc.DeleteLoadBalancerResponse, error)
+    ReadLoadBalancerTags(context.Context, *osc.ReadLoadBalancerTagsOpts) (osc.ReadLoadBalancerTagsResponse, error)
+    CreateLoadBalancerTags(context.Context, *osc.CreateLoadBalancerTagsOpts) (osc.CreateLoadBalancerTagsResponse, error)
+    RegisterVmsInLoadBalancer(context.Context, *osc.RegisterVmsInLoadBalancerOpts) (osc.RegisterVmsInLoadBalancerResponse, error)
+    DeregisterVmsInLoadBalancer(context.Context, *osc.DeregisterVmsInLoadBalancerOpts) (osc.DeregisterVmsInLoadBalancerResponse, error)
+    CreateLoadBalancerPolicy(context.Context, *osc.CreateLoadBalancerPolicyOpts) (osc.CreateLoadBalancerPolicyResponse, error)
 
 
 	//CreateLoadBalancer(*elb.CreateLoadBalancerInput) (*elb.CreateLoadBalancerOutput, error)
