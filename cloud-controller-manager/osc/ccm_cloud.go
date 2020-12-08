@@ -25,10 +25,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/aws/aws-sdk-go/service/elb"
+    "github.com/outscale/osc-sdk-go/osc"
+
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/informers"
@@ -47,8 +45,8 @@ import (
 
 // Cloud is an implementation of Interface, LoadBalancer and Instances for Amazon Web Services.
 type Cloud struct {
-	ec2      EC2
-	elb      ELB
+	fcu      FCU
+	lbu      LBU
 	metadata EC2Metadata
 	cfg      *CloudConfig
 	region   string
@@ -58,7 +56,7 @@ type Cloud struct {
 
 	// The AWS instance that we are running on
 	// Note that we cache some state in awsInstance (mountpoints), so we must preserve the instance
-	selfAWSInstance *awsInstance
+	selfOSCInstance *oscInstance
 
 	instanceCache instanceCache
 
@@ -78,11 +76,11 @@ type Cloud struct {
 // ********************* CCM Cloud Context functions *********************
 // Builds the awsInstance for the EC2 instance on which we are running.
 // This is called when the AWSCloud is initialized, and should not be called otherwise (because the awsInstance for the local instance is a singleton with drive mapping state)
-func (c *Cloud) buildSelfAWSInstance() (*awsInstance, error) {
+func (c *Cloud) buildSelfOSCInstance() (*oscInstance, error) {
 	debugPrintCallerFunctionName()
-	klog.V(10).Infof("buildSelfAWSInstance()")
-	if c.selfAWSInstance != nil {
-		panic("do not call buildSelfAWSInstance directly")
+	klog.V(10).Infof("buildSelfOSCInstance()")
+	if c.selfOSCInstance != nil {
+		panic("do not call buildSelfOSCInstance directly")
 	}
 	instanceID, err := c.metadata.GetMetadata("instance-id")
 	if err != nil {
@@ -101,7 +99,7 @@ func (c *Cloud) buildSelfAWSInstance() (*awsInstance, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error finding instance %s: %q", instanceID, err)
 	}
-	return newAWSInstance(c.ec2, instance), nil
+	return newOSCInstance(c.fcu, instance), nil
 }
 
 // SetInformers implements InformerUser interface by setting up informer-fed caches for aws lib to
@@ -191,12 +189,12 @@ func (c *Cloud) HasClusterID() bool {
 func (c *Cloud) NodeAddresses(ctx context.Context, name types.NodeName) ([]v1.NodeAddress, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("NodeAddresses(%v)", name)
-	if c.selfAWSInstance.nodeName == name || len(name) == 0 {
+	if c.selfOSCInstance.nodeName == name || len(name) == 0 {
 		addresses := []v1.NodeAddress{}
 
 		macs, err := c.metadata.GetMetadata("network/interfaces/macs/")
 		if err != nil {
-			return nil, fmt.Errorf("error querying AWS metadata for %q: %q", "network/interfaces/macs", err)
+			return nil, fmt.Errorf("error querying OSC metadata for %q: %q", "network/interfaces/macs", err)
 		}
 
 		for _, macID := range strings.Split(macs, "\n") {
@@ -206,7 +204,7 @@ func (c *Cloud) NodeAddresses(ctx context.Context, name types.NodeName) ([]v1.No
 			macPath := path.Join("network/interfaces/macs/", macID, "local-ipv4s")
 			internalIPs, err := c.metadata.GetMetadata(macPath)
 			if err != nil {
-				return nil, fmt.Errorf("error querying AWS metadata for %q: %q", macPath, err)
+				return nil, fmt.Errorf("error querying OSC metadata for %q: %q", macPath, err)
 			}
 			for _, internalIP := range strings.Split(internalIPs, "\n") {
 				if internalIP == "" {
@@ -220,7 +218,7 @@ func (c *Cloud) NodeAddresses(ctx context.Context, name types.NodeName) ([]v1.No
 		if err != nil {
 			//TODO: It would be nice to be able to determine the reason for the failure,
 			// but the AWS client masks all failures with the same error description.
-			klog.V(4).Info("Could not determine public IP from AWS metadata.")
+			klog.V(4).Info("Could not determine public IP from OSC metadata.")
 		} else {
 			addresses = append(addresses, v1.NodeAddress{Type: v1.NodeExternalIP, Address: externalIP})
 		}
@@ -229,7 +227,7 @@ func (c *Cloud) NodeAddresses(ctx context.Context, name types.NodeName) ([]v1.No
 		if err != nil || len(localHostname) == 0 {
 			//TODO: It would be nice to be able to determine the reason for the failure,
 			// but the AWS client masks all failures with the same error description.
-			klog.V(4).Info("Could not determine private DNS from AWS metadata.")
+			klog.V(4).Info("Could not determine private DNS from OSC metadata.")
 		} else {
 			hostname, internalDNS := parseMetadataLocalHostname(localHostname)
 			addresses = append(addresses, v1.NodeAddress{Type: v1.NodeHostName, Address: hostname})
@@ -268,7 +266,7 @@ func (c *Cloud) NodeAddressesByProviderID(ctx context.Context, providerID string
 		return nil, err
 	}
 
-	instance, err := describeInstance(c.ec2, instanceID)
+	instance, err := describeInstance(c.fcu, instanceID)
 	if err != nil {
 		return nil, err
 	}
@@ -286,11 +284,11 @@ func (c *Cloud) InstanceExistsByProviderID(ctx context.Context, providerID strin
 		return false, err
 	}
 
-	request := &ec2.DescribeInstancesInput{
+	request := &osc.ReadVmsOpts{
 		InstanceIds: []*string{instanceID.awsString()},
 	}
 
-	instances, err := c.ec2.DescribeInstances(request)
+	instances, err := c.fcu.ReadVms(request)
 	if err != nil {
 		return false, err
 	}
@@ -483,9 +481,9 @@ func (c *Cloud) addLoadBalancerTags(loadBalancerName string, requested map[strin
 	klog.V(10).Infof("addLoadBalancerTags(%v,%v)", loadBalancerName, requested)
 	var tags []*elb.Tag
 	for k, v := range requested {
-		tag := &elb.Tag{
-			Key:   aws.String(k),
-			Value: aws.String(v),
+		tag := &lbu.Tag{
+			Key:   k,
+			Value: v,
 		}
 		tags = append(tags, tag)
 	}
@@ -528,7 +526,7 @@ func (c *Cloud) describeLoadBalancer(name string) (*elb.LoadBalancerDescription,
 	return ret, nil
 }
 
-// Retrieves the specified security group from the AWS API, or returns nil if not found
+// Retrieves the specified security group from the OSC API, or returns nil if not found
 func (c *Cloud) findSecurityGroup(securityGroupID string) (*ec2.SecurityGroup, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("findSecurityGroup(%v)", securityGroupID)

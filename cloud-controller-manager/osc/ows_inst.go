@@ -25,11 +25,11 @@ import (
 
 // ********************* CCM awsInstance Object & functions *********************
 
-type awsInstance struct {
-	ec2 EC2
+type oscInstance struct {
+	fcu FCU
 
 	// id in AWS
-	awsID string
+	oscID string
 
 	// node name in k8s
 	nodeName types.NodeName
@@ -48,7 +48,7 @@ type awsInstance struct {
 }
 
 // Gets the full information about this instance from the EC2 API
-func (i *awsInstance) describeInstance() (*ec2.Instance, error) {
+func (i *oscInstance) describeInstance() (osc.Vm, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("describeInstance")
 	return describeInstance(i.ec2, InstanceID(i.awsID))

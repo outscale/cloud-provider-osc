@@ -39,10 +39,10 @@ var _ cloudprovider.Zones = (*Cloud)(nil)
 
 // ********************* CCM entry point function *********************
 
-// readAWSCloudConfig reads an instance of AWSCloudConfig from config reader.
-func readAWSCloudConfig(config io.Reader) (*CloudConfig, error) {
+// readOSCCloudConfig reads an instance of OSCCloudConfig from config reader.
+func readOSCCloudConfig(config io.Reader) (*CloudConfig, error) {
 	debugPrintCallerFunctionName()
-	klog.V(10).Infof("readAWSCloudConfig(%v)", config)
+	klog.V(10).Infof("readOSCCloudConfig(%v)", config)
 	var cfg CloudConfig
 	var err error
 
@@ -56,23 +56,23 @@ func readAWSCloudConfig(config io.Reader) (*CloudConfig, error) {
 	return &cfg, nil
 }
 
-// newAWSCloud creates a new instance of AWSCloud.
-// AWSProvider and instanceId are primarily for tests
-func newAWSCloud(cfg CloudConfig, awsServices Services) (*Cloud, error) {
+// newOSCCloud creates a new instance of OSCCloud.
+// OSCProvider and instanceId are primarily for tests
+func newOSCCloud(cfg CloudConfig, oscServices Services) (*Cloud, error) {
 	debugPrintCallerFunctionName()
-	klog.V(10).Infof("newAWSCloud(%v,%v)", cfg, awsServices)
+	klog.V(10).Infof("newOSCCloud(%v,%v)", cfg, oscServices)
 	// We have some state in the Cloud object - in particular the attaching map
 	// Log so that if we are building multiple Cloud objects, it is obvious!
 	klog.Infof("Starting OSC cloud provider")
 
-	metadata, err := awsServices.Metadata()
+	metadata, err := oscServices.Metadata()
 	if err != nil {
 		return nil, fmt.Errorf("error creating OSC metadata client: %q", err)
 	}
 
 	err = updateConfigZone(&cfg, metadata)
 	if err != nil {
-		return nil, fmt.Errorf("unable to determine OSC zone from cloud provider config or EC2 instance metadata: %v", err)
+		return nil, fmt.Errorf("unable to determine OSC zone from cloud provider config or OSC instance metadata: %v", err)
 	}
 	zone := cfg.Global.Zone
 	if len(zone) <= 1 {
@@ -85,7 +85,7 @@ func newAWSCloud(cfg CloudConfig, awsServices Services) (*Cloud, error) {
 
 	if !cfg.Global.DisableStrictZoneCheck {
 		if !isRegionValid(regionName, metadata) {
-			return nil, fmt.Errorf("not a valid AWS zone (unknown region): %s", zone)
+			return nil, fmt.Errorf("not a valid OSC zone (unknown region): %s", zone)
 		}
 	} else {
 		klog.Warningf("Strict OSC zone checking is disabled.  Proceeding with zone: %s", zone)
@@ -95,65 +95,65 @@ func newAWSCloud(cfg CloudConfig, awsServices Services) (*Cloud, error) {
 	klog.Infof("OSC CCM cfg: %v", cfg)
 
 	klog.Infof("Init Services/Compute")
-	ec2, err := awsServices.Compute(regionName)
+	fcu, err := oscServices.Compute(regionName)
 	if err != nil {
-		return nil, fmt.Errorf("error creating OSC EC2 client: %v", err)
+		return nil, fmt.Errorf("error creating OSC FCU client: %v", err)
 	}
 	klog.Infof("Init Services/LoadBalancing")
-	elb, err := awsServices.LoadBalancing(regionName)
+	lbu, err := oscServices.LoadBalancing(regionName)
 	if err != nil {
-		return nil, fmt.Errorf("error creating OSC ELB client: %v", err)
+		return nil, fmt.Errorf("error creating OSC LBU client: %v", err)
 	}
 
-	awsCloud := &Cloud{
-		ec2:      ec2,
-		elb:      elb,
+	oscCloud := &Cloud{
+		fcu:      fcu,
+		lbu:      lbu,
 		metadata: metadata,
 		cfg:      &cfg,
 		region:   regionName,
 	}
-	awsCloud.instanceCache.cloud = awsCloud
+	oscCloud.instanceCache.cloud = oscCloud
 
 	tagged := cfg.Global.KubernetesClusterTag != "" || cfg.Global.KubernetesClusterID != ""
 
 	if cfg.Global.VPC != "" && (cfg.Global.SubnetID != "" || cfg.Global.RoleARN != "") && tagged {
-		// When the master is running on a different AWS account, cloud provider or on-premise
+		// When the master is running on a different OSC account, cloud provider or on-premise
 		// build up a dummy instance and use the VPC from the nodes account
-		klog.Info("Master is configured to run on a different AWS account, different cloud provider or on-premises")
-		awsCloud.selfAWSInstance = &awsInstance{
+		klog.Info("Master is configured to run on a different osc account, different cloud provider or on-premises")
+		oscCloud.selfOSCInstance = &oscInstance{
 			nodeName: "master-dummy",
 			vpcID:    cfg.Global.VPC,
 			subnetID: cfg.Global.SubnetID,
 		}
-		awsCloud.vpcID = cfg.Global.VPC
+		oscCloud.vpcID = cfg.Global.VPC
 	} else {
-		selfAWSInstance, err := awsCloud.buildSelfAWSInstance()
+		selfOSCInstance, err := oscCloud.buildSelfOSCInstance()
 		if err != nil {
 			return nil, err
 		}
-		awsCloud.selfAWSInstance = selfAWSInstance
-		awsCloud.vpcID = selfAWSInstance.vpcID
-		klog.Infof("OSC CCM Instance (%v)", selfAWSInstance)
-		klog.Infof("OSC CCM vpcID (%v)", selfAWSInstance.vpcID)
+		oscCloud.selfOSCInstance = selfOSCInstance
+		oscCloud.vpcID = selfOSCInstance.vpcID
+		klog.Infof("OSC CCM Instance (%v)", selfOSCInstance)
+		klog.Infof("OSC CCM vpcID (%v)", selfOSCInstance.vpcID)
 
 	}
 
 	if cfg.Global.KubernetesClusterTag != "" || cfg.Global.KubernetesClusterID != "" {
-		if err := awsCloud.tagging.init(cfg.Global.KubernetesClusterTag, cfg.Global.KubernetesClusterID); err != nil {
+		if err := oscCloud.tagging.init(cfg.Global.KubernetesClusterTag, cfg.Global.KubernetesClusterID); err != nil {
 			return nil, err
 		}
 	} else {
 		// TODO: Clean up double-API query
-		info, err := awsCloud.selfAWSInstance.describeInstance()
+		info, err := oscCloud.selfOSCInstance.describeInstance()
 		if err != nil {
 			return nil, err
 		}
-		if err := awsCloud.tagging.initFromTags(info.Tags); err != nil {
+		if err := oscCloud.tagging.initFromTags(info.Tags); err != nil {
 			return nil, err
 		}
 	}
-	klog.Infof("OSC CCM awsCloud %v", awsCloud)
-	return awsCloud, nil
+	klog.Infof("OSC CCM oscCloud %v", oscCloud)
+	return oscCloud, nil
 }
 
 func init() {
@@ -161,7 +161,7 @@ func init() {
 	klog.V(10).Infof("init()")
 	registerMetrics()
 	cloudprovider.RegisterCloudProvider(ProviderName, func(config io.Reader) (cloudprovider.Interface, error) {
-		cfg, err := readAWSCloudConfig(config)
+		cfg, err := readOSCCloudConfig(config)
 		if err != nil {
 			return nil, fmt.Errorf("unable to read OSC cloud provider config file: %v", err)
 		}
@@ -177,7 +177,7 @@ func init() {
 
 		creds := credentials.NewChainCredentials(provider)
 
-		aws := newAWSSDKProvider(creds, cfg)
-		return newAWSCloud(*cfg, aws)
+		osc := newOSCSDKProvider(creds, cfg)
+		return newOSCCloud(*cfg, osc)
 	})
 }

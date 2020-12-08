@@ -26,9 +26,9 @@ import (
 
 // ********************* CCM API interfaces *********************
 
-// OSC is an abstraction over AWS', to allow mocking/other implementations
+// FCU is an abstraction over AWS', to allow mocking/other implementations
 // Note that the DescribeX functions return a list, so callers don't need to deal with paging
-type OSC interface {
+type FCU interface {
 	// Query OSC for instances matching the filter
 	ReadVms(context.Context, *osc.ReadVmsOpts) ([]osc.Vm, error)
 	ReadSecurityGroups(context.Context, *osc.ReadSecurityGroupsOpts) ([]osc.SecurityGroups, error)
