@@ -33,129 +33,102 @@ type oscSdkOSC struct {
 }
 
 // Implementation of OSC.Instances
-func (s *oscSdkOSC) ReadVms(ctx context.Context, request *osc.DescribeInstancesInput) ([]*osc.Instance, error) {
-	// Instances are paged
-	results := []*osc.Instance{}
-	var nextToken *string
+func (s *oscSdkOSC) ReadVms(ctx context.Context, request *osc.ReadVmsOpts) ([]osc.Vm, error) {
+	// Instances are not paged
+	results := []osc.Vm{}
 	requestTime := time.Now()
 	for {
-		response, err := s.api.VmApi.ReadVms(s.auth.request)
+		response, httpRes, err := s.api.VmApi.ReadVms(s.auth, request)
 		if err != nil {
 			recordAWSMetric("describe_instance", 0, err)
 			return nil, fmt.Errorf("error listing OSC instances: %q", err)
 		}
-
-		for _, reservation := range response.Reservations {
-			results = append(results, reservation.Instances...)
-		}
-
-		nextToken = response.NextToken
-		if aws.StringValue(nextToken) == "" {
-			break
-		}
-		request.NextToken = nextToken
 	}
 	timeTaken := time.Since(requestTime).Seconds()
 	recordAWSMetric("describe_instance", timeTaken, nil)
-	return results, nil
+	return results.Vms, nil
 }
 
 // Implements OSC.DescribeSecurityGroups
-func (s *oscSdkOSC) DescribeSecurityGroups(ctx context.Context, request *osc.DescribeSecurityGroupsInput) ([]*osc.SecurityGroup, error) {
-	// Security groups are paged
-	results := []*osc.SecurityGroup{}
-	var nextToken *string
+func (s *oscSdkOSC) ReadSecurityGroups(ctx context.Context, request *osc.ReadSecurityGroups) ([]osc.SecurityGroup, error) {
+	// Security groups are not paged
+	results := []osc.SecurityGroup{}
 	requestTime := time.Now()
 	for {
-		response, err := s.oscIf.DescribeSecurityGroups(request)
+		response, httpRes, err := s.api.SecurityGroupApi.ReadSecurityGroups(s.auth, request)
 		if err != nil {
 			recordAWSMetric("describe_security_groups", 0, err)
-			return nil, fmt.Errorf("error listing AWS security groups: %q", err)
+			return nil, fmt.Errorf("error listing OSC security groups: %q", err)
 		}
-
-		results = append(results, response.SecurityGroups...)
-
-		nextToken = response.NextToken
-		if aws.StringValue(nextToken) == "" {
-			break
-		}
-		request.NextToken = nextToken
 	}
 	timeTaken := time.Since(requestTime).Seconds()
 	recordAWSMetric("describe_security_groups", timeTaken, nil)
-	return results, nil
+	return results.SecurityGroups, nil
 }
 
-func (s *oscSdkOSC) DescribeSubnets(ctx context.Context, request *osc.DescribeSubnetsInput) ([]*osc.Subnet, error) {
+func (s *oscSdkOSC) DescribeSubnets(ctx context.Context, request *osc.ReadSubnetsOpts) ([]osc.Subnet, error) {
 	// Subnets are not paged
-	response, err := s.oscIf.DescribeSubnets(request)
+	response, httpRes, err := s.api.SubnetApi.DescribeSubnets(s.auth, request)
 	if err != nil {
-		return nil, fmt.Errorf("error listing AWS subnets: %q", err)
+		return nil, fmt.Errorf("error listing OSC subnets: %q", err)
 	}
 	return response.Subnets, nil
 }
 
-func (s *oscSdkOSC) CreateSecurityGroup(ctx context.Context, request *osc.CreateSecurityGroupInput) (*osc.CreateSecurityGroupOutput, error) {
-	return s.oscIf.CreateSecurityGroup(request)
+func (s *oscSdkOSC) CreateSecurityGroup(ctx context.Context, request *osc.CreateSecurityGroupOpts) (osc.CreateSecurityGroupResponse, error) {
+	return s.api.SecurityGroupApi.CreateSecurityGroup(s.auth, request)
 }
 
-func (s *oscSdkOSC) DeleteSecurityGroup(ctx context.Context, request *osc.DeleteSecurityGroupInput) (*osc.DeleteSecurityGroupOutput, error) {
-	return s.oscIf.DeleteSecurityGroup(request)
+func (s *oscSdkOSC) DeleteSecurityGroup(ctx context.Context, request *osc.DeleteSecurityGroupOpts) (osc.DeleteSecurityGroupResponse, error) {
+	return s.api.SecurityGroupApi.DeleteSecurityGroup(s.auth, request)
 }
 
-func (s *oscSdkOSC) AuthorizeSecurityGroupIngress(ctx context.Context, request *osc.AuthorizeSecurityGroupIngressInput) (*osc.AuthorizeSecurityGroupIngressOutput, error) {
-	return s.oscIf.AuthorizeSecurityGroupIngress(request)
+func (s *oscSdkOSC) CreateSecurityGroupRule(ctx context.Context, request *osc.CreateSecurityGroupRuleOpts) (osc.CreateSecurityGroupRuleResponse, error) {
+	return s.api.SecurityGroupApi.CreateSecurityGroupRule(s.auth, request)
 }
 
-func (s *oscSdkOSC) RevokeSecurityGroupIngress(ctx context.Context, request *osc.RevokeSecurityGroupIngressInput) (*osc.RevokeSecurityGroupIngressOutput, error) {
-	return s.oscIf.RevokeSecurityGroupIngress(request)
+func (s *oscSdkOSC) DeleteSecurityGroupRuleRequest(ctx context.Context, request *osc.DeleteSecurityGroupRuleOpts) (osc.DeleteSecurityGroupRuleResponse, error) {
+	return s.api.SecurityGroupApi.DeleteSecurityGroupRuleRequest(s.auth, request)
 }
 
-func (s *oscSdkOSC) CreateTags(ctx context.Context, request *osc.CreateTagsInput) (*osc.CreateTagsOutput, error) {
+func (s *oscSdkOSC) CreateTags(ctx context.Context, request *osc.CreateTagsInput) (osc.CreateTagsOutput, error) {
 	debugPrintCallerFunctionName()
 	requestTime := time.Now()
-	resp, err := s.osc.CreateTags(request)
+	resp, err := s.api.TagApi.CreateTags(s.auth, request)
 	timeTaken := time.Since(requestTime).Seconds()
 	recordAWSMetric("create_tags", timeTaken, err)
 	return resp, err
 }
 
-func (s *oscSdkOSC) DescribeRouteTables(ctx context.Context, request *osc.DescribeRouteTablesInput) ([]*osc.RouteTable, error) {
+func (s *oscSdkOSC) DescribeRouteTables(ctx context.Context, request *osc.ReadRouteTablesOpts) ([]osc.RouteTables, error) {
 	results := []*osc.RouteTable{}
-	var nextToken *string
 	requestTime := time.Now()
 	for {
-		response, err := s.oscIf.DescribeRouteTables(request)
+		response, httpRes, err := s.api.RouteTableApi.ReadRouteTables(s.auth, request)
 		if err != nil {
 			recordAWSMetric("describe_route_tables", 0, err)
-			return nil, fmt.Errorf("error listing AWS route tables: %q", err)
+			return nil, fmt.Errorf("error listing OSC route tables: %q", err)
 		}
 
 		results = append(results, response.RouteTables...)
-
-		nextToken = response.NextToken
-		if aws.StringValue(nextToken) == "" {
-			break
-		}
-		request.NextToken = nextToken
 	}
 	timeTaken := time.Since(requestTime).Seconds()
 	recordAWSMetric("describe_route_tables", timeTaken, nil)
-	return results, nil
+	return results.RouteTables, nil
 }
 
-func (s *oscSdkOSC) CreateRoute(ctx context.Context, request *osc.CreateRouteInput) (*osc.CreateRouteOutput, error) {
-	return s.oscIf.CreateRoute(request)
+func (s *oscSdkOSC) CreateRoute(ctx context.Context, request *osc.CreateRouteOpts) (osc.CreateRouteResponse, error) {
+	return s.api.RouteApi.CreateRoute(s.auth, request)
 }
 
-func (s *oscSdkOSC) DeleteRoute(ctx context.Context, request *osc.DeleteRouteInput) (*osc.DeleteRouteOutput, error) {
-	return s.oscIf.DeleteRoute(request)
+func (s *oscSdkOSC) DeleteRoute(ctx context.Context, request *osc.DeleteRouteOpts) (osc.DeleteRouteResponse, error) {
+	return s.api.RouteApi.DeleteRoute(s.auth, request)
 }
 
-func (s *oscSdkOSC) ModifyInstanceAttribute(ctx context.Context, request *osc.ModifyInstanceAttributeInput) (*osc.ModifyInstanceAttributeOutput, error) {
-	return s.oscIf.ModifyInstanceAttribute(request)
+func (s *oscSdkOSC) UpdateVm(ctx context.Context, request *osc.UpdateVmOpts) (osc.UpdateVmResponse, error) {
+	return s.api.VmApi.UpdateVm(s.auth, request)
 }
 
-func (s *oscSdkOSC) DescribeVpcs(ctx context.Context, request *osc.DescribeVpcsInput) (*osc.DescribeVpcsOutput, error) {
-	return s.oscIf.DescribeVpcs(request)
+func (s *oscSdkOSC) DescribeVpcs(ctx context.Context, request *osc.ReadNetsOpts) (osc.ReadNetsResponse, error) {
+	return s.api.ReadNets(s.auth, request)
 }
