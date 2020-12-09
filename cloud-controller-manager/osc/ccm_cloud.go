@@ -521,7 +521,9 @@ func (c *Cloud) describeLoadBalancer(name string) (osc.LoadBalancer, error) {
     request := &osc.ReadLoadBalancersOpts{
 		ReadLoadBalancersRequest: optional.NewInterface(
 			osc.ReadLoadBalancersRequest{
-				LoadBalancerNames: []string{loadBalancerName},
+			    Filters: osc.FiltersLoadBalancer{
+				    LoadBalancerNames: []string{loadBalancerName},
+				}
 			}),
 	}
 
@@ -585,7 +587,7 @@ func (c *Cloud) setSecurityGroupIngress(securityGroupID string, permissions IPPe
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("setSecurityGroupIngress(%v,%v)", securityGroupID, permissions)
 	// We do not want to make changes to the Global defined SG
-	if securityGroupID == c.cfg.Global.ElbSecurityGroup {
+	if securityGroupID == c.cfg.Global.LbuSecurityGroup {
 		return false, nil
 	}
 
@@ -635,7 +637,17 @@ func (c *Cloud) setSecurityGroupIngress(securityGroupID string, permissions IPPe
 		request := &ec2.AuthorizeSecurityGroupIngressInput{}
 		request.GroupId = &securityGroupID
 		request.IpPermissions = add.List()
-		_, err = c.ec2.AuthorizeSecurityGroupIngress(request)
+
+		request := &osc.CreateSecurityGroupRuleOpts{
+            CreateSecurityGroupRuleRequest: optional.NewInterface(
+                osc.CreateSecurityGroupRuleRequest{
+                    SecurityGroupId: []string{securityGroupID},
+                    Rules: //Check what to add (SecurityGroupRule)
+                }),
+	}
+
+
+		_, err = c.fcu.CreateSecurityGroupRule(ctx, request)
 		if err != nil {
 			return false, fmt.Errorf("error authorizing security group ingress: %q", err)
 		}
@@ -893,23 +905,32 @@ func (c *Cloud) ensureSecurityGroup(name string, description string, additionalT
 // Finds the subnets associated with the cluster, by matching tags.
 // For maximal backwards compatibility, if no subnets are tagged, it will fall-back to the current subnet.
 // However, in future this will likely be treated as an error.
-func (c *Cloud) findSubnets() ([]*ec2.Subnet, error) {
+func (c *Cloud) findSubnets() ([]osc.Subnet, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("findSubnets()")
-	request := &ec2.DescribeSubnetsInput{}
+	request := &osc.ReadSubnetsOpts{}
 	var err error
-	var subnets []*ec2.Subnet
+	var subnets []osc.Subnet
 	err = nil
-	subnets = []*ec2.Subnet{}
-	if c.vpcID != "" {
-		request.Filters = []*ec2.Filter{newEc2Filter("vpc-id", c.vpcID)}
+	subnets = []osc.Subnet{}
 
-		subnets, err := c.ec2.DescribeSubnets(request)
+
+
+	if c.vpcID != "" {
+		//request.Filters = []*ec2.Filter{newEc2Filter("vpc-id", c.vpcID)}
+		request.ReadSubnetsRequest = optional.NewInterface(
+                                        osc.ReadSubnetsRequest{
+                                            Filters: osc.ReadSubnetsRequest{
+                                                NetIds: c.vpcID,
+                                            },
+                                    }),
+
+		subnets, err := c.fcu.ReadSubnets(ctx, request)
 		if err != nil {
 			return nil, fmt.Errorf("error describing subnets: %q", err)
 		}
 
-		var matches []*ec2.Subnet
+		var matches []osc.Subnet
 		for _, subnet := range subnets {
 			if c.tagging.hasClusterTag(subnet.Tags) {
 				matches = append(matches, subnet)
@@ -924,10 +945,17 @@ func (c *Cloud) findSubnets() ([]*ec2.Subnet, error) {
 	if c.selfAWSInstance.subnetID != "" {
 		// Fall back to the current instance subnets, if nothing is tagged
 		klog.Warningf("No tagged subnets found; will fall-back to the current subnet only.  This is likely to be an error in a future version of k8s.")
-		request = &ec2.DescribeSubnetsInput{}
-		request.Filters = []*ec2.Filter{newEc2Filter("subnet-id", c.selfAWSInstance.subnetID)}
 
-		subnets, err = c.ec2.DescribeSubnets(request)
+		request := osc.ReadSubnetsOpts{
+		    ReadSubnetsRequest: optional.NewInterface(
+			    osc.ReadSubnetsRequest{
+				    Filters: osc.FiltersSubnet{
+					    SubnetIds: []string{subnetID},
+				    },
+			    }),
+	}
+
+		subnets, err = c.fcu.ReadSubnets(request)
 		if err != nil {
 			return nil, fmt.Errorf("error describing subnets: %q", err)
 		}
@@ -950,12 +978,24 @@ func (c *Cloud) findELBSubnets(internalELB bool) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	var rt []*ec2.RouteTable
+	var rt []osc.RouteTable
 	if c.vpcID != "" {
-		vpcIDFilter := newEc2Filter("vpc-id", c.vpcID)
-		rRequest := &ec2.DescribeRouteTablesInput{}
-		rRequest.Filters = []*ec2.Filter{vpcIDFilter}
-		rt, err = c.ec2.DescribeRouteTables(rRequest)
+// 		vpcIDFilter := newEc2Filter("vpc-id", c.vpcID)
+// 		rRequest := &ec2.DescribeRouteTablesInput{}
+// 		rRequest.Filters = []*ec2.Filter{vpcIDFilter}
+// 		rt, err = c.ec2.DescribeRouteTables(rRequest)
+
+        rRequest := osc.ReadRouteTablesOpts{
+            ReadRouteTablesRequest: optional.NewInterface(
+                osc.ReadRouteTablesRequest{
+                    Filters: osc.FiltersSecurityGroup{
+                        NetIds: []string{vpcIDFilter},
+                    },
+                }),
+	    }
+
+	    rt, err := c.fcu.ReadRouteTables(ctx, rRequest)
+
 		if err != nil {
 			return nil, fmt.Errorf("error describe route table: %q", err)
 		}
@@ -969,10 +1009,10 @@ func (c *Cloud) findELBSubnets(internalELB bool) ([]string, error) {
 		tagName = TagNameSubnetPublicELB
 	}
 
-	subnetsByAZ := make(map[string]*ec2.Subnet)
+	subnetsByAZ := make(map[string]osc.Subnet)
 	for _, subnet := range subnets {
-		az := aws.StringValue(subnet.AvailabilityZone)
-		id := aws.StringValue(subnet.SubnetId)
+		az := subnet.AvailabilityZone
+		id := subnet.SubnetId
 		if az == "" || id == "" {
 			klog.Warningf("Ignoring subnet with empty az/id: %v", subnet)
 			continue
@@ -1091,7 +1131,7 @@ func (c *Cloud) EnsureLoadBalancer(ctx context.Context, clusterName string, apiS
 	klog.V(10).Infof("EnsureLoadBalancer.annotations(%v)", apiService.Annotations)
 	annotations := apiService.Annotations
 	if apiService.Spec.SessionAffinity != v1.ServiceAffinityNone {
-		// ELB supports sticky sessions, but only when configured for HTTP/HTTPS
+		// LBU supports sticky sessions, but only when configured for HTTP/HTTPS
 		return nil, fmt.Errorf("unsupported load balancer affinity: %v", apiService.Spec.SessionAffinity)
 	}
 
@@ -1100,7 +1140,7 @@ func (c *Cloud) EnsureLoadBalancer(ctx context.Context, clusterName string, apiS
 	}
 
 	// Figure out what mappings we want on the load balancer
-	listeners := []*elb.Listener{}
+	listeners := []*osc.Listener{}
 
 	sslPorts := getPortSets(annotations[ServiceAnnotationLoadBalancerSSLPorts])
 
@@ -1245,9 +1285,9 @@ func (c *Cloud) EnsureLoadBalancer(ctx context.Context, clusterName string, apiS
 		loadBalancerAttributes.ConnectionSettings.IdleTimeout = &connectionIdleTimeout
 	}
 
-	// Find the subnets that the ELB will live in
-	subnetIDs, err := c.findELBSubnets(internalELB)
-	klog.V(2).Infof("Debug OSC:  c.findELBSubnets(internalELB) : %v", subnetIDs)
+	// Find the subnets that the LBU will live in
+	subnetIDs, err := c.findLBUSubnets(internalELB)
+	klog.V(2).Infof("Debug OSC:  c.findLBUSubnets(internalLBU) : %v", subnetIDs)
 
 	if err != nil {
 		klog.Errorf("Error listing subnets in VPC: %q", err)
@@ -1256,7 +1296,7 @@ func (c *Cloud) EnsureLoadBalancer(ctx context.Context, clusterName string, apiS
 
 	// Bail out early if there are no subnets
 	if len(subnetIDs) == 0 {
-		klog.Warningf("could not find any suitable subnets for creating the ELB")
+		klog.Warningf("could not find any suitable subnets for creating the LBU")
 	}
 
 	loadBalancerName := c.GetLoadBalancerName(ctx, clusterName, apiService)
@@ -1866,12 +1906,12 @@ func (c *Cloud) getInstancesByIDs(instanceIDs []*string) (map[string]*ec2.Instan
 	return instancesByID, nil
 }
 
-func (c *Cloud) getInstancesByNodeNames(nodeNames []string, states ...string) ([]*ec2.Instance, error) {
+func (c *Cloud) getInstancesByNodeNames(nodeNames []string, states ...string) ([]osc.Vm, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("getInstancesByNodeNames(%v, %v)", nodeNames, states)
 
 	names := aws.StringSlice(nodeNames)
-	ec2Instances := []*ec2.Instance{}
+	ec2Instances := []osc.Vm{}
 
 	for i := 0; i < len(names); i += filterNodeLimit {
 		end := i + filterNodeLimit
@@ -1907,20 +1947,27 @@ func (c *Cloud) getInstancesByNodeNames(nodeNames []string, states ...string) ([
 }
 
 // TODO: Move to instanceCache
-func (c *Cloud) describeInstances(filters []*ec2.Filter) ([]*ec2.Instance, error) {
+func (c *Cloud) describeInstances(filters []osc.FiltersVm) ([]osc.Vm, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("describeInstances(%v)", filters)
 
-	request := &ec2.DescribeInstancesInput{
+	request := &osc.DescribeInstancesInput{
 		Filters: filters,
 	}
 
-	response, err := c.ec2.DescribeInstances(request)
+	request := osc.ReadVmsOpts{
+		ReadVmsRequest: optional.NewInterface(
+			osc.ReadVmsRequest{
+				Filters: filters,
+			}),
+
+
+	response, err := c.fcu.ReadVms(ctx, request)
 	if err != nil {
 		return nil, err
 	}
 
-	var matches []*ec2.Instance
+	var matches []osc.Vm
 	for _, instance := range response {
 		if c.tagging.hasClusterTag(instance.Tags) {
 			matches = append(matches, instance)
@@ -1931,12 +1978,12 @@ func (c *Cloud) describeInstances(filters []*ec2.Filter) ([]*ec2.Instance, error
 
 // Returns the instance with the specified node name
 // Returns nil if it does not exist
-func (c *Cloud) findInstanceByNodeName(nodeName types.NodeName) (*ec2.Instance, error) {
+func (c *Cloud) findInstanceByNodeName(nodeName types.NodeName) (osc.Vm, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("findInstanceByNodeName(%v)", nodeName)
 
 	privateDNSName := mapNodeNameToPrivateDNSName(nodeName)
-	filters := []*ec2.Filter{
+	filters := []osc.FiltersVm{
 		newEc2Filter("tag:"+TagNameClusterNode, privateDNSName),
 		// exclude instances in "terminated" state
 		newEc2Filter("instance-state-name", aliveFilter...),
@@ -1962,23 +2009,23 @@ func (c *Cloud) findInstanceByNodeName(nodeName types.NodeName) (*ec2.Instance, 
 
 // Returns the instance with the specified node name
 // Like findInstanceByNodeName, but returns error if node not found
-func (c *Cloud) getInstanceByNodeName(nodeName types.NodeName) (*ec2.Instance, error) {
+func (c *Cloud) getInstanceByNodeName(nodeName types.NodeName) (osc.Vm, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("getInstanceByNodeName(%v)", nodeName)
 
-	var instance *ec2.Instance
+	var instance osc.Vm
 
 	// we leverage node cache to try to retrieve node's provider id first, as
 	// get instance by provider id is way more efficient than by filters in
 	// aws context
-	awsID, err := c.nodeNameToProviderID(nodeName)
+	oscID, err := c.nodeNameToProviderID(nodeName)
 	if err != nil {
 		klog.V(3).Infof("Unable to convert node name %q to aws instanceID, fall back to findInstanceByNodeName: %v", nodeName, err)
 		instance, err = c.findInstanceByNodeName(nodeName)
 		// we need to set provider id for next calls
 
 	} else {
-		instance, err = c.getInstanceByID(string(awsID))
+		instance, err = c.getInstanceByID(string(oscID))
 	}
 	if err == nil && instance == nil {
 		return nil, cloudprovider.InstanceNotFound
@@ -1986,7 +2033,7 @@ func (c *Cloud) getInstanceByNodeName(nodeName types.NodeName) (*ec2.Instance, e
 	return instance, err
 }
 
-func (c *Cloud) getFullInstance(nodeName types.NodeName) (*awsInstance, *ec2.Instance, error) {
+func (c *Cloud) getFullInstance(nodeName types.NodeName) (*awsInstance, osc.Vm, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("getFullInstance(%v)", nodeName)
 	if nodeName == "" {
@@ -1997,7 +2044,7 @@ func (c *Cloud) getFullInstance(nodeName types.NodeName) (*awsInstance, *ec2.Ins
 	if err != nil {
 		return nil, nil, err
 	}
-	awsInstance := newAWSInstance(c.ec2, instance)
+	awsInstance := newAWSInstance(c.fcu, instance)
 	return awsInstance, instance, err
 }
 

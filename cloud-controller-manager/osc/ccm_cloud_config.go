@@ -66,7 +66,7 @@ type CloudConfig struct {
 		//AWS has a hard limit of 500 security groups. For large clusters creating a security group for each ELB
 		//can cause the max number of security groups to be reached. If this is set instead of creating a new
 		//Security group for each ELB this security group will be used instead.
-		ElbSecurityGroup string
+		LbuSecurityGroup string
 
 		//During the instantiation of an new AWS cloud provider, the detected region
 		//is validated against a known set of regions.
