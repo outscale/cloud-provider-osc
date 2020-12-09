@@ -285,10 +285,15 @@ func (c *Cloud) InstanceExistsByProviderID(ctx context.Context, providerID strin
 	}
 
 	request := &osc.ReadVmsOpts{
-		InstanceIds: []*string{instanceID.awsString()},
+		ReadVmsRequest: optional.NewInterface(
+			osc.ReadVmsRequest{
+				Filters: osc.FiltersVm{
+					VmIds: []string{instanceID},
+				},
+			}),
 	}
 
-	instances, err := c.fcu.ReadVms(request)
+	instances, err := c.fcu.ReadVms(ctx, request)
 	if err != nil {
 		return false, err
 	}
@@ -317,11 +322,16 @@ func (c *Cloud) InstanceShutdownByProviderID(ctx context.Context, providerID str
 		return false, err
 	}
 
-	request := &ec2.DescribeInstancesInput{
-		InstanceIds: []*string{instanceID.awsString()},
+	request := &osc.ReadVmsOpts{
+		ReadVmsRequest: optional.NewInterface(
+			osc.ReadVmsRequest{
+				Filters: osc.FiltersVm{
+					VmIds: []string{instanceID},
+				},
+			}),
 	}
 
-	instances, err := c.ec2.DescribeInstances(request)
+	instances, err := c.fcu.ReadVms(ctx, request)
 	if err != nil {
 		return false, err
 	}
@@ -337,7 +347,7 @@ func (c *Cloud) InstanceShutdownByProviderID(ctx context.Context, providerID str
 
 	instance := instances[0]
 	if instance.State != nil {
-		state := aws.StringValue(instance.State.Name)
+		state := instance.State.Name
 		// valid state for detaching volumes
 		if state == ec2.InstanceStateNameStopped {
 			return true, nil
@@ -363,7 +373,7 @@ func (c *Cloud) InstanceID(ctx context.Context, nodeName types.NodeName) (string
 		}
 		return "", fmt.Errorf("getInstanceByNodeName failed for %q with %q", nodeName, err)
 	}
-	return "/" + aws.StringValue(inst.Placement.AvailabilityZone) + "/" + aws.StringValue(inst.InstanceId), nil
+	return "/" + inst.Placement.AvailabilityZone + "/" + inst.InstanceId, nil
 }
 
 // InstanceTypeByProviderID returns the cloudprovider instance type of the node with the specified unique providerID
@@ -377,12 +387,12 @@ func (c *Cloud) InstanceTypeByProviderID(ctx context.Context, providerID string)
 		return "", err
 	}
 
-	instance, err := describeInstance(c.ec2, instanceID)
+	instance, err := describeInstance(c.fcu, instanceID)
 	if err != nil {
 		return "", err
 	}
 
-	return aws.StringValue(instance.InstanceType), nil
+	return instance.InstanceType, nil
 }
 
 // InstanceType returns the type of the node with the specified nodeName.
@@ -479,20 +489,24 @@ func (c *Cloud) findVPCID() (string, error) {
 func (c *Cloud) addLoadBalancerTags(loadBalancerName string, requested map[string]string) error {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("addLoadBalancerTags(%v,%v)", loadBalancerName, requested)
-	var tags []*elb.Tag
+	var tags []osc.ResourceTag
 	for k, v := range requested {
-		tag := &lbu.Tag{
+		tag := &osc.ResourceTag{
 			Key:   k,
 			Value: v,
 		}
 		tags = append(tags, tag)
 	}
 
-	request := &elb.AddTagsInput{}
-	request.LoadBalancerNames = []*string{&loadBalancerName}
-	request.Tags = tags
+	request := &osc.CreateLoadBalancerTagsOpts{
+		CreateLoadBalancerTagsRequest: optional.NewInterface(
+			osc.CreateLoadBalancerTagsRequest{
+				LoadBalancerNames: []string{loadBalancerName},
+				Tags: tags,
+			}),
+	}
 
-	_, err := c.elb.AddTags(request)
+	_, err := c.lbu.CreateLoadBalancerTags(ctx, request)
 	if err != nil {
 		return fmt.Errorf("error adding tags to load balancer: %v", err)
 	}
@@ -500,13 +514,18 @@ func (c *Cloud) addLoadBalancerTags(loadBalancerName string, requested map[strin
 }
 
 // Gets the current load balancer state
-func (c *Cloud) describeLoadBalancer(name string) (*elb.LoadBalancerDescription, error) {
+func (c *Cloud) describeLoadBalancer(name string) (osc.LoadBalancer, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("describeLoadBalancer(%v)", name)
-	request := &elb.DescribeLoadBalancersInput{}
-	request.LoadBalancerNames = []*string{&name}
 
-	response, err := c.elb.DescribeLoadBalancers(request)
+    request := &osc.ReadLoadBalancersOpts{
+		ReadLoadBalancersRequest: optional.NewInterface(
+			osc.ReadLoadBalancersRequest{
+				LoadBalancerNames: []string{loadBalancerName},
+			}),
+	}
+
+	response, err := c.lbu.ReadLoadBalancers(ctx, request)
 	if err != nil {
 		if awsError, ok := err.(awserr.Error); ok {
 			if awsError.Code() == "LoadBalancerNotFound" {
@@ -516,26 +535,33 @@ func (c *Cloud) describeLoadBalancer(name string) (*elb.LoadBalancerDescription,
 		return nil, err
 	}
 
-	var ret *elb.LoadBalancerDescription
-	for _, loadBalancer := range response.LoadBalancerDescriptions {
-		if ret != nil {
-			klog.Errorf("Found multiple load balancers with name: %s", name)
-		}
-		ret = loadBalancer
-	}
-	return ret, nil
+// CHECK LoadBalancerDescription returned
+// 	var ret *elb.LoadBalancerDescription
+// 	for _, loadBalancer := range response.LoadBalancerDescriptions {
+// 		if ret != nil {
+// 			klog.Errorf("Found multiple load balancers with name: %s", name)
+// 		}
+// 		ret = loadBalancer
+// 	}
+	return response.LoadBalancers, nil
 }
 
 // Retrieves the specified security group from the OSC API, or returns nil if not found
-func (c *Cloud) findSecurityGroup(securityGroupID string) (*ec2.SecurityGroup, error) {
+func (c *Cloud) findSecurityGroup(securityGroupID string) (osc.SecurityGroup, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("findSecurityGroup(%v)", securityGroupID)
-	describeSecurityGroupsRequest := &ec2.DescribeSecurityGroupsInput{
-		GroupIds: []*string{&securityGroupID},
+
+	request := osc.ReadSecurityGroupsOpts{
+		ReadSecurityGroupsRequest: optional.NewInterface(
+			osc.ReadSecurityGroupsRequest{
+				Filters: osc.FiltersSecurityGroup{
+					SecurityGroupIds: []string{securityGroupID},
+				},
+			}),
 	}
 	// We don't apply our tag filters because we are retrieving by ID
 
-	groups, err := c.ec2.DescribeSecurityGroups(describeSecurityGroupsRequest)
+	groups, err := c.fcu.ReadSecurityGroups(ctx, request)
 	if err != nil {
 		klog.Warningf("Error retrieving security group: %q", err)
 		return nil, err
@@ -548,7 +574,7 @@ func (c *Cloud) findSecurityGroup(securityGroupID string) (*ec2.SecurityGroup, e
 		// This should not be possible - ids should be unique
 		return nil, fmt.Errorf("multiple security groups found with same id %q", securityGroupID)
 	}
-	group := groups[0]
+	group := groups.SecurityGroups[0]
 	return group, nil
 }
 

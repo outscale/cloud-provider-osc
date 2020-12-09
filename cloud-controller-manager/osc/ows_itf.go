@@ -30,62 +30,38 @@ import (
 // Note that the DescribeX functions return a list, so callers don't need to deal with paging
 type FCU interface {
 	// Query OSC for instances matching the filter
-	ReadVms(context.Context, *osc.ReadVmsOpts) ([]osc.Vm, error)
-	ReadSecurityGroups(context.Context, *osc.ReadSecurityGroupsOpts) ([]osc.SecurityGroups, error)
+	ReadVms(context.Context, *osc.ReadVmsOpts) ([]osc.Vm, *_nethttp.Response, error)
+	ReadSecurityGroups(context.Context, *osc.ReadSecurityGroupsOpts) ([]osc.SecurityGroups, *_nethttp.Response, error)
 
-    CreateSecurityGroup(context.Context, *osc.CreateSecurityGroupOpts) (osc.CreateSecurityGroupResponse, error)
-    DeleteSecurityGroup(context.Context, *osc.DeleteSecurityGroupOpts) (osc.DeleteSecurityGroupResponse, error)
+    CreateSecurityGroup(context.Context, *osc.CreateSecurityGroupOpts) (osc.CreateSecurityGroupResponse, *_nethttp.Response, error)
+    DeleteSecurityGroup(context.Context, *osc.DeleteSecurityGroupOpts) (osc.DeleteSecurityGroupResponse, *_nethttp.Response, error)
 
-    CreateSecurityGroupRule(context.Context, *osc.CreateSecurityGroupRuleOpts) (osc.CreateSecurityGroupRuleResponse, error)
-    DeleteSecurityGroupRule(context.Context, *osc.DeleteSecurityGroupRuleOpts) (osc.DeleteSecurityGroupRuleResponse, error)
+    CreateSecurityGroupRule(context.Context, *osc.CreateSecurityGroupRuleOpts) (osc.CreateSecurityGroupRuleResponse, *_nethttp.Response, error)
+    DeleteSecurityGroupRule(context.Context, *osc.DeleteSecurityGroupRuleOpts) (osc.DeleteSecurityGroupRuleResponse, *_nethttp.Response, error)
 
-    ReadSubnets(context.Context, *osc.ReadSubnetsOpts) ([]osc.Subnet, error)
+    ReadSubnets(context.Context, *osc.ReadSubnetsOpts) ([]osc.Subnet, *_nethttp.Response, error)
 
-    CreateTags(context.Context, *osc.CreateTagsOpts) (osc.CreateTagsResponse, error)
+    CreateTags(context.Context, *osc.CreateTagsOpts) (osc.CreateTagsResponse, *_nethttp.Response, error)
 
-    ReadRouteTables(context.Context, *osc.ReadRouteTablesOpts) ([]osc.RouteTables, error)
-    CreateRouteTable(context.Context, *osc.CreateRouteTableOpts) (osc.CreateRouteTableResponse, error)
-    DeleteRouteTable(context.Context, *osc.DeleteRouteTableOpts) (osc.DeleteRouteTableResponse, error)
+    ReadRouteTables(context.Context, *osc.ReadRouteTablesOpts) ([]osc.RouteTables, *_nethttp.Response, error)
+    CreateRouteTable(context.Context, *osc.CreateRouteTableOpts) (osc.CreateRouteTableResponse, *_nethttp.Response, error)
+    DeleteRouteTable(context.Context, *osc.DeleteRouteTableOpts) (osc.DeleteRouteTableResponse, *_nethttp.Response, error)
 
-    UpdateVm(context.Context, *osc.UpdateVmOpts) (osc.UpdateVmResponse, error)
+    UpdateVm(context.Context, *osc.UpdateVmOpts) (osc.UpdateVmResponse, *_nethttp.Response, error)
 
-    ReadNets(context.Context, *osc.ReadNetsOpts) (osc.ReadNetsResponse, error)
+    ReadNets(context.Context, *osc.ReadNetsOpts) (osc.ReadNetsResponse, *_nethttp.Response, error)
 }
 
 // LBU is a simple pass-through of OSC' LBU client interface, which allows for testing
 type LBU interface {
-    CreateLoadBalancer(context.Context, *osc.CreateLoadBalancerOpts) (osc.CreateLoadBalancerResponse, error)
-    DeleteLoadBalancer(context.Context, *osc.DeleteLoadBalancerOpts) (osc.DeleteLoadBalancerResponse, error)
-    ReadLoadBalancerTags(context.Context, *osc.ReadLoadBalancerTagsOpts) (osc.ReadLoadBalancerTagsResponse, error)
-    CreateLoadBalancerTags(context.Context, *osc.CreateLoadBalancerTagsOpts) (osc.CreateLoadBalancerTagsResponse, error)
-    RegisterVmsInLoadBalancer(context.Context, *osc.RegisterVmsInLoadBalancerOpts) (osc.RegisterVmsInLoadBalancerResponse, error)
-    DeregisterVmsInLoadBalancer(context.Context, *osc.DeregisterVmsInLoadBalancerOpts) (osc.DeregisterVmsInLoadBalancerResponse, error)
-    CreateLoadBalancerPolicy(context.Context, *osc.CreateLoadBalancerPolicyOpts) (osc.CreateLoadBalancerPolicyResponse, error)
-
-
-	//CreateLoadBalancer(*elb.CreateLoadBalancerInput) (*elb.CreateLoadBalancerOutput, error)
-	//DeleteLoadBalancer(*elb.DeleteLoadBalancerInput) (*elb.DeleteLoadBalancerOutput, error)
-	//DescribeLoadBalancers(*elb.DescribeLoadBalancersInput) (*elb.DescribeLoadBalancersOutput, error)
-	//AddTags(*elb.AddTagsInput) (*elb.AddTagsOutput, error)
-	//RegisterInstancesWithLoadBalancer(*elb.RegisterInstancesWithLoadBalancerInput) (*elb.RegisterInstancesWithLoadBalancerOutput, error)
-	//DeregisterInstancesFromLoadBalancer(*elb.DeregisterInstancesFromLoadBalancerInput) (*elb.DeregisterInstancesFromLoadBalancerOutput, error)
-	//CreateLoadBalancerPolicy(*elb.CreateLoadBalancerPolicyInput) (*elb.CreateLoadBalancerPolicyOutput, error)
-	SetLoadBalancerPoliciesForBackendServer(*elb.SetLoadBalancerPoliciesForBackendServerInput) (*elb.SetLoadBalancerPoliciesForBackendServerOutput, error)
-	SetLoadBalancerPoliciesOfListener(input *elb.SetLoadBalancerPoliciesOfListenerInput) (*elb.SetLoadBalancerPoliciesOfListenerOutput, error)
-	DescribeLoadBalancerPolicies(input *elb.DescribeLoadBalancerPoliciesInput) (*elb.DescribeLoadBalancerPoliciesOutput, error)
-
-	DetachLoadBalancerFromSubnets(*elb.DetachLoadBalancerFromSubnetsInput) (*elb.DetachLoadBalancerFromSubnetsOutput, error)
-	AttachLoadBalancerToSubnets(*elb.AttachLoadBalancerToSubnetsInput) (*elb.AttachLoadBalancerToSubnetsOutput, error)
-
-	CreateLoadBalancerListeners(*elb.CreateLoadBalancerListenersInput) (*elb.CreateLoadBalancerListenersOutput, error)
-	DeleteLoadBalancerListeners(*elb.DeleteLoadBalancerListenersInput) (*elb.DeleteLoadBalancerListenersOutput, error)
-
-	ApplySecurityGroupsToLoadBalancer(*elb.ApplySecurityGroupsToLoadBalancerInput) (*elb.ApplySecurityGroupsToLoadBalancerOutput, error)
-
-	ConfigureHealthCheck(*elb.ConfigureHealthCheckInput) (*elb.ConfigureHealthCheckOutput, error)
-
-	DescribeLoadBalancerAttributes(*elb.DescribeLoadBalancerAttributesInput) (*elb.DescribeLoadBalancerAttributesOutput, error)
-	ModifyLoadBalancerAttributes(*elb.ModifyLoadBalancerAttributesInput) (*elb.ModifyLoadBalancerAttributesOutput, error)
+    CreateLoadBalancer(context.Context, *osc.CreateLoadBalancerOpts) (osc.CreateLoadBalancerResponse, *_nethttp.Response, error)
+    DeleteLoadBalancer(context.Context, *osc.DeleteLoadBalancerOpts) (osc.DeleteLoadBalancerResponse, *_nethttp.Response, error)
+    ReadLoadBalancers(context.Context, *osc.ReadLoadBalancersOpts) (osc.ReadLoadBalancersResponse, *_nethttp.Response, error)
+    ReadLoadBalancerTags(context.Context, *osc.ReadLoadBalancerTagsOpts) (osc.ReadLoadBalancerTagsResponse, *_nethttp.Response, error)
+    CreateLoadBalancerTags(context.Context, *osc.CreateLoadBalancerTagsOpts) (osc.CreateLoadBalancerTagsResponse, *_nethttp.Response, error)
+    RegisterVmsInLoadBalancer(context.Context, *osc.RegisterVmsInLoadBalancerOpts) (osc.RegisterVmsInLoadBalancerResponse, *_nethttp.Response, error)
+    DeregisterVmsInLoadBalancer(context.Context, *osc.DeregisterVmsInLoadBalancerOpts) (osc.DeregisterVmsInLoadBalancerResponse, *_nethttp.Response, error)
+    CreateLoadBalancerPolicy(context.Context, *osc.CreateLoadBalancerPolicyOpts) (osc.CreateLoadBalancerPolicyResponse, *_nethttp.Response, error)
 }
 
 // EC2Metadata is an abstraction over the AWS metadata service.

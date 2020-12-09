@@ -130,12 +130,17 @@ func mapToAWSInstanceIDsTolerant(nodes []*v1.Node) []InstanceID {
 }
 
 // Gets the full information about this instance from the EC2 API
-func describeInstance(ec2Client EC2, instanceID InstanceID) (*ec2.Instance, error) {
-	request := &ec2.DescribeInstancesInput{
-		InstanceIds: []*string{instanceID.awsString()},
+func describeInstance(fcuClient FCU, instanceID InstanceID) (osc.Vm, error) {
+	request := &osc.ReadVmsOpts{
+		ReadVmsRequest: optional.NewInterface(
+			osc.ReadVmsRequest{
+				Filters: osc.FiltersVm{
+					VmIds: []string{instanceID},
+				},
+			}),
 	}
 
-	instances, err := ec2Client.DescribeInstances(request)
+	instances, err := fcuClient.DescribeInstances(request)
 	if err != nil {
 		return nil, err
 	}
