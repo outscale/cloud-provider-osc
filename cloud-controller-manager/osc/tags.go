@@ -23,8 +23,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/outscale/osc-sdk-go/osc"
 	"k8s.io/klog"
 
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -55,8 +54,8 @@ const (
 	ResourceLifecycleShared = "shared"
 )
 
-type awsTagging struct {
-	// ClusterID is our cluster identifier: we tag AWS resources with this value,
+type oscTagging struct {
+	// ClusterID is our cluster identifier: we tag OSC resources with this value,
 	// and thus we can run two independent clusters in the same VPC or subnets.
 	// This gives us similar functionality to GCE projects.
 	ClusterID string
@@ -77,14 +76,14 @@ func tagNameKubernetesCluster() string {
 
 // Extracts the legacy & new cluster ids from the given tags, if they are present
 // If duplicate tags are found, returns an error
-func findClusterIDs(tags []*ec2.Tag) (string, string, error) {
+func findClusterIDs(tags []osc.Tag) (string, string, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("findClusterIDs(%v)", tags)
 	legacyClusterID := ""
 	newClusterID := ""
 
 	for _, tag := range tags {
-		tagKey := aws.StringValue(tag.Key)
+		tagKey := tag.Key
 		if strings.HasPrefix(tagKey, TagNameKubernetesClusterPrefix) {
 			id := strings.TrimPrefix(tagKey, TagNameKubernetesClusterPrefix)
 			if newClusterID != "" {
@@ -105,7 +104,7 @@ func findClusterIDs(tags []*ec2.Tag) (string, string, error) {
 	return legacyClusterID, newClusterID, nil
 }
 
-func (t *awsTagging) init(legacyClusterID string, clusterID string) error {
+func (t *oscTagging) init(legacyClusterID string, clusterID string) error {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("init(%v,%v)", legacyClusterID, clusterID)
 	if legacyClusterID != "" {
@@ -130,7 +129,7 @@ func (t *awsTagging) init(legacyClusterID string, clusterID string) error {
 // Extracts a clusterID from the given tags, if one is present
 // If no clusterID is found, returns "", nil
 // If multiple (different) clusterIDs are found, returns an error
-func (t *awsTagging) initFromTags(tags []*ec2.Tag) error {
+func (t *oscTagging) initFromTags(tags []osc.Tag) error {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("initFromTags(%v)", tags)
 	legacyClusterID, newClusterID, err := findClusterIDs(tags)
@@ -145,13 +144,13 @@ func (t *awsTagging) initFromTags(tags []*ec2.Tag) error {
 	return t.init(legacyClusterID, newClusterID)
 }
 
-func (t *awsTagging) clusterTagKey() string {
+func (t *oscTagging) clusterTagKey() string {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("clusterTagKey()")
 	return TagNameKubernetesClusterPrefix + t.ClusterID
 }
 
-func (t *awsTagging) hasClusterTag(tags []*ec2.Tag) bool {
+func (t *oscTagging) hasClusterTag(tags []osc.Tag) bool {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("hasClusterTag(%v)", tags)
 	// if the clusterID is not configured -- we consider all instances.
@@ -170,13 +169,13 @@ func (t *awsTagging) hasClusterTag(tags []*ec2.Tag) bool {
 // Ensure that a resource has the correct tags
 // If it has no tags, we assume that this was a problem caused by an error in between creation and tagging,
 // and we add the tags.  If it has a different cluster's tags, that is an error.
-func (t *awsTagging) readRepairClusterTags(client EC2, resourceID string, lifecycle ResourceLifecycle, additionalTags map[string]string, observedTags []*ec2.Tag) error {
+func (t *oscTagging) readRepairClusterTags(client FCU, resourceID string, lifecycle ResourceLifecycle, additionalTags map[string]string, observedTags []osc.Tag) error {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("readRepairClusterTags(%v, %v, %v, %v, %v)",
 		client, resourceID, lifecycle, additionalTags, observedTags)
 	actualTagMap := make(map[string]string)
 	for _, tag := range observedTags {
-		actualTagMap[aws.StringValue(tag.Key)] = aws.StringValue(tag.Value)
+		actualTagMap[aws.StringValue(tag.Key)] = tag.Value
 	}
 
 	expectedTags := t.buildTags(lifecycle, additionalTags)
@@ -209,7 +208,7 @@ func (t *awsTagging) readRepairClusterTags(client EC2, resourceID string, lifecy
 // createTags calls EC2 CreateTags, but adds retry-on-failure logic
 // We retry mainly because if we create an object, we cannot tag it until it is "fully created" (eventual consistency)
 // The error code varies though (depending on what we are tagging), so we simply retry on all errors
-func (t *awsTagging) createTags(client EC2, resourceID string, lifecycle ResourceLifecycle, additionalTags map[string]string) error {
+func (t *oscTagging) createTags(client FCU, resourceID string, lifecycle ResourceLifecycle, additionalTags map[string]string) error {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("createTags(%v,%v,%v,%v)", client, resourceID, lifecycle, additionalTags)
 
@@ -219,13 +218,13 @@ func (t *awsTagging) createTags(client EC2, resourceID string, lifecycle Resourc
 		return nil
 	}
 
-	var awsTags []*ec2.Tag
+	var oscTags []osc.ResourceTag
 	for k, v := range tags {
-		tag := &ec2.Tag{
-			Key:   aws.String(k),
-			Value: aws.String(v),
+		tag := &osc.ResourceTag{
+			Key:   k,
+			Value: v,
 		}
-		awsTags = append(awsTags, tag)
+		awsTags = append(oscTags, tag)
 	}
 
 	backoff := wait.Backoff{
@@ -233,9 +232,13 @@ func (t *awsTagging) createTags(client EC2, resourceID string, lifecycle Resourc
 		Factor:   createTagFactor,
 		Steps:    createTagSteps,
 	}
-	request := &ec2.CreateTagsInput{}
-	request.Resources = []*string{&resourceID}
-	request.Tags = awsTags
+	request := &osc.CreateTagsOpts{
+	    CreateTagsRequest: optional.NewInterface(
+			osc.CreateTagsRequest{
+                ResourceIds: []string{&resourceID},
+                Tags: oscTags,
+			}),
+	}
 
 	var lastErr error
 	err := wait.ExponentialBackoff(backoff, func() (bool, error) {
@@ -259,7 +262,7 @@ func (t *awsTagging) createTags(client EC2, resourceID string, lifecycle Resourc
 
 // Add additional filters, to match on our tags
 // This lets us run multiple k8s clusters in a single EC2 AZ
-func (t *awsTagging) addFilters(filters []*ec2.Filter) []*ec2.Filter {
+func (t *oscTagging) addFilters(filters []*ec2.Filter) []*ec2.Filter {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("addFilters(%v)", filters)
 	// if there are no clusterID configured - no filtering by special tag names
@@ -282,7 +285,7 @@ func (t *awsTagging) addFilters(filters []*ec2.Filter) []*ec2.Filter {
 // 1.5 -> 1.6 clusters and exists for backwards compatibility
 //
 // This lets us run multiple k8s clusters in a single EC2 AZ
-func (t *awsTagging) addLegacyFilters(filters []*ec2.Filter) []*ec2.Filter {
+func (t *oscTagging) addLegacyFilters(filters []*ec2.Filter) []*ec2.Filter {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("addLegacyFilters(%v)", filters)
 	// if there are no clusterID configured - no filtering by special tag names
@@ -304,7 +307,7 @@ func (t *awsTagging) addLegacyFilters(filters []*ec2.Filter) []*ec2.Filter {
 	return filters
 }
 
-func (t *awsTagging) buildTags(lifecycle ResourceLifecycle, additionalTags map[string]string) map[string]string {
+func (t *oscTagging) buildTags(lifecycle ResourceLifecycle, additionalTags map[string]string) map[string]string {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("buildTags(%v,%v)", lifecycle, additionalTags)
 	tags := make(map[string]string)
@@ -327,7 +330,7 @@ func (t *awsTagging) buildTags(lifecycle ResourceLifecycle, additionalTags map[s
 	return tags
 }
 
-func (t *awsTagging) clusterID() string {
+func (t *oscTagging) clusterID() string {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("clusterID()")
 	return t.ClusterID

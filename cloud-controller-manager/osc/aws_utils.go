@@ -19,7 +19,8 @@ limitations under the License.
 package osc
 
 import (
-	"github.com/aws/aws-sdk-go/aws"
+	"github.com/outscale/osc-sdk-go/osc"
+
 
 	"k8s.io/apimachinery/pkg/util/sets"
 )

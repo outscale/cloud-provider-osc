@@ -28,33 +28,33 @@ import (
 	"k8s.io/klog"
 )
 
-// FakeAWSServices is an fake AWS session used for testing
-type FakeAWSServices struct {
+// FakeOSCServices is an fake AWS session used for testing
+type FakeOSCServices struct {
 	region                      string
-	instances                   []*ec2.Instance
-	selfInstance                *ec2.Instance
+	instances                   []*osc.Vm
+	selfInstance                *osc.Vm
 	networkInterfacesMacs       []string
 	networkInterfacesPrivateIPs [][]string
 	networkInterfacesVpcIDs     []string
 
-	ec2      FakeEC2
-	elb      ELB
+	fcu      FakeFCU
+	lbu      LBU
 	metadata *FakeMetadata
 }
 
-// NewFakeAWSServices creates a new FakeAWSServices
-func NewFakeAWSServices(clusterID string) *FakeAWSServices {
-	s := &FakeAWSServices{}
+// NewFakeOSCServices creates a new FakeOSCServices
+func NewFakeOSCServices(clusterID string) *FakeOSCServices {
+	s := &FakeOSCServices{}
 	s.region = "us-east-1"
-	s.ec2 = &FakeEC2Impl{aws: s}
-	s.elb = &FakeELB{aws: s}
+	s.ec2 = &FakeOSCImpl{aws: s}
+	s.elb = &FakeLBU{aws: s}
 	s.metadata = &FakeMetadata{aws: s}
 
 	s.networkInterfacesMacs = []string{"aa:bb:cc:dd:ee:00", "aa:bb:cc:dd:ee:01"}
 	s.networkInterfacesVpcIDs = []string{"vpc-mac0", "vpc-mac1"}
 
-	selfInstance := &ec2.Instance{}
-	selfInstance.InstanceId = aws.String("i-self")
+	selfInstance := &osc.Vm{}
+	selfInstance.InstanceId = "i-self"
 	selfInstance.Placement = &ec2.Placement{
 		AvailabilityZone: aws.String("us-east-1a"),
 	}
@@ -73,7 +73,7 @@ func NewFakeAWSServices(clusterID string) *FakeAWSServices {
 }
 
 // WithAz sets the ec2 placement availability zone
-func (s *FakeAWSServices) WithAz(az string) *FakeAWSServices {
+func (s *FakeOSCServices) WithAz(az string) *FakeOSCServices {
 	if s.selfInstance.Placement == nil {
 		s.selfInstance.Placement = &ec2.Placement{}
 	}
@@ -82,17 +82,17 @@ func (s *FakeAWSServices) WithAz(az string) *FakeAWSServices {
 }
 
 // Compute returns a fake EC2 client
-func (s *FakeAWSServices) Compute(region string) (EC2, error) {
+func (s *FakeOSCServices) Compute(region string) (EC2, error) {
 	return s.ec2, nil
 }
 
 // LoadBalancing returns a fake ELB client
-func (s *FakeAWSServices) LoadBalancing(region string) (ELB, error) {
+func (s *FakeOSCServices) LoadBalancing(region string) (ELB, error) {
 	return s.elb, nil
 }
 
 // Metadata returns a fake EC2Metadata client
-func (s *FakeAWSServices) Metadata() (EC2Metadata, error) {
+func (s *FakeOSCServices) Metadata() (EC2Metadata, error) {
 	return s.metadata, nil
 }
 
@@ -107,7 +107,7 @@ type FakeEC2 interface {
 
 // FakeEC2Impl is an implementation of the FakeEC2 interface used for testing
 type FakeEC2Impl struct {
-	aws                      *FakeAWSServices
+	aws                      *FakeOSCServices
 	Subnets                  []*ec2.Subnet
 	DescribeSubnetsInput     *ec2.DescribeSubnetsInput
 	RouteTables              []*ec2.RouteTable
@@ -251,7 +251,7 @@ func (ec2i *FakeEC2Impl) DescribeVpcs(request *ec2.DescribeVpcsInput) (*ec2.Desc
 
 // FakeMetadata is a fake EC2 metadata service client used for testing
 type FakeMetadata struct {
-	aws *FakeAWSServices
+	aws *FakeOSCServices
 }
 
 // GetInstanceIdentityDocument mocks base method
@@ -315,7 +315,7 @@ func (m *FakeMetadata) GetMetadata(key string) (string, error) {
 
 // FakeELB is a fake ELB client used for testing
 type FakeELB struct {
-	aws *FakeAWSServices
+	aws *FakeOSCServices
 }
 
 // CreateLoadBalancer is not implemented but is required for interface

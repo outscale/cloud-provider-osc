@@ -24,10 +24,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/aws/aws-sdk-go/service/elb"
+    "github.com/outscale/osc-sdk-go/osc"
+
 	"k8s.io/klog"
 
 	"k8s.io/api/core/v1"
@@ -106,26 +104,31 @@ func getLoadBalancerAdditionalTags(annotations map[string]string) map[string]str
 
 func (c *Cloud) getVpcCidrBlocks() ([]string, error) {
 	debugPrintCallerFunctionName()
-	vpcs, err := c.ec2.DescribeVpcs(&ec2.DescribeVpcsInput{
-		VpcIds: []*string{aws.String(c.vpcID)},
-	})
+	vpcs, err := c.fcu.ReadNets(&osc.ReadNetsOpts{
+		ReadNetsRequest: optional.NewInterface(
+			osc.ReadNetsRequest{
+				Filters: osc.FiltersNet{
+					NetIds: []string{c.vpcID},
+				},
+			}),
+	}
 	if err != nil {
-		return nil, fmt.Errorf("error querying VPC for ELB: %q", err)
+		return nil, fmt.Errorf("error querying VPC for LBU: %q", err)
 	}
 	if len(vpcs.Vpcs) != 1 {
-		return nil, fmt.Errorf("error querying VPC for ELB, got %d vpcs for %s", len(vpcs.Vpcs), c.vpcID)
+		return nil, fmt.Errorf("error querying VPC for LBU, got %d vpcs for %s", len(vpcs.Vpcs), c.vpcID)
 	}
 
 	cidrBlocks := make([]string, 0, len(vpcs.Vpcs[0].CidrBlockAssociationSet))
 	for _, cidr := range vpcs.Vpcs[0].CidrBlockAssociationSet {
-		cidrBlocks = append(cidrBlocks, aws.StringValue(cidr.CidrBlock))
+		cidrBlocks = append(cidrBlocks, cidr.CidrBlock)
 	}
 	return cidrBlocks, nil
 }
 
 // updateInstanceSecurityGroupsForNLB will adjust securityGroup's settings to allow inbound traffic into instances from clientCIDRs and portMappings.
 // TIP: if either instances or clientCIDRs or portMappings are nil, then the securityGroup rules for lbName are cleared.
-func (c *Cloud) updateInstanceSecurityGroupsForNLB(lbName string, instances map[InstanceID]*ec2.Instance, clientCIDRs []string, portMappings []nlbPortMapping) error {
+func (c *Cloud) updateInstanceSecurityGroupsForNLB(lbName string, instances map[InstanceID]osc.Vm, clientCIDRs []string, portMappings []nlbPortMapping) error {
 	debugPrintCallerFunctionName()
 
 	if c.cfg.Global.DisableSecurityGroupIngress {
@@ -144,10 +147,10 @@ func (c *Cloud) updateInstanceSecurityGroupsForNLB(lbName string, instances map[
 			return err
 		}
 		if sg == nil {
-			klog.Warningf("Ignoring instance without security group: %s", aws.StringValue(instance.InstanceId))
+			klog.Warningf("Ignoring instance without security group: %s", instance.InstanceId)
 			continue
 		}
-		desiredSGIDs.Insert(aws.StringValue(sg.GroupId))
+		desiredSGIDs.Insert(sg.GroupId)
 	}
 
 	// TODO(@M00nF1sh): do we really needs to support SG without cluster tag at current version?
@@ -214,16 +217,11 @@ func (c *Cloud) updateInstanceSecurityGroupForNLBTraffic(sgID string, sgPerms IP
 	desiredPerms := NewIPPermissionSet()
 	for port := range ports {
 		for _, cidr := range cidrs {
-			desiredPerms.Insert(&ec2.IpPermission{
-				IpProtocol: aws.String(protocol),
-				FromPort:   aws.Int64(port),
-				ToPort:     aws.Int64(port),
-				IpRanges: []*ec2.IpRange{
-					{
-						CidrIp:      aws.String(cidr),
-						Description: aws.String(ruleDesc),
-					},
-				},
+			desiredPerms.Insert(osc.SecurityGroupRule{
+				IpProtocol: protocol,
+				FromPortRange:   port,
+				ToPortRange:     port,
+				IpRanges: []string{cidr},
 			})
 		}
 	}
