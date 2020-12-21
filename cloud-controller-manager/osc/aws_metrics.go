@@ -28,49 +28,49 @@ import (
 )
 
 var (
-	awsAPIMetric = metrics.NewHistogramVec(
+	oscAPIMetric = metrics.NewHistogramVec(
 		&metrics.HistogramOpts{
-			Name:           "cloudprovider_aws_api_request_duration_seconds",
-			Help:           "Latency of AWS API calls",
+			Name:           "cloudprovider_osc_api_request_duration_seconds",
+			Help:           "Latency of OSC API calls",
 			StabilityLevel: metrics.ALPHA,
 		},
 		[]string{"request"})
 
-	awsAPIErrorMetric = metrics.NewCounterVec(
+	oscAPIErrorMetric = metrics.NewCounterVec(
 		&metrics.CounterOpts{
-			Name:           "cloudprovider_aws_api_request_errors",
-			Help:           "AWS API errors",
+			Name:           "cloudprovider_osc_api_request_errors",
+			Help:           "OSC API errors",
 			StabilityLevel: metrics.ALPHA,
 		},
 		[]string{"request"})
 
-	awsAPIThrottlesMetric = metrics.NewCounterVec(
+	oscAPIThrottlesMetric = metrics.NewCounterVec(
 		&metrics.CounterOpts{
-			Name:           "cloudprovider_aws_api_throttled_requests_total",
-			Help:           "AWS API throttled requests",
+			Name:           "cloudprovider_osc_api_throttled_requests_total",
+			Help:           "OSC API throttled requests",
 			StabilityLevel: metrics.ALPHA,
 		},
 		[]string{"operation_name"})
 )
 
-func recordAWSMetric(actionName string, timeTaken float64, err error) {
+func recordOSCMetric(actionName string, timeTaken float64, err error) {
 	if err != nil {
-		awsAPIErrorMetric.With(prometheus.Labels{"request": actionName}).Inc()
+		oscAPIErrorMetric.With(prometheus.Labels{"request": actionName}).Inc()
 	} else {
-		awsAPIMetric.With(prometheus.Labels{"request": actionName}).Observe(timeTaken)
+		oscAPIMetric.With(prometheus.Labels{"request": actionName}).Observe(timeTaken)
 	}
 }
 
-func recordAWSThrottlesMetric(operation string) {
-	awsAPIThrottlesMetric.With(prometheus.Labels{"operation_name": operation}).Inc()
+func recordOSCThrottlesMetric(operation string) {
+	oscAPIThrottlesMetric.With(prometheus.Labels{"operation_name": operation}).Inc()
 }
 
 var registerOnce sync.Once
 
 func registerMetrics() {
 	registerOnce.Do(func() {
-		legacyregistry.MustRegister(awsAPIMetric)
-		legacyregistry.MustRegister(awsAPIErrorMetric)
-		legacyregistry.MustRegister(awsAPIThrottlesMetric)
+		legacyregistry.MustRegister(oscAPIMetric)
+		legacyregistry.MustRegister(oscAPIErrorMetric)
+		legacyregistry.MustRegister(oscAPIThrottlesMetric)
 	})
 }

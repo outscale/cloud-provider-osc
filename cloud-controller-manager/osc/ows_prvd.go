@@ -20,14 +20,14 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/aws/aws-sdk-go/aws"
+    "github.com/outscale/osc-sdk-go/osc"
+
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/ec2metadata"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/aws/aws-sdk-go/service/elb"
+
 
 	"k8s.io/client-go/pkg/version"
 	"k8s.io/klog"
@@ -35,15 +35,15 @@ import (
 
 // ********************* CCM awsSDKProvider Def & functions *********************
 
-type awsSDKProvider struct {
+type oscSDKProvider struct {
 	creds *credentials.Credentials
-	cfg   awsCloudConfigProvider
+	cfg   oscCloudConfigProvider
 
 	mutex          sync.Mutex
 	regionDelayers map[string]*CrossRequestRetryDelay
 }
 
-func (p *awsSDKProvider) addHandlers(regionName string, h *request.Handlers) {
+func (p *oscSDKProvider) addHandlers(regionName string, h *request.Handlers) {
 	h.Build.PushFrontNamed(request.NamedHandler{
 		Name: "k8s/user-agent",
 		Fn:   request.MakeAddToUserAgentHandler("kubernetes", version.Get().String()),
@@ -70,7 +70,7 @@ func (p *awsSDKProvider) addHandlers(regionName string, h *request.Handlers) {
 	p.addAPILoggingHandlers(h)
 }
 
-func (p *awsSDKProvider) addAPILoggingHandlers(h *request.Handlers) {
+func (p *oscSDKProvider) addAPILoggingHandlers(h *request.Handlers) {
 	debugPrintCallerFunctionName()
 	h.Send.PushBackNamed(request.NamedHandler{
 		Name: "k8s/api-request",
@@ -92,7 +92,7 @@ func (p *awsSDKProvider) addAPILoggingHandlers(h *request.Handlers) {
 // However, this throttle is intended only as a last resort.  When we observe
 // this throttling, we need to address the root cause (e.g. add a delay to a
 // controller retry loop)
-func (p *awsSDKProvider) getCrossRequestRetryDelay(regionName string) *CrossRequestRetryDelay {
+func (p *oscSDKProvider) getCrossRequestRetryDelay(regionName string) *CrossRequestRetryDelay {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("getCrossRequestRetryDelay(%v)", regionName)
 	p.mutex.Lock()
@@ -106,7 +106,7 @@ func (p *awsSDKProvider) getCrossRequestRetryDelay(regionName string) *CrossRequ
 	return delayer
 }
 
-func (p *awsSDKProvider) Compute(regionName string) (EC2, error) {
+func (p *oscSDKProvider) Compute(regionName string) (EC2, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("Compute(%v)", regionName)
 	sess, err := NewSession()
@@ -117,26 +117,26 @@ func (p *awsSDKProvider) Compute(regionName string) (EC2, error) {
 
 	p.addHandlers(regionName, &service.Handlers)
 
-	ec2 := &awsSdkEC2{
-		ec2: service,
+	fcu := &oscSdkFCU{
+		fcu: service,
 	}
-	return ec2, nil
+	return fcu, nil
 }
 
-func (p *awsSDKProvider) LoadBalancing(regionName string) (ELB, error) {
+func (p *oscSDKProvider) LoadBalancing(regionName string) (LBU, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("LoadBalancing(%v)", regionName)
 	sess, err := NewSession()
 	if err != nil {
 		return nil, fmt.Errorf("unable to initialize AWS session: %v", err)
 	}
-	elbClient := elb.New(sess)
-	p.addHandlers(regionName, &elbClient.Handlers)
+	lbuClient := lbu.New(sess)
+	p.addHandlers(regionName, &lbuClient.Handlers)
 
 	return elbClient, nil
 }
 
-func (p *awsSDKProvider) Metadata() (EC2Metadata, error) {
+func (p *oscSDKProvider) Metadata() (EC2Metadata, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("Metadata()")
 	sess, err := session.NewSession(&aws.Config{

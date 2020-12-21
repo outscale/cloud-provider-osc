@@ -583,7 +583,7 @@ func (c *Cloud) findSecurityGroup(securityGroupID string) (osc.SecurityGroup, er
 // Makes sure the security group ingress is exactly the specified permissions
 // Returns true if and only if changes were made
 // The security group must already exist
-func (c *Cloud) setSecurityGroupIngress(securityGroupID string, permissions IPPermissionSet) (bool, error) {
+func (c *Cloud) setSecurityGroupIngress(securityGroupID string, permissions SecurityGroupRuleSet) (bool, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("setSecurityGroupIngress(%v,%v)", securityGroupID, permissions)
 	// We do not want to make changes to the Global defined SG
@@ -601,9 +601,9 @@ func (c *Cloud) setSecurityGroupIngress(securityGroupID string, permissions IPPe
 		return false, fmt.Errorf("security group not found: %s", securityGroupID)
 	}
 
-	klog.V(2).Infof("Existing security group ingress: %s %v", securityGroupID, group.IpPermissions)
+	klog.V(2).Infof("Existing security group ingress: %s %v", securityGroupID, group.SecurityGroupRules)
 
-	actual := NewSecurityGroupRuleSet(group.IpPermissions...)
+	actual := NewSecurityGroupRuleSet(group.SecurityGroupRules...)
 
 	// EC2 groups rules together, for example combining:
 	//
@@ -1337,13 +1337,13 @@ func (c *Cloud) EnsureLoadBalancer(ctx context.Context, clusterName string, apiS
 			ec2SourceRanges = append(ec2SourceRanges, &ec2.IpRange{CidrIp: aws.String(sourceRange)})
 		}
 
-		permissions := NewIPPermissionSet()
+		permissions := NewSecurityGroupRuleSet()
 		for _, port := range apiService.Spec.Ports {
 
 			portInt64 := int64(port.Port)
 			protocol := strings.ToLower(string(port.Protocol))
 
-			permission := &ec2.IpPermission{}
+			permission := &osc.SecurityGroupRule{}
 			permission.FromPort = &portInt64
 			permission.ToPort = &portInt64
 			permission.IpRanges = ec2SourceRanges
@@ -1354,7 +1354,7 @@ func (c *Cloud) EnsureLoadBalancer(ctx context.Context, clusterName string, apiS
 
 		// Allow ICMP fragmentation packets, important for MTU discovery
 		{
-			permission := &ec2.IpPermission{
+			permission := &osc.SecurityGroupRule{
 				IpProtocol: aws.String("icmp"),
 				FromPort:   aws.Int64(3),
 				ToPort:     aws.Int64(4),
@@ -1638,7 +1638,7 @@ func (c *Cloud) updateInstanceSecurityGroupsForLoadBalancer(lb *elb.LoadBalancer
 			klog.V(2).Infof("Removing rule for traffic from the load balancer (%s) to instance (%s)", loadBalancerSecurityGroupID, instanceSecurityGroupID)
 		}
 		isPublicCloud := (loadBalancerSecurityGroupID == DefaultSrcSgName)
-		permissions := []*ec2.IpPermission{}
+		permissions := []osc.SecurityGroupRule{}
 		if !isPublicCloud {
 			// This setting is applied when we are in a vpc
 			sourceGroupID := &ec2.UserIdGroupPair{}
@@ -1646,10 +1646,10 @@ func (c *Cloud) updateInstanceSecurityGroupsForLoadBalancer(lb *elb.LoadBalancer
 
 			allProtocols := "-1"
 
-			permission := &ec2.IpPermission{}
+			permission := &osc.SecurityGroupRule{}
 			permission.IpProtocol = &allProtocols
-			permission.UserIdGroupPairs = []*ec2.UserIdGroupPair{sourceGroupID}
-			permissions = []*ec2.IpPermission{permission}
+			permission.UserIdGroupPairs = []osc.UserIdGroupPair{sourceGroupID}
+			permissions = []osc.SecurityGroupRule{permission}
 		}
 
 		if add {

@@ -30,6 +30,7 @@ type oscSdkFCU struct {
 	config *osc.Configuration
 	auth   context.Context
 	api    *osc.APIClient
+	fcu    *osc.FCU
 }
 
 // Implementation of OSC.Instances

@@ -114,14 +114,14 @@ func NewSession() (*session.Session, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to initialize OSC Metadata session: %v", err)
 	}
-	awsConfig := &aws.Config{
-		Region:                        aws.String(metadata.GetRegion()),
+	oscConfig := &osc.Config{
+		Region:                        metadata.GetRegion(),
 		Credentials:                   credentials.NewChainCredentials(provider),
-		CredentialsChainVerboseErrors: aws.Bool(true),
+		CredentialsChainVerboseErrors: true,
 		EndpointResolver:              endpoints.ResolverFunc(SetupServiceResolver(metadata.GetRegion())),
 	}
 
-	sess, err := session.NewSession(awsConfig)
+	sess, err := session.NewSession(oscConfig)
 	if err != nil {
 		return nil, fmt.Errorf("unable to initialize OSC session: %v", err)
 	}
@@ -167,7 +167,7 @@ func mapNodeNameToPrivateDNSName(nodeName types.NodeName) string {
 }
 
 // mapInstanceToNodeName maps a EC2 instance to a k8s NodeName, by extracting the PrivateDNSName
-func mapInstanceToNodeName(i *ec2.Instance) types.NodeName {
+func mapInstanceToNodeName(i osc.Vm) types.NodeName {
 	return types.NodeName(i.PrivateDnsName)
 }
 
@@ -175,15 +175,15 @@ func mapInstanceToNodeName(i *ec2.Instance) types.NodeName {
 // We only create instances with one security group, so we don't expect multiple security groups.
 // However, if there are multiple security groups, we will choose the one tagged with our cluster filter.
 // Otherwise we will return an error.
-func findSecurityGroupForInstance(instance *ec2.Instance, taggedSecurityGroups map[string]*ec2.SecurityGroup) (*ec2.GroupIdentifier, error) {
+func findSecurityGroupForInstance(instance osc.Vm, taggedSecurityGroups map[string]osc.SecurityGroup) (osc.SecurityGroupLight, error) {
 	instanceID := instance.InstanceId
 
 	klog.Infof("findSecurityGroupForInstance instance.InstanceId : %v", instance.InstanceId)
 	klog.Infof("findSecurityGroupForInstance instance.SecurityGroups : %v", instance.SecurityGroups)
 	klog.Infof("findSecurityGroupForInstance taggedSecurityGroups : %v", taggedSecurityGroups)
 
-	var tagged []*ec2.GroupIdentifier
-	var untagged []*ec2.GroupIdentifier
+	var tagged []osc.SecurityGroupLight
+	var untagged []osc.SecurityGroupLight
 	for _, group := range instance.SecurityGroups {
 		groupID := group.GroupId
 		if groupID == "" {
@@ -225,14 +225,14 @@ func findSecurityGroupForInstance(instance *ec2.Instance, taggedSecurityGroups m
 
 // buildListener creates a new listener from the given port, adding an SSL certificate
 // if indicated by the appropriate annotations.
-func buildListener(port v1.ServicePort, annotations map[string]string, sslPorts *portSets) (*elb.Listener, error) {
+func buildListener(port v1.ServicePort, annotations map[string]string, sslPorts *portSets) (*lbu.Listener, error) {
 	loadBalancerPort := int64(port.Port)
 	portName := strings.ToLower(port.Name)
 	instancePort := int64(port.NodePort)
 	protocol := strings.ToLower(string(port.Protocol))
 	instanceProtocol := protocol
 
-	listener := &elb.Listener{}
+	listener := &lbu.Listener{}
 	listener.InstancePort = &instancePort
 	listener.LoadBalancerPort = &loadBalancerPort
 	certID := annotations[ServiceAnnotationLoadBalancerCertificate]
@@ -260,8 +260,8 @@ func buildListener(port v1.ServicePort, annotations map[string]string, sslPorts 
 	return listener, nil
 }
 
-func isSubnetPublic(rt []*ec2.RouteTable, subnetID string) (bool, error) {
-	var subnetTable *ec2.RouteTable
+func isSubnetPublic(rt []osc.RouteTable, subnetID string) (bool, error) {
+	var subnetTable osc.RouteTable
 	for _, table := range rt {
 		for _, assoc := range table.Associations {
 			if assoc.SubnetId == subnetID {
@@ -276,7 +276,7 @@ func isSubnetPublic(rt []*ec2.RouteTable, subnetID string) (bool, error) {
 		// associated with the VPC's main routing table.
 		for _, table := range rt {
 			for _, assoc := range table.Associations {
-				if aws.BoolValue(assoc.Main) == true {
+				if assoc.Main == true {
 					klog.V(4).Infof("Assuming implicit use of main routing table %s for %s",
 						table.RouteTableId, subnetID)
 					subnetTable = table
@@ -332,7 +332,7 @@ func getPortSets(annotation string) (ports *portSets) {
 	return
 }
 
-func toStatus(lb *elb.LoadBalancerDescription) *v1.LoadBalancerStatus {
+func toStatus(lb *lbu.LoadBalancerDescription) *v1.LoadBalancerStatus {
 	status := &v1.LoadBalancerStatus{}
 
 	if lb.DNSName != "" {
@@ -345,7 +345,7 @@ func toStatus(lb *elb.LoadBalancerDescription) *v1.LoadBalancerStatus {
 }
 
 // Finds the value for a given tag.
-func findTag(tags []*ec2.Tag, key string) (string, bool) {
+func findTag(tags []osc.Tag, key string) (string, bool) {
 	for _, tag := range tags {
 		if tag.Key == key {
 			return tag.Value, true
@@ -374,7 +374,7 @@ func isEqualStringPointer(l, r *string) bool {
 	return *l == *r
 }
 
-func SecurityGroupRuleExists(newPermission, existing *ec2.IpPermission, compareGroupUserIDs bool) bool {
+func SecurityGroupRuleExists(newPermission, existing osc.SecurityGroupRule, compareGroupUserIDs bool) bool {
 	if !isEqualIntPointer(newPermission.FromPort, existing.FromPort) {
 		return false
 	}
@@ -420,7 +420,7 @@ func SecurityGroupRuleExists(newPermission, existing *ec2.IpPermission, compareG
 	return true
 }
 
-func isEqualUserGroupPair(l, r *ec2.UserIdGroupPair, compareGroupUserIDs bool) bool {
+func isEqualUserGroupPair(l, r osc.UserIdGroupPair, compareGroupUserIDs bool) bool {
 	klog.V(2).Infof("Comparing %v to %v", *l.GroupId, *r.GroupId)
 	if isEqualStringPointer(l.GroupId, r.GroupId) {
 		if compareGroupUserIDs {
@@ -499,7 +499,7 @@ func newOScInstance(oscService LBU, instance *osc.Vm) *OScInstance {
 }
 
 // extractNodeAddresses maps the instance information from EC2 to an array of NodeAddresses
-func extractNodeAddresses(instance osc.VM) ([]v1.NodeAddress, error) {
+func extractNodeAddresses(instance osc.Vm) ([]v1.NodeAddress, error) {
 	// Not clear if the order matters here, but we might as well indicate a sensible preference order
 
 	if instance == nil {
@@ -520,7 +520,7 @@ func extractNodeAddresses(instance osc.VM) ([]v1.NodeAddress, error) {
 				if ipAddress := internalIP.PrivateIpAddress; ipAddress != "" {
 					ip := net.ParseIP(ipAddress)
 					if ip == nil {
-						return nil, fmt.Errorf("EC2 instance had invalid private address: %s (%q)", instance.InstanceId, ipAddress)
+						return nil, fmt.Errorf("OSC instance had invalid private address: %s (%q)", instance.InstanceId, ipAddress)
 					}
 					addresses = append(addresses, v1.NodeAddress{Type: v1.NodeInternalIP, Address: ip.String()})
 				}
@@ -541,7 +541,7 @@ func extractNodeAddresses(instance osc.VM) ([]v1.NodeAddress, error) {
 	if publicIPAddress != "" {
 		ip := net.ParseIP(publicIPAddress)
 		if ip == nil {
-			return nil, fmt.Errorf("EC2 instance had invalid public address: %s (%s)", instance.InstanceId, publicIPAddress)
+			return nil, fmt.Errorf("OSC instance had invalid public address: %s (%s)", instance.InstanceId, publicIPAddress)
 		}
 		addresses = append(addresses, v1.NodeAddress{Type: v1.NodeExternalIP, Address: ip.String()})
 	}
