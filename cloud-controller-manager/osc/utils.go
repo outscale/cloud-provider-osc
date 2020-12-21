@@ -128,6 +128,7 @@ func NewSession() (*session.Session, error) {
 	return sess, nil
 }
 
+//SecurityGroups, VPC, TAG, IP permission, Vm
 func newEc2Filter(name string, values ...string) *ec2.Filter {
 	filter := &ec2.Filter{
 		Name: aws.String(name),
@@ -138,6 +139,27 @@ func newEc2Filter(name string, values ...string) *ec2.Filter {
 	return filter
 }
 
+func newSGFilter(name string, values ...string) osc.FiltersSecurityGroup {
+	filter := osc.FiltersSecurityGroup{
+		SecurityGroupNames: []string{name},
+	}
+	for _, value := range values {
+		TagValues.Values = append(filter.TagValues, value)
+	}
+	return filter
+}
+
+func newVmFilter(name string, values ...string) osc.FiltersVm {
+	filter := osc.FiltersVm{
+
+	}
+	for _, value := range values {
+		TagValues.Values = append(filter.TagValues, value)
+	}
+	return filter
+}
+
+
 // mapNodeNameToPrivateDNSName maps a k8s NodeName to an AWS Instance PrivateDNSName
 // This is a simple string cast
 func mapNodeNameToPrivateDNSName(nodeName types.NodeName) string {
@@ -146,7 +168,7 @@ func mapNodeNameToPrivateDNSName(nodeName types.NodeName) string {
 
 // mapInstanceToNodeName maps a EC2 instance to a k8s NodeName, by extracting the PrivateDNSName
 func mapInstanceToNodeName(i *ec2.Instance) types.NodeName {
-	return types.NodeName(aws.StringValue(i.PrivateDnsName))
+	return types.NodeName(i.PrivateDnsName)
 }
 
 // Returns the first security group for an instance, or nil
@@ -154,16 +176,16 @@ func mapInstanceToNodeName(i *ec2.Instance) types.NodeName {
 // However, if there are multiple security groups, we will choose the one tagged with our cluster filter.
 // Otherwise we will return an error.
 func findSecurityGroupForInstance(instance *ec2.Instance, taggedSecurityGroups map[string]*ec2.SecurityGroup) (*ec2.GroupIdentifier, error) {
-	instanceID := aws.StringValue(instance.InstanceId)
+	instanceID := instance.InstanceId
 
-	klog.Infof("findSecurityGroupForInstance instance.InstanceId : %v", aws.StringValue(instance.InstanceId))
+	klog.Infof("findSecurityGroupForInstance instance.InstanceId : %v", instance.InstanceId)
 	klog.Infof("findSecurityGroupForInstance instance.SecurityGroups : %v", instance.SecurityGroups)
 	klog.Infof("findSecurityGroupForInstance taggedSecurityGroups : %v", taggedSecurityGroups)
 
 	var tagged []*ec2.GroupIdentifier
 	var untagged []*ec2.GroupIdentifier
 	for _, group := range instance.SecurityGroups {
-		groupID := aws.StringValue(group.GroupId)
+		groupID := group.GroupId
 		if groupID == "" {
 			klog.Warningf("Ignoring security group without id for instance %q: %v", instanceID, group)
 			continue
@@ -242,7 +264,7 @@ func isSubnetPublic(rt []*ec2.RouteTable, subnetID string) (bool, error) {
 	var subnetTable *ec2.RouteTable
 	for _, table := range rt {
 		for _, assoc := range table.Associations {
-			if aws.StringValue(assoc.SubnetId) == subnetID {
+			if assoc.SubnetId == subnetID {
 				subnetTable = table
 				break
 			}
@@ -256,7 +278,7 @@ func isSubnetPublic(rt []*ec2.RouteTable, subnetID string) (bool, error) {
 			for _, assoc := range table.Associations {
 				if aws.BoolValue(assoc.Main) == true {
 					klog.V(4).Infof("Assuming implicit use of main routing table %s for %s",
-						aws.StringValue(table.RouteTableId), subnetID)
+						table.RouteTableId, subnetID)
 					subnetTable = table
 					break
 				}
@@ -275,7 +297,7 @@ func isSubnetPublic(rt []*ec2.RouteTable, subnetID string) (bool, error) {
 		// from the default in-subnet route which is called "local"
 		// or other virtual gateway (starting with vgv)
 		// or vpc peering connections (starting with pcx).
-		if strings.HasPrefix(aws.StringValue(route.GatewayId), "igw") {
+		if strings.HasPrefix(route.GatewayId, "igw") {
 			return true, nil
 		}
 	}
@@ -313,9 +335,9 @@ func getPortSets(annotation string) (ports *portSets) {
 func toStatus(lb *elb.LoadBalancerDescription) *v1.LoadBalancerStatus {
 	status := &v1.LoadBalancerStatus{}
 
-	if aws.StringValue(lb.DNSName) != "" {
+	if lb.DNSName != "" {
 		var ingress v1.LoadBalancerIngress
-		ingress.Hostname = aws.StringValue(lb.DNSName)
+		ingress.Hostname = lb.DNSName
 		status.Ingress = []v1.LoadBalancerIngress{ingress}
 	}
 
@@ -325,8 +347,8 @@ func toStatus(lb *elb.LoadBalancerDescription) *v1.LoadBalancerStatus {
 // Finds the value for a given tag.
 func findTag(tags []*ec2.Tag, key string) (string, bool) {
 	for _, tag := range tags {
-		if aws.StringValue(tag.Key) == key {
-			return aws.StringValue(tag.Value), true
+		if tag.Key == key {
+			return tag.Value, true
 		}
 	}
 	return "", false
@@ -352,7 +374,7 @@ func isEqualStringPointer(l, r *string) bool {
 	return *l == *r
 }
 
-func ipPermissionExists(newPermission, existing *ec2.IpPermission, compareGroupUserIDs bool) bool {
+func SecurityGroupRuleExists(newPermission, existing *ec2.IpPermission, compareGroupUserIDs bool) bool {
 	if !isEqualIntPointer(newPermission.FromPort, existing.FromPort) {
 		return false
 	}
@@ -457,27 +479,27 @@ func isRegionValid(region string, metadata EC2Metadata) bool {
 	return false
 }
 
-// newAWSInstance creates a new awsInstance object
-func newAWSInstance(ec2Service EC2, instance *ec2.Instance) *awsInstance {
+// newOScInstance creates a new awsInstance object
+func newOScInstance(oscService LBU, instance *osc.Vm) *OScInstance {
 	az := ""
 	if instance.Placement != nil {
-		az = aws.StringValue(instance.Placement.AvailabilityZone)
+		az = instance.Placement.AvailabilityZone
 	}
 	self := &awsInstance{
-		ec2:              ec2Service,
-		awsID:            aws.StringValue(instance.InstanceId),
+		lbu:              oscService,
+		awsID:            instance.InstanceId,
 		nodeName:         mapInstanceToNodeName(instance),
 		availabilityZone: az,
-		instanceType:     aws.StringValue(instance.InstanceType),
-		vpcID:            aws.StringValue(instance.VpcId),
-		subnetID:         aws.StringValue(instance.SubnetId),
+		instanceType:     instance.InstanceType),
+		vpcID:            instance.VpcId,
+		subnetID:         instance.SubnetId,
 	}
 
 	return self
 }
 
 // extractNodeAddresses maps the instance information from EC2 to an array of NodeAddresses
-func extractNodeAddresses(instance *ec2.Instance) ([]v1.NodeAddress, error) {
+func extractNodeAddresses(instance osc.VM) ([]v1.NodeAddress, error) {
 	// Not clear if the order matters here, but we might as well indicate a sensible preference order
 
 	if instance == nil {
@@ -490,45 +512,45 @@ func extractNodeAddresses(instance *ec2.Instance) ([]v1.NodeAddress, error) {
 	if len(instance.NetworkInterfaces) > 0 {
 		for _, networkInterface := range instance.NetworkInterfaces {
 			// skip network interfaces that are not currently in use
-			if aws.StringValue(networkInterface.Status) != ec2.NetworkInterfaceStatusInUse {
+			if networkInterface.Status != ec2.NetworkInterfaceStatusInUse {
 				continue
 			}
 
 			for _, internalIP := range networkInterface.PrivateIpAddresses {
-				if ipAddress := aws.StringValue(internalIP.PrivateIpAddress); ipAddress != "" {
+				if ipAddress := internalIP.PrivateIpAddress; ipAddress != "" {
 					ip := net.ParseIP(ipAddress)
 					if ip == nil {
-						return nil, fmt.Errorf("EC2 instance had invalid private address: %s (%q)", aws.StringValue(instance.InstanceId), ipAddress)
+						return nil, fmt.Errorf("EC2 instance had invalid private address: %s (%q)", instance.InstanceId, ipAddress)
 					}
 					addresses = append(addresses, v1.NodeAddress{Type: v1.NodeInternalIP, Address: ip.String()})
 				}
 			}
 		}
 	} else {
-		privateIPAddress := aws.StringValue(instance.PrivateIpAddress)
+		privateIPAddress := instance.PrivateIpAddress
 		if privateIPAddress != "" {
 			ip := net.ParseIP(privateIPAddress)
 			if ip == nil {
-				return nil, fmt.Errorf("EC2 instance had invalid private address: %s (%s)", aws.StringValue(instance.InstanceId), privateIPAddress)
+				return nil, fmt.Errorf("OSC instance had invalid private address: %s (%s)", instance.InstanceId, privateIPAddress)
 			}
 			addresses = append(addresses, v1.NodeAddress{Type: v1.NodeInternalIP, Address: ip.String()})
 		}
 	}
 	// TODO: Other IP addresses (multiple ips)?
-	publicIPAddress := aws.StringValue(instance.PublicIpAddress)
+	publicIPAddress := instance.PublicIpAddress
 	if publicIPAddress != "" {
 		ip := net.ParseIP(publicIPAddress)
 		if ip == nil {
-			return nil, fmt.Errorf("EC2 instance had invalid public address: %s (%s)", aws.StringValue(instance.InstanceId), publicIPAddress)
+			return nil, fmt.Errorf("EC2 instance had invalid public address: %s (%s)", instance.InstanceId, publicIPAddress)
 		}
 		addresses = append(addresses, v1.NodeAddress{Type: v1.NodeExternalIP, Address: ip.String()})
 	}
-	privateDNSName := aws.StringValue(instance.PrivateDnsName)
+	privateDNSName := instance.PrivateDnsName
 	if privateDNSName != "" {
 		addresses = append(addresses, v1.NodeAddress{Type: v1.NodeInternalDNS, Address: privateDNSName})
 		addresses = append(addresses, v1.NodeAddress{Type: v1.NodeHostName, Address: privateDNSName})
 	}
-	publicDNSName := aws.StringValue(instance.PublicDnsName)
+	publicDNSName := instance.PublicDnsName
 	if publicDNSName != "" {
 		addresses = append(addresses, v1.NodeAddress{Type: v1.NodeExternalDNS, Address: publicDNSName})
 	}

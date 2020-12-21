@@ -553,7 +553,7 @@ func (c *Cloud) findSecurityGroup(securityGroupID string) (osc.SecurityGroup, er
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("findSecurityGroup(%v)", securityGroupID)
 
-	request := osc.ReadSecurityGroupsOpts{
+	request := &osc.ReadSecurityGroupsOpts{
 		ReadSecurityGroupsRequest: optional.NewInterface(
 			osc.ReadSecurityGroupsRequest{
 				Filters: osc.FiltersSecurityGroup{
@@ -603,7 +603,7 @@ func (c *Cloud) setSecurityGroupIngress(securityGroupID string, permissions IPPe
 
 	klog.V(2).Infof("Existing security group ingress: %s %v", securityGroupID, group.IpPermissions)
 
-	actual := NewIPPermissionSet(group.IpPermissions...)
+	actual := NewSecurityGroupRuleSet(group.IpPermissions...)
 
 	// EC2 groups rules together, for example combining:
 	//
@@ -634,15 +634,11 @@ func (c *Cloud) setSecurityGroupIngress(securityGroupID string, permissions IPPe
 	if add.Len() != 0 {
 		klog.V(2).Infof("Adding security group ingress: %s %v", securityGroupID, add.List())
 
-		request := &ec2.AuthorizeSecurityGroupIngressInput{}
-		request.GroupId = &securityGroupID
-		request.IpPermissions = add.List()
-
 		request := &osc.CreateSecurityGroupRuleOpts{
             CreateSecurityGroupRuleRequest: optional.NewInterface(
                 osc.CreateSecurityGroupRuleRequest{
                     SecurityGroupId: []string{securityGroupID},
-                    Rules: //Check what to add (SecurityGroupRule)
+                    Rules: add.List()
                 }),
 	}
 
@@ -655,10 +651,15 @@ func (c *Cloud) setSecurityGroupIngress(securityGroupID string, permissions IPPe
 	if remove.Len() != 0 {
 		klog.V(2).Infof("Remove security group ingress: %s %v", securityGroupID, remove.List())
 
-		request := &ec2.RevokeSecurityGroupIngressInput{}
-		request.GroupId = &securityGroupID
-		request.IpPermissions = remove.List()
-		_, err = c.ec2.RevokeSecurityGroupIngress(request)
+		request := osc.DeleteSecurityGroupRuleOpts{
+            DeleteSecurityGroupRuleRequest: optional.NewInterface(
+                osc.DeleteSecurityGroupRuleRequest{
+                    SecurityGroupId:,
+                    Rules: remove.List(),
+                }),
+        }
+
+        _, err = c.fcu.DeleteSecurityGroupRule(request)
 		if err != nil {
 			return false, fmt.Errorf("error revoking security group ingress: %q", err)
 		}
@@ -670,11 +671,11 @@ func (c *Cloud) setSecurityGroupIngress(securityGroupID string, permissions IPPe
 // Makes sure the security group includes the specified permissions
 // Returns true if and only if changes were made
 // The security group must already exist
-func (c *Cloud) addSecurityGroupIngress(securityGroupID string, addPermissions []*ec2.IpPermission, isPublicCloud bool) (bool, error) {
+func (c *Cloud) addSecurityGroupIngress(securityGroupID string, addPermissions []osc.SecurityGroupRule, isPublicCloud bool) (bool, error) {
 	debugPrintCallerFunctionName()
-	klog.V(10).Infof("addSecurityGroupIngress(%v,%v,%v)", securityGroupID, addPermissions, isPublicCloud)
+	klog.V(10).Infof("addSecurityGroupIngress(%v,%v,%v)", securityGroupID, addRules, isPublicCloud)
 	// We do not want to make changes to the Global defined SG
-	if securityGroupID == c.cfg.Global.ElbSecurityGroup {
+	if securityGroupID == c.cfg.Global.LbuSecurityGroup {
 		return false, nil
 	}
 
@@ -688,27 +689,27 @@ func (c *Cloud) addSecurityGroupIngress(securityGroupID string, addPermissions [
 		return false, fmt.Errorf("security group not found: %s", securityGroupID)
 	}
 
-	klog.Infof("Existing security group ingress: %s %v", securityGroupID, group.IpPermissions)
+	klog.Infof("Existing security group ingress: %s %v", securityGroupID, group.SecurityGroupRule)
 
-	changes := []*ec2.IpPermission{}
-	for _, addPermission := range addPermissions {
+	changes := []osc.SecurityGroupRule{}
+	for _, addRule := range addRules {
 		hasUserID := false
-		for i := range addPermission.UserIdGroupPairs {
-			if addPermission.UserIdGroupPairs[i].UserId != nil {
+		for i := range addRule.SecurityGroupsMembers {
+			if addRule.SecurityGroupsMembers[i].UserId != nil {
 				hasUserID = true
 			}
 		}
 
 		found := false
-		for _, groupPermission := range group.IpPermissions {
-			if ipPermissionExists(addPermission, groupPermission, hasUserID) {
+		for _, groupRule := range group.InboundRules {
+			if SecurityGroupRuleExists(addRule, groupRule, hasUserID) {
 				found = true
 				break
 			}
 		}
 
 		if !found {
-			changes = append(changes, addPermission)
+			changes = append(changes, addRule)
 		}
 	}
 
@@ -718,15 +719,16 @@ func (c *Cloud) addSecurityGroupIngress(securityGroupID string, addPermissions [
 
 	klog.Infof("Adding security group ingress: %s %v isPublic %v)", securityGroupID, changes, isPublicCloud)
 
-	request := &ec2.AuthorizeSecurityGroupIngressInput{}
-	request.GroupId = &securityGroupID
-	if !isPublicCloud {
-		request.IpPermissions = changes
-	} else {
-		request.SourceSecurityGroupName = aws.String(DefaultSrcSgName)
-		request.SourceSecurityGroupOwnerId = aws.String(DefaultSgOwnerID)
+	request := &osc.CreateSecurityGroupRuleOpts{
+	    CreateSecurityGroupRuleRequest: optional.NewInterface(
+			osc.CreateSecurityGroupRuleRequest{
+                Rules: changes,
+                SecurityGroupNameToLink: DefaultSrcSgName,
+                SecurityGroupAccountIdToLink: DefaultSgOwnerID,
+			}),
 	}
-	_, err = c.ec2.AuthorizeSecurityGroupIngress(request)
+	_, err = c.fcu.CreateSecurityGroupRule(ctx, request)
+
 	if err != nil {
 		ignore := false
 		if isPublicCloud {
@@ -749,11 +751,11 @@ func (c *Cloud) addSecurityGroupIngress(securityGroupID string, addPermissions [
 // Makes sure the security group no longer includes the specified permissions
 // Returns true if and only if changes were made
 // If the security group no longer exists, will return (false, nil)
-func (c *Cloud) removeSecurityGroupIngress(securityGroupID string, removePermissions []*ec2.IpPermission, isPublicCloud bool) (bool, error) {
+func (c *Cloud) removeSecurityGroupIngress(securityGroupID string, removeRules []osc.SecurityGroupRule, isPublicCloud bool) (bool, error) {
 	debugPrintCallerFunctionName()
-	klog.V(10).Infof("removeSecurityGroupIngress(%v,%v)", securityGroupID, removePermissions)
+	klog.V(10).Infof("removeSecurityGroupIngress(%v,%v)", securityGroupID, removeRules)
 	// We do not want to make changes to the Global defined SG
-	if securityGroupID == c.cfg.Global.ElbSecurityGroup {
+	if securityGroupID == c.cfg.Global.LbuSecurityGroup {
 		return false, nil
 	}
 
@@ -768,19 +770,19 @@ func (c *Cloud) removeSecurityGroupIngress(securityGroupID string, removePermiss
 		return false, nil
 	}
 
-	changes := []*ec2.IpPermission{}
-	for _, removePermission := range removePermissions {
+	changes := []osc.SecurityGroupRule{}
+	for _, removeRule := range removeRules {
 		hasUserID := false
-		for i := range removePermission.UserIdGroupPairs {
-			if removePermission.UserIdGroupPairs[i].UserId != nil {
+		for i := range removeRule.SecurityGroupsMembers {
+			if removeRule.SecurityGroupsMembers[i].UserId != nil {
 				hasUserID = true
 			}
 		}
 
-		var found *ec2.IpPermission
-		for _, groupPermission := range group.IpPermissions {
-			if ipPermissionExists(removePermission, groupPermission, hasUserID) {
-				found = removePermission
+		var found osc.SecurityGroupRule
+		for _, groupRule := range group.InboundRules {
+			if SecurityGroupRuleExists(removeRule, groupRule, hasUserID) {
+				found = removeRule
 				break
 			}
 		}
@@ -796,16 +798,19 @@ func (c *Cloud) removeSecurityGroupIngress(securityGroupID string, removePermiss
 
 	klog.Infof("Removing security group ingress: %s %v", securityGroupID, changes)
 
-	request := &ec2.RevokeSecurityGroupIngressInput{}
-	request.GroupId = &securityGroupID
-	if !isPublicCloud {
-		request.IpPermissions = changes
-	} else {
-		request.SourceSecurityGroupName = aws.String(DefaultSrcSgName)
-		request.SourceSecurityGroupOwnerId = aws.String(DefaultSgOwnerID)
+	request := &osc.DeleteSecurityGroupRuleOpts{
+		DeleteSecurityGroupRuleRequest: optional.NewInterface(
+			osc.DeleteSecurityGroupRuleRequest{
+	            Rules: changes,
+                SecurityGroupId: securityGroupID,
+                SecurityGroupNameToUnlink: DefaultSrcSgName,
+                SecurityGroupAccountIdToUnlink: DefaultSgOwnerID,
+			}),
 	}
 
-	_, err = c.ec2.RevokeSecurityGroupIngress(request)
+	_, err = c.fcu.DeleteSecurityGroupRule(ctx, request)
+
+
 	if err != nil {
 		klog.Warningf("Error revoking security group ingress: %q", err)
 		return false, err
@@ -832,7 +837,7 @@ func (c *Cloud) ensureSecurityGroup(name string, description string, additionalT
 		// If it doesn't have any tags, we tag it; this is how we recover if we failed to tag before.
 		// If it has a different cluster's tags, that is an error.
 		// This shouldn't happen because name is expected to be globally unique (UUID derived)
-		request := &ec2.DescribeSecurityGroupsInput{}
+		request := &osc.ReadSecurityGroupsOpts{}
 		request.Filters = []*ec2.Filter{
 			newEc2Filter("group-name", name),
 		}
@@ -841,7 +846,7 @@ func (c *Cloud) ensureSecurityGroup(name string, description string, additionalT
 			request.Filters = append(request.Filters, newEc2Filter("vpc-id", c.vpcID))
 		}
 
-		securityGroups, err := c.ec2.DescribeSecurityGroups(request)
+		securityGroups, err := c.fcu.ReadSecurityGroups(request)
 		if err != nil {
 			return "", err
 		}
@@ -851,23 +856,26 @@ func (c *Cloud) ensureSecurityGroup(name string, description string, additionalT
 				klog.Warningf("Found multiple security groups with name: %q", name)
 			}
 			err := c.tagging.readRepairClusterTags(
-				c.ec2, aws.StringValue(securityGroups[0].GroupId),
+				c.fcu, securityGroups[0].GroupId,
 				ResourceLifecycleOwned, nil, securityGroups[0].Tags)
 			if err != nil {
 				return "", err
 			}
 
-			return aws.StringValue(securityGroups[0].GroupId), nil
+			return securityGroups[0].GroupId, nil
 		}
 
-		createRequest := &ec2.CreateSecurityGroupInput{}
-		if c.vpcID != "" {
-			createRequest.VpcId = &c.vpcID
-		}
-		createRequest.GroupName = &name
-		createRequest.Description = &description
 
-		createResponse, err := c.ec2.CreateSecurityGroup(createRequest)
+		createRequest := &osc.CreateSecurityGroupOpts{
+            CreateSecurityGroupRequest: optional.NewInterface(
+                osc.CreateSecurityGroupRequest{
+                    NetId: c.NetId,
+                    SecurityGroupName: name,
+                    Description:       description,
+                }),
+	    }
+
+		createResponse, err := c.fcu.CreateSecurityGroup(ctx, createRequest)
 		if err != nil {
 			ignore := false
 			switch err := err.(type) {
@@ -883,7 +891,7 @@ func (c *Cloud) ensureSecurityGroup(name string, description string, additionalT
 			}
 			time.Sleep(1 * time.Second)
 		} else {
-			groupID = aws.StringValue(createResponse.GroupId)
+			groupID = createResponse.GroupId
 			break
 		}
 	}
@@ -891,7 +899,7 @@ func (c *Cloud) ensureSecurityGroup(name string, description string, additionalT
 		return "", fmt.Errorf("created security group, but id was not returned: %s", name)
 	}
 
-	err := c.tagging.createTags(c.ec2, groupID, ResourceLifecycleOwned, additionalTags)
+	err := c.tagging.createTags(c.fcu, groupID, ResourceLifecycleOwned, additionalTags)
 	if err != nil {
 		// If we retry, ensureClusterTags will recover from this - it
 		// will add the missing tags.  We could delete the security
@@ -1712,7 +1720,7 @@ func (c *Cloud) EnsureLoadBalancerDeleted(ctx context.Context, clusterName strin
 		request := &elb.DeleteLoadBalancerInput{}
 		request.LoadBalancerName = lb.LoadBalancerName
 
-		_, err = c.elb.DeleteLoadBalancer(request)
+		_, err = c.lbu.DeleteLoadBalancer(request)
 		if err != nil {
 			// TODO: Check if error was because load balancer was concurrently deleted
 			klog.Errorf("Error deleting load balancer: %q", err)
@@ -1727,10 +1735,19 @@ func (c *Cloud) EnsureLoadBalancerDeleted(ctx context.Context, clusterName strin
 
 		var loadBalancerSGs = securityGroupsItem
 
-		describeRequest := &ec2.DescribeSecurityGroupsInput{}
-		describeRequest.Filters = []*ec2.Filter{
+		describeRequest.Filters = []ec2.Filter{
 			newEc2Filter("group-id", loadBalancerSGs...),
 		}
+
+		readOpts := osc.ReadSecurityGroupsOpts{
+            ReadSecurityGroupsRequest: optional.NewInterface(
+                osc.ReadSecurityGroupsRequest{
+                    Filters: osc.FiltersSecurityGroup{
+
+                    },
+                }),
+	    }
+
 		response, err := c.ec2.DescribeSecurityGroups(describeRequest)
 		if err != nil {
 			return fmt.Errorf("error querying security groups for ELB: %q", err)
@@ -1740,7 +1757,7 @@ func (c *Cloud) EnsureLoadBalancerDeleted(ctx context.Context, clusterName strin
 		securityGroupIDs := map[string]struct{}{}
 
 		for _, sg := range response {
-			sgID := aws.StringValue(sg.GroupId)
+			sgID := sg.SecurityGroupId
 
 			if sgID == c.cfg.Global.ElbSecurityGroup {
 				//We don't want to delete a security group that was defined in the Cloud Configuration.
@@ -1763,9 +1780,12 @@ func (c *Cloud) EnsureLoadBalancerDeleted(ctx context.Context, clusterName strin
 		timeoutAt := time.Now().Add(time.Second * 600)
 		for {
 			for securityGroupID := range securityGroupIDs {
-				request := &ec2.DeleteSecurityGroupInput{}
-				request.GroupId = &securityGroupID
-				_, err := c.ec2.DeleteSecurityGroup(request)
+				request := osc.DeleteSecurityGroupOpts{
+                    osc.DeleteSecurityGroupRuleRequest{
+                        SecurityGroupId: securityGroupID,
+			        }),
+				}
+				_, err := c.fcu.DeleteSecurityGroup(ctx, request)
 				if err == nil {
 					delete(securityGroupIDs, securityGroupID)
 				} else {
@@ -1858,10 +1878,10 @@ func (c *Cloud) UpdateLoadBalancer(ctx context.Context, clusterName string, serv
 // ********************* CCM Node Resource Functions  *********************
 
 // Returns the instance with the specified ID
-func (c *Cloud) getInstanceByID(instanceID string) (*ec2.Instance, error) {
+func (c *Cloud) getInstanceByID(instanceID string) (osc.Vm, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("getInstanceByID(%v)", instanceID)
-	instances, err := c.getInstancesByIDs([]*string{&instanceID})
+	instances, err := c.getInstancesByIDs([]string{instanceID})
 	if err != nil {
 		return nil, err
 	}
@@ -1876,26 +1896,28 @@ func (c *Cloud) getInstanceByID(instanceID string) (*ec2.Instance, error) {
 	return instances[instanceID], nil
 }
 
-func (c *Cloud) getInstancesByIDs(instanceIDs []*string) (map[string]*ec2.Instance, error) {
+func (c *Cloud) getInstancesByIDs(instanceIDs []string) (map[string]osc.Vm, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("getInstancesByIDs(%v)", instanceIDs)
 
-	instancesByID := make(map[string]*ec2.Instance)
+	instancesByID := make(map[string]osc.Vm)
 	if len(instanceIDs) == 0 {
 		return instancesByID, nil
 	}
 
-	request := &ec2.DescribeInstancesInput{
-		InstanceIds: instanceIDs,
-	}
+	request := osc.ReadVmsOpts{
+		ReadVmsRequest: optional.NewInterface(
+			osc.ReadVmsRequest{
+				VmIds: instanceIDs,
+			}),
 
-	instances, err := c.ec2.DescribeInstances(request)
+	instances, err := c.fcu.ReadVms(request)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, instance := range instances {
-		instanceID := aws.StringValue(instance.InstanceId)
+		instanceID := instance.InstanceId
 		if instanceID == "" {
 			continue
 		}
@@ -1910,8 +1932,8 @@ func (c *Cloud) getInstancesByNodeNames(nodeNames []string, states ...string) ([
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("getInstancesByNodeNames(%v, %v)", nodeNames, states)
 
-	names := aws.StringSlice(nodeNames)
-	ec2Instances := []osc.Vm{}
+	names := nodeNames
+	oscInstances := []osc.Vm{}
 
 	for i := 0; i < len(names); i += filterNodeLimit {
 		end := i + filterNodeLimit
@@ -1921,14 +1943,14 @@ func (c *Cloud) getInstancesByNodeNames(nodeNames []string, states ...string) ([
 
 		nameSlice := names[i:end]
 
-		nodeNameFilter := &ec2.Filter{
+		nodeNameFilter := &osc.FiltersVm{
 			Name:   aws.String("private-dns-name"),
 			Values: nameSlice,
 		}
 
-		filters := []*ec2.Filter{nodeNameFilter}
+		filters := []osc.FiltersVm{nodeNameFilter}
 		if len(states) > 0 {
-			filters = append(filters, newEc2Filter("instance-state-name", states...))
+			filters = append(filters, newVmFilter("instance-state-name", states...))
 		}
 
 		instances, err := c.describeInstances(filters)
@@ -1951,16 +1973,12 @@ func (c *Cloud) describeInstances(filters []osc.FiltersVm) ([]osc.Vm, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("describeInstances(%v)", filters)
 
-	request := &osc.DescribeInstancesInput{
-		Filters: filters,
-	}
 
 	request := osc.ReadVmsOpts{
 		ReadVmsRequest: optional.NewInterface(
 			osc.ReadVmsRequest{
 				Filters: filters,
 			}),
-
 
 	response, err := c.fcu.ReadVms(ctx, request)
 	if err != nil {
@@ -1984,10 +2002,10 @@ func (c *Cloud) findInstanceByNodeName(nodeName types.NodeName) (osc.Vm, error) 
 
 	privateDNSName := mapNodeNameToPrivateDNSName(nodeName)
 	filters := []osc.FiltersVm{
-		newEc2Filter("tag:"+TagNameClusterNode, privateDNSName),
+		newVmFilter("tag:"+TagNameClusterNode, privateDNSName),
 		// exclude instances in "terminated" state
-		newEc2Filter("instance-state-name", aliveFilter...),
-		newEc2Filter("tag:"+c.tagging.clusterTagKey(),
+		newVmFilter("instance-state-name", aliveFilter...),
+		newVmFilter("tag:"+c.tagging.clusterTagKey(),
 			[]string{ResourceLifecycleOwned, ResourceLifecycleShared}...),
 	}
 
@@ -2033,7 +2051,7 @@ func (c *Cloud) getInstanceByNodeName(nodeName types.NodeName) (osc.Vm, error) {
 	return instance, err
 }
 
-func (c *Cloud) getFullInstance(nodeName types.NodeName) (*awsInstance, osc.Vm, error) {
+func (c *Cloud) getFullInstance(nodeName types.NodeName) (*oscInstance, osc.Vm, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("getFullInstance(%v)", nodeName)
 	if nodeName == "" {
