@@ -838,8 +838,8 @@ func (c *Cloud) ensureSecurityGroup(name string, description string, additionalT
 		// If it has a different cluster's tags, that is an error.
 		// This shouldn't happen because name is expected to be globally unique (UUID derived)
 		request := &osc.ReadSecurityGroupsOpts{}
-		request.Filters = []*ec2.Filter{
-			newEc2Filter("group-name", name),
+		request.Filters = []osc.FiltersSecurityGroup{
+			newSGFilter("group-name", name),
 		}
 
 		if c.vpcID != "" {

@@ -35,7 +35,6 @@ func (c *Cloud) findRouteTable(clusterName string) (osc.RouteTable, error) {
 	var tables []osc.RouteTable
 
 	if c.cfg.Global.RouteTableID != "" {
-		request := &osc.ReadRouteTablesOpts{Filters: []*ec2.Filter{newEc2Filter("route-table-id", c.cfg.Global.RouteTableID)}}
 		request := &osc.ReadRouteTablesOpts{
             ReadRouteTablesRequest: optional.NewInterface(
                 osc.ReadRouteTablesRequest{

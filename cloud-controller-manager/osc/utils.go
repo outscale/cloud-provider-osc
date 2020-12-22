@@ -128,21 +128,9 @@ func NewSession() (*session.Session, error) {
 	return sess, nil
 }
 
-//SecurityGroups, VPC, TAG, IP permission, Vm
-func newEc2Filter(name string, values ...string) *ec2.Filter {
-	filter := &ec2.Filter{
-		Name: aws.String(name),
-	}
-	for _, value := range values {
-		filter.Values = append(filter.Values, aws.String(value))
-	}
-	return filter
-}
 
 func newSGFilter(name string, values ...string) osc.FiltersSecurityGroup {
-	filter := osc.FiltersSecurityGroup{
-		SecurityGroupNames: []string{name},
-	}
+	filter := osc.FiltersSecurityGroup{}
 	for _, value := range values {
 		TagValues.Values = append(filter.TagValues, value)
 	}
@@ -150,14 +138,39 @@ func newSGFilter(name string, values ...string) osc.FiltersSecurityGroup {
 }
 
 func newVmFilter(name string, values ...string) osc.FiltersVm {
-	filter := osc.FiltersVm{
-
-	}
+	filter := osc.FiltersVm{}
 	for _, value := range values {
 		TagValues.Values = append(filter.TagValues, value)
 	}
 	return filter
 }
+
+func newNetFilter(name string, values ...string) osc.FiltersNet {
+	filter := osc.FiltersNet{}
+	for _, value := range values {
+		TagValues.Values = append(filter.TagValues, value)
+	}
+	return filter
+}
+
+func newTagFilter(name string, values ...string) osc.FiltersTag {
+	filter := osc.FiltersTag{}
+	for _, value := range values {
+		Values.Values = append(filter.Values, value)
+	}
+	return filter
+}
+
+func newRouteFilter(name string, values ...string) osc.FiltersRouteTable {
+	filter := osc.FiltersRouteTable{}
+	for _, value := range values {
+		TagValues.Values = append(filter.TagValues, value)
+	}
+	return filter
+}
+
+
+
 
 
 // mapNodeNameToPrivateDNSName maps a k8s NodeName to an AWS Instance PrivateDNSName
