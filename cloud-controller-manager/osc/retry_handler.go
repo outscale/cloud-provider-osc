@@ -23,9 +23,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
+    "github.com/outscale/osc-sdk-go/osc"
+
 	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/request"
 	"k8s.io/klog"
 )
 

@@ -106,14 +106,14 @@ func (p *oscSDKProvider) getCrossRequestRetryDelay(regionName string) *CrossRequ
 	return delayer
 }
 
-func (p *oscSDKProvider) Compute(regionName string) (EC2, error) {
+func (p *oscSDKProvider) Compute(regionName string) (FCU, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("Compute(%v)", regionName)
 	sess, err := NewSession()
 	if err != nil {
 		return nil, fmt.Errorf("unable to initialize AWS session: %v", err)
 	}
-	service := ec2.New(sess)
+	service := osc.New(sess)
 
 	p.addHandlers(regionName, &service.Handlers)
 

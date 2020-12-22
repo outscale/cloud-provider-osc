@@ -21,18 +21,18 @@ package osc
 import (
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
+	"github.com/outscale/osc-sdk-go/osc"
+
 	"github.com/aws/aws-sdk-go/aws/ec2metadata"
-	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/aws/aws-sdk-go/service/elb"
+
 	"k8s.io/klog"
 )
 
 // FakeOSCServices is an fake AWS session used for testing
 type FakeOSCServices struct {
 	region                      string
-	instances                   []*osc.Vm
-	selfInstance                *osc.Vm
+	instances                   []osc.Vm
+	selfInstance                osc.Vm
 	networkInterfacesMacs       []string
 	networkInterfacesPrivateIPs [][]string
 	networkInterfacesVpcIDs     []string
@@ -46,8 +46,8 @@ type FakeOSCServices struct {
 func NewFakeOSCServices(clusterID string) *FakeOSCServices {
 	s := &FakeOSCServices{}
 	s.region = "us-east-1"
-	s.ec2 = &FakeOSCImpl{aws: s}
-	s.elb = &FakeLBU{aws: s}
+	s.fcu = &FakeOSCImpl{osc: s}
+	s.lbu = &FaklBUU{osc: s}
 	s.metadata = &FakeMetadata{aws: s}
 
 	s.networkInterfacesMacs = []string{"aa:bb:cc:dd:ee:00", "aa:bb:cc:dd:ee:01"}
@@ -55,19 +55,19 @@ func NewFakeOSCServices(clusterID string) *FakeOSCServices {
 
 	selfInstance := &osc.Vm{}
 	selfInstance.InstanceId = "i-self"
-	selfInstance.Placement = &ec2.Placement{
-		AvailabilityZone: aws.String("us-east-1a"),
+	selfInstance.Placement = &osc.Placement{
+		SubregionName: "us-east-1a",
 	}
-	selfInstance.PrivateDnsName = aws.String("ip-172-20-0-100.ec2.internal")
-	selfInstance.PrivateIpAddress = aws.String("192.168.0.1")
-	selfInstance.PublicIpAddress = aws.String("1.2.3.4")
+	selfInstance.PrivateDnsName = "ip-172-20-0-100.ec2.internal"
+	selfInstance.PrivateIpAddress = "192.168.0.1"
+	selfInstance.PublicIpAddress = "1.2.3.4"
 	s.selfInstance = selfInstance
-	s.instances = []*ec2.Instance{selfInstance}
+	s.instances = []osc.Vm{selfInstance}
 
-	var tag ec2.Tag
-	tag.Key = aws.String(TagNameKubernetesClusterLegacy)
-	tag.Value = aws.String(clusterID)
-	selfInstance.Tags = []*ec2.Tag{&tag}
+	var tag osc.Tag
+	tag.Key = TagNameKubernetesClusterLegacy
+	tag.Value = clusterID
+	selfInstance.Tags = []osc.Tag{&tag}
 
 	return s
 }
@@ -75,20 +75,20 @@ func NewFakeOSCServices(clusterID string) *FakeOSCServices {
 // WithAz sets the ec2 placement availability zone
 func (s *FakeOSCServices) WithAz(az string) *FakeOSCServices {
 	if s.selfInstance.Placement == nil {
-		s.selfInstance.Placement = &ec2.Placement{}
+		s.selfInstance.Placement = &osc.Placement{}
 	}
-	s.selfInstance.Placement.AvailabilityZone = aws.String(az)
+	s.selfInstance.Placement.AvailabilityZone = az
 	return s
 }
 
 // Compute returns a fake EC2 client
-func (s *FakeOSCServices) Compute(region string) (EC2, error) {
-	return s.ec2, nil
+func (s *FakeOSCServices) Compute(region string) (FCU, error) {
+	return s.fcu, nil
 }
 
-// LoadBalancing returns a fake ELB client
-func (s *FakeOSCServices) LoadBalancing(region string) (ELB, error) {
-	return s.elb, nil
+// LoadBalancing returns a fake LBU client
+func (s *FakeOSCServices) LoadBalancing(region string) (LBU, error) {
+	return s.lbu, nil
 }
 
 // Metadata returns a fake EC2Metadata client
@@ -97,27 +97,27 @@ func (s *FakeOSCServices) Metadata() (EC2Metadata, error) {
 }
 
 // FakeEC2 is a fake EC2 client used for testing
-type FakeEC2 interface {
-	EC2
-	CreateSubnet(*ec2.Subnet) (*ec2.CreateSubnetOutput, error)
+type FakeFCU interface {
+	FCU
+	CreateSubnet(osc.Subnet) (osc.SubregionName, error)
 	RemoveSubnets()
-	CreateRouteTable(*ec2.RouteTable) (*ec2.CreateRouteTableOutput, error)
+	CreateRouteTable(osc.RouteTable) (osc.CreateRouteTableResponse, error)
 	RemoveRouteTables()
 }
 
-// FakeEC2Impl is an implementation of the FakeEC2 interface used for testing
-type FakeEC2Impl struct {
-	aws                      *FakeOSCServices
-	Subnets                  []*ec2.Subnet
-	DescribeSubnetsInput     *ec2.DescribeSubnetsInput
-	RouteTables              []*ec2.RouteTable
-	DescribeRouteTablesInput *ec2.DescribeRouteTablesInput
+// FakeFBUImpl is an implementation of the FakeEC2 interface used for testing
+type FakeFCUImpl struct {
+	osc                      *FakeOSCServices
+	Subnets                  []osc.Subnet
+	ReadSubnetsOpts          *osc.ReadSubnetsOpts
+	RouteTables              []osc.RouteTable
+	ReadRouteTablesOpts      *osc.ReadRouteTablesOpts
 }
 
 // DescribeInstances returns fake instance descriptions
-func (ec2i *FakeEC2Impl) DescribeInstances(request *ec2.DescribeInstancesInput) ([]*ec2.Instance, error) {
-	matches := []*ec2.Instance{}
-	for _, instance := range ec2i.aws.instances {
+func (fcui *FakeFCUImpl) DescribeInstances(request *osc.ReadVmsOpts) ([]osc.Vm, error) {
+	matches := []osc.Vm{}
+	for _, instance := range fcui.osc.instances {
 		if request.InstanceIds != nil {
 			if instance.InstanceId == nil {
 				klog.Warning("Instance with no instance id: ", instance)
@@ -155,103 +155,103 @@ func (ec2i *FakeEC2Impl) DescribeInstances(request *ec2.DescribeInstancesInput) 
 
 // DescribeSecurityGroups is not implemented but is required for interface
 // conformance
-func (ec2i *FakeEC2Impl) DescribeSecurityGroups(request *ec2.DescribeSecurityGroupsInput) ([]*ec2.SecurityGroup, error) {
+func (fcui *FakeFCUImpl) DescribeSecurityGroups(request *osc.ReadSecurityGroupsOpts) ([]osc.SecurityGroup, error) {
 	panic("Not implemented")
 }
 
 // CreateSecurityGroup is not implemented but is required for interface
 // conformance
-func (ec2i *FakeEC2Impl) CreateSecurityGroup(*ec2.CreateSecurityGroupInput) (*ec2.CreateSecurityGroupOutput, error) {
+func (fcui *FakeFCUImpl) CreateSecurityGroup(*osc.CreateSecurityGroupOpts) (osc.CreateSecurityGroupResponse, error) {
 	panic("Not implemented")
 }
 
 // DeleteSecurityGroup is not implemented but is required for interface
 // conformance
-func (ec2i *FakeEC2Impl) DeleteSecurityGroup(*ec2.DeleteSecurityGroupInput) (*ec2.DeleteSecurityGroupOutput, error) {
+func (fcui *FakeFCUImpl) DeleteSecurityGroup(*osc.DeleteSecurityGroupOpts) (osc.DeleteSecurityGroupResponse, error) {
 	panic("Not implemented")
 }
 
 // AuthorizeSecurityGroupIngress is not implemented but is required for
 // interface conformance
-func (ec2i *FakeEC2Impl) AuthorizeSecurityGroupIngress(*ec2.AuthorizeSecurityGroupIngressInput) (*ec2.AuthorizeSecurityGroupIngressOutput, error) {
+func (fcui *FakeFCUImpl) AuthorizeSecurityGroupIngress(*osc.CreateSecurityGroupRuleOpts) (osc.SecurityGroupRuleResponse, error) {
 	panic("Not implemented")
 }
 
 // RevokeSecurityGroupIngress is not implemented but is required for interface
 // conformance
-func (ec2i *FakeEC2Impl) RevokeSecurityGroupIngress(*ec2.RevokeSecurityGroupIngressInput) (*ec2.RevokeSecurityGroupIngressOutput, error) {
+func (fcui *FakeFCUImpl) RevokeSecurityGroupIngress(osc.DeleteSecurityGroupRuleOpts) (osc.DeleteSecurityGroupRuleResponse, error) {
 	panic("Not implemented")
 }
 
 // CreateSubnet creates fake subnets
-func (ec2i *FakeEC2Impl) CreateSubnet(request *ec2.Subnet) (*ec2.CreateSubnetOutput, error) {
-	ec2i.Subnets = append(ec2i.Subnets, request)
-	response := &ec2.CreateSubnetOutput{
+func (fcui *FakeFCUImpl) CreateSubnet(request *osc.Subnet) (osc.CreateSubnetResponse, error) {
+	fcui.Subnets = append(fcui.Subnets, request)
+	response := &osc.CreateSubnetResponse{
 		Subnet: request,
 	}
 	return response, nil
 }
 
 // DescribeSubnets returns fake subnet descriptions
-func (ec2i *FakeEC2Impl) DescribeSubnets(request *ec2.DescribeSubnetsInput) ([]*ec2.Subnet, error) {
-	ec2i.DescribeSubnetsInput = request
-	return ec2i.Subnets, nil
+func (fcui *FakeFCUImpl) DescribeSubnets(request *osc.ReadSubnetsOpts) ([]osc.Subnet, error) {
+	fcui.ReadSubnetsOpts = request
+	return fcui.Subnets, nil
 }
 
 // RemoveSubnets clears subnets on client
-func (ec2i *FakeEC2Impl) RemoveSubnets() {
-	ec2i.Subnets = ec2i.Subnets[:0]
+func (fcui *FakeFCUImpl) RemoveSubnets() {
+	fcui.Subnets = fcui.Subnets[:0]
 }
 
 // CreateTags is not implemented but is required for interface conformance
-func (ec2i *FakeEC2Impl) CreateTags(*ec2.CreateTagsInput) (*ec2.CreateTagsOutput, error) {
+func (fcui *FakeFCUImpl) CreateTags(*osc.CreateTagsopts) (osc.CreateTagsResponse, error) {
 	panic("Not implemented")
 }
 
 // DescribeRouteTables returns fake route table descriptions
-func (ec2i *FakeEC2Impl) DescribeRouteTables(request *ec2.DescribeRouteTablesInput) ([]*ec2.RouteTable, error) {
-	ec2i.DescribeRouteTablesInput = request
-	return ec2i.RouteTables, nil
+func (fcui *FakeFCUImpl) DescribeRouteTables(request *osc.ReadRouteTablesOpts) ([]osc.RouteTable, error) {
+	fcui.ReadRouteTablesOpts = request
+	return fcui.RouteTables, nil
 }
 
 // CreateRouteTable creates fake route tables
-func (ec2i *FakeEC2Impl) CreateRouteTable(request *ec2.RouteTable) (*ec2.CreateRouteTableOutput, error) {
-	ec2i.RouteTables = append(ec2i.RouteTables, request)
-	response := &ec2.CreateRouteTableOutput{
+func (fcui *FakeFCUImpl) CreateRouteTable(request *osc.RouteTable) (osc.CreateRouteTableResponse, error) {
+	fcui.RouteTables = append(fcui.RouteTables, request)
+	response := &osc.CreateRouteTableResponse{
 		RouteTable: request,
 	}
 	return response, nil
 }
 
 // RemoveRouteTables clears route tables on client
-func (ec2i *FakeEC2Impl) RemoveRouteTables() {
-	ec2i.RouteTables = ec2i.RouteTables[:0]
+func (fcui *FakeFCUImpl) RemoveRouteTables() {
+	fcui.RouteTables = fcui.RouteTables[:0]
 }
 
 // CreateRoute is not implemented but is required for interface conformance
-func (ec2i *FakeEC2Impl) CreateRoute(request *ec2.CreateRouteInput) (*ec2.CreateRouteOutput, error) {
+func (fcui *FakeFCUImpl) CreateRoute(request *osc.CreateRouteOpts) (osc.CreateRouteResponse, error) {
 	panic("Not implemented")
 }
 
 // DeleteRoute is not implemented but is required for interface conformance
-func (ec2i *FakeEC2Impl) DeleteRoute(request *ec2.DeleteRouteInput) (*ec2.DeleteRouteOutput, error) {
+func (fcui *FakeFCUImpl) DeleteRoute(request *osc.DeleteRouteOpts) (osc.DeleteRouteResponse, error) {
 	panic("Not implemented")
 }
 
 // ModifyInstanceAttribute is not implemented but is required for interface
 // conformance
-func (ec2i *FakeEC2Impl) ModifyInstanceAttribute(request *ec2.ModifyInstanceAttributeInput) (*ec2.ModifyInstanceAttributeOutput, error) {
+func (fcui *FakeFCUImpl) ModifyInstanceAttribute(request *osc.ModifyInstanceAttributeInput) (osc.ModifyInstanceAttributeOutput, error) {
 	panic("Not implemented")
 }
 
 // DescribeVpcs returns fake VPC descriptions
-func (ec2i *FakeEC2Impl) DescribeVpcs(request *ec2.DescribeVpcsInput) (*ec2.DescribeVpcsOutput, error) {
-	return &ec2.DescribeVpcsOutput{Vpcs: []*ec2.Vpc{{CidrBlock: aws.String("172.20.0.0/16")}}}, nil
+func (fcui *FakeFCUImpl) DescribeVpcs(request *osc.ReadNetsOpts) (osc.ReadNetsResponse, error) {
+	return &osc.ReadNetsResponse{NetIds: []osc.Vpc{{CidrBlock: "172.20.0.0/16"}}}, nil
 }
 
 // FakeMetadata is a fake EC2 metadata service client used for testing
 type FakeMetadata struct {
-	aws *FakeOSCServices
+	osc *FakeOSCServices
 }
 
 // GetInstanceIdentityDocument mocks base method
@@ -268,41 +268,41 @@ func (m *FakeMetadata) Available() bool {
 // GetMetadata returns fake EC2 metadata for testing
 func (m *FakeMetadata) GetMetadata(key string) (string, error) {
 	networkInterfacesPrefix := "network/interfaces/macs/"
-	i := m.aws.selfInstance
+	i := m.osc.selfInstance
 	if key == "placement/availability-zone" {
 		az := ""
 		if i.Placement != nil {
-			az = aws.StringValue(i.Placement.AvailabilityZone)
+			az = i.Placement.AvailabilityZone
 		}
 		return az, nil
 	} else if key == "instance-id" {
-		return aws.StringValue(i.InstanceId), nil
+		return i.InstanceId, nil
 	} else if key == "local-hostname" {
-		return aws.StringValue(i.PrivateDnsName), nil
+		return aws.StringValue(i.PrivateDnsName, nil
 	} else if key == "public-hostname" {
-		return aws.StringValue(i.PublicDnsName), nil
+		return aws.StringValue(i.PublicDnsName, nil
 	} else if key == "local-ipv4" {
-		return aws.StringValue(i.PrivateIpAddress), nil
+		return i.PrivateIpAddress, nil
 	} else if key == "public-ipv4" {
-		return aws.StringValue(i.PublicIpAddress), nil
+		return i.PublicIpAddress, nil
 	} else if strings.HasPrefix(key, networkInterfacesPrefix) {
 		if key == networkInterfacesPrefix {
-			return strings.Join(m.aws.networkInterfacesMacs, "/\n") + "/\n", nil
+			return strings.Join(m.osc.networkInterfacesMacs, "/\n") + "/\n", nil
 		}
 
 		keySplit := strings.Split(key, "/")
 		macParam := keySplit[3]
 		if len(keySplit) == 5 && keySplit[4] == "vpc-id" {
-			for i, macElem := range m.aws.networkInterfacesMacs {
+			for i, macElem := range m.osc.networkInterfacesMacs {
 				if macParam == macElem {
-					return m.aws.networkInterfacesVpcIDs[i], nil
+					return m.osc.networkInterfacesVpcIDs[i], nil
 				}
 			}
 		}
 		if len(keySplit) == 5 && keySplit[4] == "local-ipv4s" {
-			for i, macElem := range m.aws.networkInterfacesMacs {
+			for i, macElem := range m.osc.networkInterfacesMacs {
 				if macParam == macElem {
-					return strings.Join(m.aws.networkInterfacesPrivateIPs[i], "/\n"), nil
+					return strings.Join(m.osc.networkInterfacesPrivateIPs[i], "/\n"), nil
 				}
 			}
 		}
@@ -313,125 +313,125 @@ func (m *FakeMetadata) GetMetadata(key string) (string, error) {
 	return "", nil
 }
 
-// FakeELB is a fake ELB client used for testing
-type FakeELB struct {
-	aws *FakeOSCServices
+// FakeLBU is a fake LBU client used for testing
+type FakeLBU struct {
+	osc *FakeOSCServices
 }
 
 // CreateLoadBalancer is not implemented but is required for interface
 // conformance
-func (elb *FakeELB) CreateLoadBalancer(*elb.CreateLoadBalancerInput) (*elb.CreateLoadBalancerOutput, error) {
+func (lbu *FakeLBU) CreateLoadBalancer(*lbu.CreateLoadBalancerInput) (*lbu.CreateLoadBalancerOutput, error) {
 	panic("Not implemented")
 }
 
 // DeleteLoadBalancer is not implemented but is required for interface
 // conformance
-func (elb *FakeELB) DeleteLoadBalancer(input *elb.DeleteLoadBalancerInput) (*elb.DeleteLoadBalancerOutput, error) {
+func (lbu *FakeLBU) DeleteLoadBalancer(input *lbu.DeleteLoadBalancerInput) (*lbu.DeleteLoadBalancerOutput, error) {
 	panic("Not implemented")
 }
 
 // DescribeLoadBalancers is not implemented but is required for interface
 // conformance
-func (elb *FakeELB) DescribeLoadBalancers(input *elb.DescribeLoadBalancersInput) (*elb.DescribeLoadBalancersOutput, error) {
+func (lbu *FakeLBU) DescribeLoadBalancers(input *lbu.DescribeLoadBalancersInput) (*lbu.DescribeLoadBalancersOutput, error) {
 	panic("Not implemented")
 }
 
 // AddTags is not implemented but is required for interface conformance
-func (elb *FakeELB) AddTags(input *elb.AddTagsInput) (*elb.AddTagsOutput, error) {
+func (lbu *FakeLBU) AddTags(input *lbu.AddTagsInput) (*lbu.AddTagsOutput, error) {
 	panic("Not implemented")
 }
 
 // RegisterInstancesWithLoadBalancer is not implemented but is required for
 // interface conformance
-func (elb *FakeELB) RegisterInstancesWithLoadBalancer(*elb.RegisterInstancesWithLoadBalancerInput) (*elb.RegisterInstancesWithLoadBalancerOutput, error) {
+func (lbu *FakeLBU) RegisterInstancesWithLoadBalancer(*lbu.RegisterInstancesWithLoadBalancerInput) (*lbu.RegisterInstancesWithLoadBalancerOutput, error) {
 	panic("Not implemented")
 }
 
 // DeregisterInstancesFromLoadBalancer is not implemented but is required for
 // interface conformance
-func (elb *FakeELB) DeregisterInstancesFromLoadBalancer(*elb.DeregisterInstancesFromLoadBalancerInput) (*elb.DeregisterInstancesFromLoadBalancerOutput, error) {
+func (lbu *FakeLBU) DeregisterInstancesFromLoadBalancer(*lbu.DeregisterInstancesFromLoadBalancerInput) (*lbu.DeregisterInstancesFromLoadBalancerOutput, error) {
 	panic("Not implemented")
 }
 
 // DetachLoadBalancerFromSubnets is not implemented but is required for
 // interface conformance
-func (elb *FakeELB) DetachLoadBalancerFromSubnets(*elb.DetachLoadBalancerFromSubnetsInput) (*elb.DetachLoadBalancerFromSubnetsOutput, error) {
+func (lbu *FakeLBU) DetachLoadBalancerFromSubnets(*lbu.DetachLoadBalancerFromSubnetsInput) (*lbu.DetachLoadBalancerFromSubnetsOutput, error) {
 	panic("Not implemented")
 }
 
 // AttachLoadBalancerToSubnets is not implemented but is required for interface
 // conformance
-func (elb *FakeELB) AttachLoadBalancerToSubnets(*elb.AttachLoadBalancerToSubnetsInput) (*elb.AttachLoadBalancerToSubnetsOutput, error) {
+func (lbu *FakeLBU) AttachLoadBalancerToSubnets(*lbu.AttachLoadBalancerToSubnetsInput) (*lbu.AttachLoadBalancerToSubnetsOutput, error) {
 	panic("Not implemented")
 }
 
 // CreateLoadBalancerListeners is not implemented but is required for interface
 // conformance
-func (elb *FakeELB) CreateLoadBalancerListeners(*elb.CreateLoadBalancerListenersInput) (*elb.CreateLoadBalancerListenersOutput, error) {
+func (lbu *FakeLBU) CreateLoadBalancerListeners(*lbu.CreateLoadBalancerListenersInput) (*lbu.CreateLoadBalancerListenersOutput, error) {
 	panic("Not implemented")
 }
 
 // DeleteLoadBalancerListeners is not implemented but is required for interface
 // conformance
-func (elb *FakeELB) DeleteLoadBalancerListeners(*elb.DeleteLoadBalancerListenersInput) (*elb.DeleteLoadBalancerListenersOutput, error) {
+func (lbu *FakeLBU) DeleteLoadBalancerListeners(*lbu.DeleteLoadBalancerListenersInput) (*lbu.DeleteLoadBalancerListenersOutput, error) {
 	panic("Not implemented")
 }
 
 // ApplySecurityGroupsToLoadBalancer is not implemented but is required for
 // interface conformance
-func (elb *FakeELB) ApplySecurityGroupsToLoadBalancer(*elb.ApplySecurityGroupsToLoadBalancerInput) (*elb.ApplySecurityGroupsToLoadBalancerOutput, error) {
+func (lbu *FakeLBU) ApplySecurityGroupsToLoadBalancer(*lbu.ApplySecurityGroupsToLoadBalancerInput) (*lbu.ApplySecurityGroupsToLoadBalancerOutput, error) {
 	panic("Not implemented")
 }
 
 // ConfigureHealthCheck is not implemented but is required for interface
 // conformance
-func (elb *FakeELB) ConfigureHealthCheck(*elb.ConfigureHealthCheckInput) (*elb.ConfigureHealthCheckOutput, error) {
+func (lbu *FakeLBU) ConfigureHealthCheck(*lbu.ConfigureHealthCheckInput) (*lbu.ConfigureHealthCheckOutput, error) {
 	panic("Not implemented")
 }
 
 // CreateLoadBalancerPolicy is not implemented but is required for interface
 // conformance
-func (elb *FakeELB) CreateLoadBalancerPolicy(*elb.CreateLoadBalancerPolicyInput) (*elb.CreateLoadBalancerPolicyOutput, error) {
+func (lbu *FakeLBU) CreateLoadBalancerPolicy(*lbu.CreateLoadBalancerPolicyInput) (*lbu.CreateLoadBalancerPolicyOutput, error) {
 	panic("Not implemented")
 }
 
 // SetLoadBalancerPoliciesForBackendServer is not implemented but is required
 // for interface conformance
-func (elb *FakeELB) SetLoadBalancerPoliciesForBackendServer(*elb.SetLoadBalancerPoliciesForBackendServerInput) (*elb.SetLoadBalancerPoliciesForBackendServerOutput, error) {
+func (lbu *FakeLBU) SetLoadBalancerPoliciesForBackendServer(*lbu.SetLoadBalancerPoliciesForBackendServerInput) (*lbu.SetLoadBalancerPoliciesForBackendServerOutput, error) {
 	panic("Not implemented")
 }
 
 // SetLoadBalancerPoliciesOfListener is not implemented but is required for
 // interface conformance
-func (elb *FakeELB) SetLoadBalancerPoliciesOfListener(input *elb.SetLoadBalancerPoliciesOfListenerInput) (*elb.SetLoadBalancerPoliciesOfListenerOutput, error) {
+func (lbu *FakeLBU) SetLoadBalancerPoliciesOfListener(input *lbu.SetLoadBalancerPoliciesOfListenerInput) (*lbu.SetLoadBalancerPoliciesOfListenerOutput, error) {
 	panic("Not implemented")
 }
 
 // DescribeLoadBalancerPolicies is not implemented but is required for
 // interface conformance
-func (elb *FakeELB) DescribeLoadBalancerPolicies(input *elb.DescribeLoadBalancerPoliciesInput) (*elb.DescribeLoadBalancerPoliciesOutput, error) {
+func (lbu *FakeLBU) DescribeLoadBalancerPolicies(input *lbu.DescribeLoadBalancerPoliciesInput) (*lbu.DescribeLoadBalancerPoliciesOutput, error) {
 	panic("Not implemented")
 }
 
 // DescribeLoadBalancerAttributes is not implemented but is required for
 // interface conformance
-func (elb *FakeELB) DescribeLoadBalancerAttributes(*elb.DescribeLoadBalancerAttributesInput) (*elb.DescribeLoadBalancerAttributesOutput, error) {
+func (lbu *FakeLBU) DescribeLoadBalancerAttributes(*lbu.DescribeLoadBalancerAttributesInput) (*lbu.DescribeLoadBalancerAttributesOutput, error) {
 	panic("Not implemented")
 }
 
 // ModifyLoadBalancerAttributes is not implemented but is required for
 // interface conformance
-func (elb *FakeELB) ModifyLoadBalancerAttributes(*elb.ModifyLoadBalancerAttributesInput) (*elb.ModifyLoadBalancerAttributesOutput, error) {
+func (lbu *FakeLBU) ModifyLoadBalancerAttributes(*lbu.ModifyLoadBalancerAttributesInput) (*lbu.ModifyLoadBalancerAttributesOutput, error) {
 	panic("Not implemented")
 }
 
 // expectDescribeLoadBalancers is not implemented but is required for interface
 // conformance
-func (elb *FakeELB) expectDescribeLoadBalancers(loadBalancerName string) {
+func (lbu *FakeLBU) expectDescribeLoadBalancers(loadBalancerName string) {
 	panic("Not implemented")
 }
 
-func instanceMatchesFilter(instance *ec2.Instance, filter *ec2.Filter) bool {
+func instanceMatchesFilter(instance osc.Vm, filter *ec2.Filter) bool {
 	name := *filter.Name
 	if name == "private-dns-name" {
 		if instance.PrivateDnsName == nil {

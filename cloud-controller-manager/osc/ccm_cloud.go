@@ -1478,28 +1478,28 @@ func (c *Cloud) GetLoadBalancerName(ctx context.Context, clusterName string, ser
 }
 
 // Return all the security groups that are tagged as being part of our cluster
-func (c *Cloud) getTaggedSecurityGroups() (map[string]*ec2.SecurityGroup, error) {
+func (c *Cloud) getTaggedSecurityGroups() (map[string]osc.SecurityGroup, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("getTaggedSecurityGroups()")
-	request := &ec2.DescribeSecurityGroupsInput{}
+	request := &osc.ReadSecurityGroupsOpts{}
 	request.Filters = []*ec2.Filter{
 		newEc2Filter("tag:"+c.tagging.clusterTagKey(),
 			[]string{ResourceLifecycleOwned, ResourceLifecycleShared}...),
 		newEc2Filter("tag:"+TagNameMainSG+c.tagging.clusterID(), "True"),
 	}
 
-	groups, err := c.ec2.DescribeSecurityGroups(request)
+	groups, err := c.fcu.DescribeSecurityGroups(request)
 	if err != nil {
 		return nil, fmt.Errorf("error querying security groups: %q", err)
 	}
 
-	m := make(map[string]*ec2.SecurityGroup)
+	m := make(map[string]osc.SecurityGroup)
 	for _, group := range groups {
 		if !c.tagging.hasClusterTag(group.Tags) {
 			continue
 		}
 
-		id := aws.StringValue(group.GroupId)
+		id := group.GroupId
 		if id == "" {
 			klog.Warningf("Ignoring group without id: %v", group)
 			continue
@@ -1511,8 +1511,8 @@ func (c *Cloud) getTaggedSecurityGroups() (map[string]*ec2.SecurityGroup, error)
 
 // Open security group ingress rules on the instances so that the load balancer can talk to them
 // Will also remove any security groups ingress rules for the load balancer that are _not_ needed for allInstances
-func (c *Cloud) updateInstanceSecurityGroupsForLoadBalancer(lb *elb.LoadBalancerDescription,
-	instances map[InstanceID]*ec2.Instance,
+func (c *Cloud) updateInstanceSecurityGroupsForLoadBalancer(lb *lbu.LoadBalancerDescription,
+	instances map[InstanceID]osc.Vm,
 	securityGroupIDs []string) error {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("updateInstanceSecurityGroupsForLoadBalancer(%v, %v, %v)", lb, instances, securityGroupIDs)
@@ -1550,9 +1550,9 @@ func (c *Cloud) updateInstanceSecurityGroupsForLoadBalancer(lb *elb.LoadBalancer
 	klog.V(10).Infof("loadBalancerSecurityGroupID(%v)", loadBalancerSecurityGroupID)
 
 	// Get the actual list of groups that allow ingress from the load-balancer
-	var actualGroups []*ec2.SecurityGroup
+	var actualGroups []osc.SecurityGroup
 	{
-		describeRequest := &ec2.DescribeSecurityGroupsInput{}
+		describeRequest := &osc.ReadSecurityGroupsOpts{}
 		if loadBalancerSecurityGroupID != DefaultSrcSgName {
 			describeRequest.Filters = []*ec2.Filter{
 				newEc2Filter("ip-permission.group-id", loadBalancerSecurityGroupID),
@@ -1562,7 +1562,7 @@ func (c *Cloud) updateInstanceSecurityGroupsForLoadBalancer(lb *elb.LoadBalancer
 				newEc2Filter("ip-permission.group-name", loadBalancerSecurityGroupID),
 			}
 		}
-		response, err := c.ec2.DescribeSecurityGroups(describeRequest)
+		response, err := c.fcu.DescribeSecurityGroups(describeRequest)
 		if err != nil {
 			return fmt.Errorf("error querying security groups for ELB: %q", err)
 		}
@@ -1598,10 +1598,10 @@ func (c *Cloud) updateInstanceSecurityGroupsForLoadBalancer(lb *elb.LoadBalancer
 		}
 
 		if securityGroup == nil {
-			klog.Warning("Ignoring instance without security group: ", aws.StringValue(instance.InstanceId))
+			klog.Warning("Ignoring instance without security group: ", instance.InstanceId)
 			continue
 		}
-		id := aws.StringValue(securityGroup.GroupId)
+		id := securityGroup.GroupId
 		if id == "" {
 			klog.Warningf("found security group without id: %v", securityGroup)
 			continue
@@ -1699,10 +1699,10 @@ func (c *Cloud) EnsureLoadBalancerDeleted(ctx context.Context, clusterName strin
 		// De-register the load balancer security group from the instances security group
 		err = c.ensureLoadBalancerInstances(aws.StringValue(lb.LoadBalancerName),
 			lb.Instances,
-			map[InstanceID]*ec2.Instance{})
+			map[InstanceID]osc.Vm{})
 		if err != nil {
 			klog.Errorf("ensureLoadBalancerInstances deregistering load balancer %v,%v,%v : %q",
-				aws.StringValue(lb.LoadBalancerName),
+				lb.LoadBalancerName,
 				lb.Instances,
 				nil, err)
 		}
@@ -1717,7 +1717,7 @@ func (c *Cloud) EnsureLoadBalancerDeleted(ctx context.Context, clusterName strin
 
 	{
 		// Delete the load balancer itself
-		request := &elb.DeleteLoadBalancerInput{}
+		request := &lbu.DeleteLoadBalancerInput{}
 		request.LoadBalancerName = lb.LoadBalancerName
 
 		_, err = c.lbu.DeleteLoadBalancer(request)
@@ -1748,7 +1748,7 @@ func (c *Cloud) EnsureLoadBalancerDeleted(ctx context.Context, clusterName strin
                 }),
 	    }
 
-		response, err := c.ec2.DescribeSecurityGroups(describeRequest)
+		response, err := c.fcu.DescribeSecurityGroups(describeRequest)
 		if err != nil {
 			return fmt.Errorf("error querying security groups for ELB: %q", err)
 		}

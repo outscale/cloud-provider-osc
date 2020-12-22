@@ -19,7 +19,7 @@ package osc
 import (
 	"time"
 
-	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/outscale/osc-sdk-go/osc"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 

@@ -27,7 +27,8 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/ec2"
+
+	"github.com/outscale/osc-sdk-go/osc"
 	"k8s.io/klog"
 
 	"k8s.io/api/core/v1"
@@ -129,7 +130,7 @@ func mapToAWSInstanceIDsTolerant(nodes []*v1.Node) []InstanceID {
 	return instanceIDs
 }
 
-// Gets the full information about this instance from the EC2 API
+// Gets the full information about this instance from the OSC API
 func describeInstance(fcuClient FCU, instanceID InstanceID) (osc.Vm, error) {
 	request := &osc.ReadVmsOpts{
 		ReadVmsRequest: optional.NewInterface(
@@ -162,11 +163,11 @@ type instanceCache struct {
 	snapshot *allInstancesSnapshot
 }
 
-// Gets the full information about these instance from the EC2 API
+// Gets the full information about these instance from the OSC API
 func (c *instanceCache) describeAllInstancesUncached() (*allInstancesSnapshot, error) {
 	now := time.Now()
 
-	klog.V(4).Infof("EC2 DescribeInstances - fetching all instances")
+	klog.V(4).Infof("OSC DescribeInstances - fetching all instances")
 
 	var filters []*ec2.Filter
 	instances, err := c.cloud.describeInstances(filters)
@@ -174,9 +175,9 @@ func (c *instanceCache) describeAllInstancesUncached() (*allInstancesSnapshot, e
 		return nil, err
 	}
 
-	m := make(map[InstanceID]*ec2.Instance)
+	m := make(map[InstanceID]osc.Vm)
 	for _, i := range instances {
-		id := InstanceID(aws.StringValue(i.InstanceId))
+		id := InstanceID(i.InstanceId)
 		m[id] = i
 	}
 
@@ -220,7 +221,7 @@ func (c *instanceCache) describeAllInstancesCached(criteria cacheCriteria) (*all
 			return nil, err
 		}
 	} else {
-		klog.V(6).Infof("EC2 DescribeInstances - using cached results")
+		klog.V(6).Infof("OSC DescribeInstances - using cached results")
 	}
 
 	return snapshot, nil
@@ -267,12 +268,12 @@ func (s *allInstancesSnapshot) MeetsCriteria(criteria cacheCriteria) bool {
 // along with the timestamp for cache-invalidation purposes
 type allInstancesSnapshot struct {
 	timestamp time.Time
-	instances map[InstanceID]*ec2.Instance
+	instances map[InstanceID]osc.Vm
 }
 
 // FindInstances returns the instances corresponding to the specified ids.  If an id is not found, it is ignored.
-func (s *allInstancesSnapshot) FindInstances(ids []InstanceID) map[InstanceID]*ec2.Instance {
-	m := make(map[InstanceID]*ec2.Instance)
+func (s *allInstancesSnapshot) FindInstances(ids []InstanceID) map[InstanceID]osc.Vm {
+	m := make(map[InstanceID]osc.Vm)
 	for _, id := range ids {
 		instance := s.instances[id]
 		if instance != nil {

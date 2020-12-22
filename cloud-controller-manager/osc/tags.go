@@ -93,7 +93,7 @@ func findClusterIDs(tags []osc.Tag) (string, string, error) {
 		}
 
 		if tagKey == tagNameKubernetesCluster() {
-			id := aws.StringValue(tag.Value)
+			id := tag.Value
 			if legacyClusterID != "" {
 				return "", "", fmt.Errorf("Found multiple %s tags (%q and %q)", tagNameKubernetesCluster(), legacyClusterID, id)
 			}
@@ -159,7 +159,7 @@ func (t *oscTagging) hasClusterTag(tags []osc.Tag) bool {
 	}
 	clusterTagKey := t.clusterTagKey()
 	for _, tag := range tags {
-		if aws.StringValue(tag.Key) == clusterTagKey {
+		if tag.Key == clusterTagKey {
 			return true
 		}
 	}
@@ -175,7 +175,7 @@ func (t *oscTagging) readRepairClusterTags(client FCU, resourceID string, lifecy
 		client, resourceID, lifecycle, additionalTags, observedTags)
 	actualTagMap := make(map[string]string)
 	for _, tag := range observedTags {
-		actualTagMap[aws.StringValue(tag.Key)] = tag.Value
+		actualTagMap[tag.Key] = tag.Value
 	}
 
 	expectedTags := t.buildTags(lifecycle, additionalTags)
@@ -205,7 +205,7 @@ func (t *oscTagging) readRepairClusterTags(client FCU, resourceID string, lifecy
 	return nil
 }
 
-// createTags calls EC2 CreateTags, but adds retry-on-failure logic
+// createTags calls OSC CreateTags, but adds retry-on-failure logic
 // We retry mainly because if we create an object, we cannot tag it until it is "fully created" (eventual consistency)
 // The error code varies though (depending on what we are tagging), so we simply retry on all errors
 func (t *oscTagging) createTags(client FCU, resourceID string, lifecycle ResourceLifecycle, additionalTags map[string]string) error {
