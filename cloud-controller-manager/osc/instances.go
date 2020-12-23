@@ -26,26 +26,24 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-
 	"github.com/outscale/osc-sdk-go/osc"
 	"k8s.io/klog"
 
 	"k8s.io/api/core/v1"
 )
 
-// awsInstanceRegMatch represents Regex Match for AWS instance.
-var awsInstanceRegMatch = regexp.MustCompile("^i-[^/]*$")
+// oscInstanceRegMatch represents Regex Match for OSC instance.
+var oscInstanceRegMatch = regexp.MustCompile("^i-[^/]*$")
 
-// InstanceID represents the ID of the instance in the AWS API, e.g. i-12345678
+// InstanceID represents the ID of the instance in the OSC API, e.g. i-12345678
 // The "traditional" format is "i-12345678"
 // A new longer format is also being introduced: "i-12345678abcdef01"
 // We should not assume anything about the length or format, though it seems
 // reasonable to assume that instances will continue to start with "i-".
 type InstanceID string
 
-func (i InstanceID) awsString() *string {
-	return aws.String(string(i))
+func (i InstanceID) oscString() string {
+	return string(i)
 }
 
 // KubernetesInstanceID represents the id for an instance in the kubernetes API;
@@ -55,10 +53,10 @@ func (i InstanceID) awsString() *string {
 //  * <awsInstanceId>
 type KubernetesInstanceID string
 
-// MapToAWSInstanceID extracts the InstanceID from the KubernetesInstanceID
-func (name KubernetesInstanceID) MapToAWSInstanceID() (InstanceID, error) {
+// MapToOSCInstanceID extracts the InstanceID from the KubernetesInstanceID
+func (name KubernetesInstanceID) MapToOSCInstanceID() (InstanceID, error) {
 	debugPrintCallerFunctionName()
-	klog.V(10).Infof("MapToAWSInstanceID(%v)", name)
+	klog.V(10).Infof("MapToOSCInstanceID(%v)", name)
 
 	s := string(name)
 
@@ -72,36 +70,36 @@ func (name KubernetesInstanceID) MapToAWSInstanceID() (InstanceID, error) {
 		return "", fmt.Errorf("Invalid instance name (%s): %v", name, err)
 	}
 	if url.Scheme != "aws" {
-		return "", fmt.Errorf("Invalid scheme for AWS instance (%s)", name)
+		return "", fmt.Errorf("Invalid scheme for OSC instance (%s)", name)
 	}
 
-	awsID := ""
+	oscID := ""
 	tokens := strings.Split(strings.Trim(url.Path, "/"), "/")
 	if len(tokens) == 1 {
 		// instanceId
-		awsID = tokens[0]
+		oscID = tokens[0]
 	} else if len(tokens) == 2 {
 		// az/instanceId
-		awsID = tokens[1]
+		oscID = tokens[1]
 	}
 
 	// We sanity check the resulting volume; the two known formats are
 	// i-12345678 and i-12345678abcdef01
-	if awsID == "" || !awsInstanceRegMatch.MatchString(awsID) {
-		return "", fmt.Errorf("Invalid format for AWS instance (%s)", name)
+	if oscID == "" || !oscInstanceRegMatch.MatchString(oscID) {
+		return "", fmt.Errorf("Invalid format for OSC instance (%s)", name)
 	}
 
-	return InstanceID(awsID), nil
+	return InstanceID(oscID), nil
 }
 
-// mapToAWSInstanceID extracts the InstanceIDs from the Nodes, returning an error if a Node cannot be mapped
-func mapToAWSInstanceIDs(nodes []*v1.Node) ([]InstanceID, error) {
+// mapToOSCInstanceID extracts the InstanceIDs from the Nodes, returning an error if a Node cannot be mapped
+func mapToOSCInstanceIDs(nodes []*v1.Node) ([]InstanceID, error) {
 	var instanceIDs []InstanceID
 	for _, node := range nodes {
 		if node.Spec.ProviderID == "" {
 			return nil, fmt.Errorf("node %q did not have ProviderID set", node.Name)
 		}
-		instanceID, err := KubernetesInstanceID(node.Spec.ProviderID).MapToAWSInstanceID()
+		instanceID, err := KubernetesInstanceID(node.Spec.ProviderID).MapToOSCInstanceID()
 		if err != nil {
 			return nil, fmt.Errorf("unable to parse ProviderID %q for node %q", node.Spec.ProviderID, node.Name)
 		}
@@ -111,15 +109,15 @@ func mapToAWSInstanceIDs(nodes []*v1.Node) ([]InstanceID, error) {
 	return instanceIDs, nil
 }
 
-// mapToAWSInstanceIDsTolerant extracts the InstanceIDs from the Nodes, skipping Nodes that cannot be mapped
-func mapToAWSInstanceIDsTolerant(nodes []*v1.Node) []InstanceID {
+// mapToOSCInstanceIDsTolerant extracts the InstanceIDs from the Nodes, skipping Nodes that cannot be mapped
+func mapToOSCInstanceIDsTolerant(nodes []*v1.Node) []InstanceID {
 	var instanceIDs []InstanceID
 	for _, node := range nodes {
 		if node.Spec.ProviderID == "" {
 			klog.Warningf("node %q did not have ProviderID set", node.Name)
 			continue
 		}
-		instanceID, err := KubernetesInstanceID(node.Spec.ProviderID).MapToAWSInstanceID()
+		instanceID, err := KubernetesInstanceID(node.Spec.ProviderID).MapToOSCInstanceID()
 		if err != nil {
 			klog.Warningf("unable to parse ProviderID %q for node %q", node.Spec.ProviderID, node.Name)
 			continue
@@ -169,7 +167,7 @@ func (c *instanceCache) describeAllInstancesUncached() (*allInstancesSnapshot, e
 
 	klog.V(4).Infof("OSC DescribeInstances - fetching all instances")
 
-	var filters []*ec2.Filter
+	var filters []osc.FiltersVm
 	instances, err := c.cloud.describeInstances(filters)
 	if err != nil {
 		return nil, err
@@ -188,7 +186,7 @@ func (c *instanceCache) describeAllInstancesUncached() (*allInstancesSnapshot, e
 
 	if c.snapshot != nil && snapshot.olderThan(c.snapshot) {
 		// If this happens a lot, we could run this function in a mutex and only return one result
-		klog.Infof("Not caching concurrent AWS DescribeInstances results")
+		klog.Infof("Not caching concurrent OSC DescribeInstances results")
 	} else {
 		c.snapshot = snapshot
 	}

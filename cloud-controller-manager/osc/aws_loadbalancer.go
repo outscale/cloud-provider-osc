@@ -49,7 +49,7 @@ const (
 )
 
 var (
-	// Defaults for ELB Healthcheck
+	// Defaults for LBU Healthcheck
 	defaultHCHealthyThreshold   = int64(2)
 	defaultHCUnhealthyThreshold = int64(6)
 	defaultHCTimeout            = int64(5)
@@ -257,21 +257,21 @@ func (c *Cloud) updateInstanceSecurityGroupForNLBTraffic(sgID string, sgPerms IP
 }
 
 // Note: sgPerms will be updated to reflect the current permission set on SG after update.
-func (c *Cloud) updateInstanceSecurityGroupForNLBMTU(sgID string, sgPerms IPPermissionSet) error {
+func (c *Cloud) updateInstanceSecurityGroupForNLBMTU(sgID string, sgPerms SecurityGroupRuleSet) error {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("updateInstanceSecurityGroupForNLBMTU(%v,%v)", sgID, sgPerms)
-	desiredPerms := NewIPPermissionSet()
+	desiredPerms := NewSecurityGroupRuleSet()
 	for _, perm := range sgPerms {
 		for _, ipRange := range perm.IpRanges {
-			if strings.Contains(aws.StringValue(ipRange.Description), NLBClientRuleDescription) {
-				desiredPerms.Insert(&ec2.IpPermission{
-					IpProtocol: aws.String("icmp"),
-					FromPort:   aws.Int64(3),
-					ToPort:     aws.Int64(4),
-					IpRanges: []*ec2.IpRange{
+			if strings.Contains(ipRange.Description, NLBClientRuleDescription) {
+				desiredPerms.Insert(osc.SecurityGroupRule{
+					IpProtocol: "icmp",
+					FromPortRange:   3,
+					ToPortRange:     4,
+					IpRanges: []string{
 						{
 							CidrIp:      ipRange.CidrIp,
-							Description: aws.String(NLBMtuDiscoveryRuleDescription),
+							Description: NLBMtuDiscoveryRuleDescription,
 						},
 					},
 				})
@@ -311,14 +311,14 @@ func (c *Cloud) updateInstanceSecurityGroupForNLBMTU(sgID string, sgPerms IPPerm
 }
 
 func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBalancerName string,
-	listeners []*elb.Listener, subnetIDs []string, securityGroupIDs []string, internalELB,
-	proxyProtocol bool, loadBalancerAttributes *elb.LoadBalancerAttributes,
-	annotations map[string]string) (*elb.LoadBalancerDescription, error) {
+	listeners []osc.Listener, subnetIDs []string, securityGroupIDs []string, internalLBU,
+	proxyProtocol bool, loadBalancerAttributes *osc.LoadBalancer,
+	annotations map[string]string) (osc.LoadBalancer, error) {
 
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("ensureLoadBalancer(%v,%v,%v,%v,%v,%v,%v,%v,%v,)",
 		namespacedName, loadBalancerName, listeners, subnetIDs, securityGroupIDs,
-		internalELB, proxyProtocol, loadBalancerAttributes, annotations)
+		internalLBU, proxyProtocol, loadBalancerAttributes, annotations)
 
 	loadBalancer, err := c.describeLoadBalancer(loadBalancerName)
 	if err != nil {
@@ -328,13 +328,23 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 	dirty := false
 
 	if loadBalancer == nil {
-		createRequest := &elb.CreateLoadBalancerInput{}
-		createRequest.LoadBalancerName = aws.String(loadBalancerName)
+		createRequest := &osc.CreateLoadBalancerOpts{
+		    CreateLoadBalancerRequest: optional.NewInterface(
+                osc.CreateLoadBalancerRequest{
+                    LoadBalancerName:          loadBalancerName,
+                    Listeners:                 listeners,
+                }),
+		}
 
-		createRequest.Listeners = listeners
-
-		if internalELB {
-			createRequest.Scheme = aws.String("internal")
+		if internalLBU {
+		    createRequest = &osc.CreateLoadBalancerOpts{
+                CreateLoadBalancerRequest: optional.NewInterface(
+                    osc.CreateLoadBalancerRequest{
+                        LoadBalancerName:          loadBalancerName,
+                        Listeners:                 listeners,
+                        LoadBalancerType:          "internal",
+                    }),
+            }
 		}
 
 		// We are supposed to specify one subnet per AZ.
@@ -342,15 +352,15 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 		if subnetIDs == nil {
 			createRequest.Subnets = nil
 
-			createRequest.AvailabilityZones = append(createRequest.AvailabilityZones, aws.String(c.selfAWSInstance.availabilityZone))
+			createRequest.AvailabilityZones = append(createRequest.AvailabilityZones, c.selfAWSInstance.availabilityZone)
 		} else {
-			createRequest.Subnets = aws.StringSlice(subnetIDs)
+			createRequest.Subnets = subnetIDs
 		}
 
 		if securityGroupIDs == nil || subnetIDs == nil {
 			createRequest.SecurityGroups = nil
 		} else {
-			createRequest.SecurityGroups = aws.StringSlice(securityGroupIDs)
+			createRequest.SecurityGroups = securityGroupIDs
 		}
 
 		// Get additional tags set by the user
@@ -361,15 +371,15 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 		tags = c.tagging.buildTags(ResourceLifecycleOwned, tags)
 
 		for k, v := range tags {
-			createRequest.Tags = append(createRequest.Tags, &elb.Tag{
-				Key: aws.String(k), Value: aws.String(v),
+			createRequest.Tags = append(createRequest.Tags, &osc.Tag{
+				Key: k, Value: v,
 			})
 		}
 
 		klog.Infof("Creating load balancer for %v with name: %s", namespacedName, loadBalancerName)
-		klog.Infof("c.elb.CreateLoadBalancer(createRequest): %v", createRequest)
+		klog.Infof("c.lbu.CreateLoadBalancer(createRequest): %v", createRequest)
 
-		_, err := c.elb.CreateLoadBalancer(createRequest)
+		_, err := c.lbu.CreateLoadBalancer(ctx, createRequest)
 		if err != nil {
 			return nil, err
 		}
@@ -381,8 +391,8 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 			}
 
 			for _, listener := range listeners {
-				klog.V(2).Infof("Adjusting AWS loadbalancer proxy protocol on node port %d. Setting to true", *listener.InstancePort)
-				err := c.setBackendPolicies(loadBalancerName, *listener.InstancePort, []*string{aws.String(ProxyProtocolPolicyName)})
+				klog.V(2).Infof("Adjusting OSC loadbalancer proxy protocol on node port %d. Setting to true", *listener.InstancePort)
+				err := c.setBackendPolicies(loadBalancerName, *listener.InstancePort, []*string{ProxyProtocolPolicyName})
 				if err != nil {
 					return nil, err
 				}
@@ -427,24 +437,40 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 			}
 		}
 		{
-			additions, removals := syncElbListeners(loadBalancerName, listeners, loadBalancer.ListenerDescriptions)
+			additions, removals := syncLbuListeners(loadBalancerName, listeners, loadBalancer.ListenerDescriptions)
 			if len(removals) != 0 {
-				request := &elb.DeleteLoadBalancerListenersInput{}
-				request.LoadBalancerName = aws.String(loadBalancerName)
-				request.LoadBalancerPorts = removals
+				request := &osc.DeleteLoadBalancerListenersOpts{
+                    DeleteLoadBalancerListenersRequest: optional.NewInterface(
+                        osc.DeleteLoadBalancerListenersRequest{
+                            LoadBalancerName: loadBalancerName,
+                            LoadBalancerPorts: removals
+                        }),
+				}
+
 				klog.V(2).Info("Deleting removed load balancer listeners")
-				if _, err := c.elb.DeleteLoadBalancerListeners(request); err != nil {
+				if _, err := c.lbu.DeleteLoadBalancerListeners(ctx, request); err != nil {
 					return nil, fmt.Errorf("error deleting OSC loadbalancer listeners: %q", err)
 				}
 				dirty = true
 			}
 
 			if len(additions) != 0 {
-				request := &elb.CreateLoadBalancerListenersInput{}
-				request.LoadBalancerName = aws.String(loadBalancerName)
-				request.Listeners = additions
+			    deletionOpts := osc.DeleteVolumeOpts{
+                    DeleteVolumeRequest: optional.NewInterface(
+                        osc.DeleteVolumeRequest{
+                            VolumeId: creation.Volume.VolumeId,
+                        }),
+                }
+				request := &osc.CreateLoadBalancerListenersOpts{
+				    CreateLoadBalancerListenersRequest: optional.NewInterface(
+                        osc.CreateLoadBalancerListenersRequest {
+                            LoadBalancerName: loadBalancerName,
+                            Listeners: additions,
+                        }),
+				}
+
 				klog.V(2).Info("Creating added load balancer listeners")
-				if _, err := c.elb.CreateLoadBalancerListeners(request); err != nil {
+				if _, err := c.lbu.CreateLoadBalancerListeners(ctx, request); err != nil {
 					return nil, fmt.Errorf("error creating OSC loadbalancer listeners: %q", err)
 				}
 				dirty = true
@@ -458,7 +484,7 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 			if proxyProtocol {
 				// Ensure the backend policy exists
 
-				// NOTE The documentation for the AWS API indicates we could get an HTTP 400
+				// NOTE The documentation for the OSC API indicates we could get an HTTP 400
 				// back if a policy of the same name already exists. However, the aws-sdk does not
 				// seem to return an error to us in these cases. Therefore, this will issue an API
 				// request every time.
@@ -467,7 +493,7 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 					return nil, err
 				}
 
-				proxyPolicies = append(proxyPolicies, aws.String(ProxyProtocolPolicyName))
+				proxyPolicies = append(proxyPolicies, ProxyProtocolPolicyName)
 			}
 
 			foundBackends := make(map[int64]bool)
@@ -482,19 +508,19 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 				instancePort := *listener.InstancePort
 
 				if currentState, ok := proxyProtocolBackends[instancePort]; !ok {
-					// This is a new ELB backend so we only need to worry about
+					// This is a new LBU backend so we only need to worry about
 					// potentially adding a policy and not removing an
 					// existing one
 					setPolicy = proxyProtocol
 				} else {
 					foundBackends[instancePort] = true
-					// This is an existing ELB backend so we need to determine
+					// This is an existing LBU backend so we need to determine
 					// if the state changed
 					setPolicy = (currentState != proxyProtocol)
 				}
 
 				if setPolicy {
-					klog.V(2).Infof("Adjusting AWS loadbalancer proxy protocol on node port %d. Setting to %t", instancePort, proxyProtocol)
+					klog.V(2).Infof("Adjusting OSC loadbalancer proxy protocol on node port %d. Setting to %t", instancePort, proxyProtocol)
 					err := c.setBackendPolicies(loadBalancerName, instancePort, proxyPolicies)
 					if err != nil {
 						return nil, err
@@ -508,7 +534,7 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 			// corresponding listener anymore
 			for instancePort, found := range foundBackends {
 				if !found {
-					klog.V(2).Infof("Adjusting AWS loadbalancer proxy protocol on node port %d. Setting to false", instancePort)
+					klog.V(2).Infof("Adjusting OSC loadbalancer proxy protocol on node port %d. Setting to false", instancePort)
 					err := c.setBackendPolicies(loadBalancerName, instancePort, []*string{})
 					if err != nil {
 						return nil, err
@@ -531,13 +557,20 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 		}
 	}
 
-	// Whether the ELB was new or existing, sync attributes regardless. This accounts for things
+	// Whether the LBU was new or existing, sync attributes regardless. This accounts for things
 	// that cannot be specified at the time of creation and can only be modified after the fact,
 	// e.g. idle connection timeout.
 	{
-		describeAttributesRequest := &elb.DescribeLoadBalancerAttributesInput{}
-		describeAttributesRequest.LoadBalancerName = aws.String(loadBalancerName)
-		describeAttributesOutput, err := c.elb.DescribeLoadBalancerAttributes(describeAttributesRequest)
+		describeAttributesRequest := &osc.ReadLoadBalancerOpts{
+		    ReadLoadBalancerRequest: optional.NewInterface(
+                osc.ReadLoadBalancerRequest{
+                    Filters: osc.FiltersLoadBalancer{
+                        LoadBalancerNames: []string{loadBalancerName},
+                    },
+                }),
+		}
+
+		describeAttributesOutput, err := c.lbu.ReadLoadBalancer(ctx, describeAttributesRequest)
 		if err != nil {
 			klog.Warning("Unable to retrieve load balancer attributes during attribute sync")
 			return nil, err
@@ -547,12 +580,17 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 
 		// Update attributes if they're dirty
 		if !reflect.DeepEqual(loadBalancerAttributes, foundAttributes) {
-			modifyAttributesRequest := &elb.ModifyLoadBalancerAttributesInput{}
-			modifyAttributesRequest.LoadBalancerName = aws.String(loadBalancerName)
+			modifyAttributesRequest := &osc.UpdateLoadBalancerOpts{
+			    osc.UpdateLoadBalancerRequest {
+                            LoadBalancerName: loadBalancerName,
+                            Listeners: additions,
+                        }),
+			}
+			modifyAttributesRequest.LoadBalancerName = loadBalancerName
 			modifyAttributesRequest.LoadBalancerAttributes = loadBalancerAttributes
 			klog.V(2).Infof("Updating load-balancer attributes for %q with attributes (%v)",
 				loadBalancerName, loadBalancerAttributes)
-			_, err = c.elb.ModifyLoadBalancerAttributes(modifyAttributesRequest)
+			_, err = c.lbu.UpdateLoadBalancer(ctx, modifyAttributesRequest)
 			if err != nil {
 				return nil, fmt.Errorf("Unable to update load balancer attributes during attribute sync: %q", err)
 			}
@@ -571,20 +609,20 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 	return loadBalancer, nil
 }
 
-// syncElbListeners computes a plan to reconcile the desired vs actual state of the listeners on an ELB
+// syncLbuListeners computes a plan to reconcile the desired vs actual state of the listeners on an LBU
 // NOTE: there exists an O(nlgn) implementation for this function. However, as the default limit of
-//       listeners per elb is 100, this implementation is reduced from O(m*n) => O(n).
-func syncElbListeners(loadBalancerName string, listeners []*elb.Listener, listenerDescriptions []*elb.ListenerDescription) ([]*elb.Listener, []*int64) {
+//       listeners per lbu is 100, this implementation is reduced from O(m*n) => O(n).
+func syncLbuListeners(loadBalancerName string, listeners []lbu.Listener, listenerDescriptions []osc.Listener) ([]osc.Listener, []*int64) {
 	debugPrintCallerFunctionName()
-	klog.V(10).Infof("syncElbListeners(%v,%v,%v)", loadBalancerName, listeners, listenerDescriptions)
+	klog.V(10).Infof("syncLbuListeners(%v,%v,%v)", loadBalancerName, listeners, listenerDescriptions)
 	foundSet := make(map[int]bool)
 	removals := []*int64{}
-	additions := []*elb.Listener{}
+	additions := []osc.Listener{}
 
 	for _, listenerDescription := range listenerDescriptions {
-		actual := listenerDescription.Listener
+		actual := listenerDescription
 		if actual == nil {
-			klog.Warning("Ignoring empty listener in AWS loadbalancer: ", loadBalancerName)
+			klog.Warning("Ignoring empty listener in OSC loadbalancer: ", loadBalancerName)
 			continue
 		}
 
@@ -594,9 +632,9 @@ func syncElbListeners(loadBalancerName string, listeners []*elb.Listener, listen
 				klog.Warning("Ignoring empty desired listener for loadbalancer: ", loadBalancerName)
 				continue
 			}
-			if elbListenersAreEqual(actual, expected) {
+			if lbuListenersAreEqual(actual, expected) {
 				// The current listener on the actual
-				// elb is in the set of desired listeners.
+				// lbu is in the set of desired listeners.
 				foundSet[i] = true
 				found = true
 				break
@@ -616,19 +654,19 @@ func syncElbListeners(loadBalancerName string, listeners []*elb.Listener, listen
 	return additions, removals
 }
 
-func elbListenersAreEqual(actual, expected *elb.Listener) bool {
+func lbuListenersAreEqual(actual, expected osc.Listener) bool {
 	debugPrintCallerFunctionName()
-	klog.V(10).Infof("elbListenersAreEqual(%v,%v)", actual, expected)
-	if !elbProtocolsAreEqual(actual.Protocol, expected.Protocol) {
+	klog.V(10).Infof("lbuListenersAreEqual(%v,%v)", actual, expected)
+	if !lbuProtocolsAreEqual(actual.Protocol, expected.Protocol) {
 		return false
 	}
-	if !elbProtocolsAreEqual(actual.InstanceProtocol, expected.InstanceProtocol) {
+	if !lbuProtocolsAreEqual(actual.InstanceProtocol, expected.InstanceProtocol) {
 		return false
 	}
-	if aws.Int64Value(actual.InstancePort) != aws.Int64Value(expected.InstancePort) {
+	if actual.InstancePort != expected.InstancePort {
 		return false
 	}
-	if aws.Int64Value(actual.LoadBalancerPort) != aws.Int64Value(expected.LoadBalancerPort) {
+	if actual.LoadBalancerPort != expected.LoadBalancerPort {
 		return false
 	}
 	if !awsArnEquals(actual.SSLCertificateId, expected.SSLCertificateId) {
@@ -637,15 +675,15 @@ func elbListenersAreEqual(actual, expected *elb.Listener) bool {
 	return true
 }
 
-// elbProtocolsAreEqual checks if two ELB protocol strings are considered the same
+// lbuProtocolsAreEqual checks if two LBU protocol strings are considered the same
 // Comparison is case insensitive
-func elbProtocolsAreEqual(l, r *string) bool {
+func lbuProtocolsAreEqual(l, r *string) bool {
 	debugPrintCallerFunctionName()
-	klog.V(10).Infof("elbProtocolsAreEqual(%v,%v)", l, r)
+	klog.V(10).Infof("lbuProtocolsAreEqual(%v,%v)", l, r)
 	if l == nil || r == nil {
 		return l == r
 	}
-	return strings.EqualFold(aws.StringValue(l), aws.StringValue(r))
+	return strings.EqualFold(l, r)
 }
 
 // awsArnEquals checks if two ARN strings are considered the same
@@ -656,15 +694,15 @@ func awsArnEquals(l, r *string) bool {
 	if l == nil || r == nil {
 		return l == r
 	}
-	return strings.EqualFold(aws.StringValue(l), aws.StringValue(r))
+	return strings.EqualFold(l, r)
 }
 
-// getExpectedHealthCheck returns an elb.Healthcheck for the provided target
+// getExpectedHealthCheck returns an lbu.Healthcheck for the provided target
 // and using either sensible defaults or overrides via Service annotations
-func (c *Cloud) getExpectedHealthCheck(target string, annotations map[string]string) (*elb.HealthCheck, error) {
+func (c *Cloud) getExpectedHealthCheck(target string, annotations map[string]string) (*lbu.HealthCheck, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("getExpectedHealthCheck(%v,%v)", target, annotations)
-	healthcheck := &elb.HealthCheck{Target: &target}
+	healthcheck := &lbu.HealthCheck{Target: &target}
 	getOrDefault := func(annotation string, defaultValue int64) (*int64, error) {
 		i64 := defaultValue
 		var err error
@@ -699,13 +737,13 @@ func (c *Cloud) getExpectedHealthCheck(target string, annotations map[string]str
 	return healthcheck, nil
 }
 
-// Makes sure that the health check for an ELB matches the configured health check node port
-func (c *Cloud) ensureLoadBalancerHealthCheck(loadBalancer *elb.LoadBalancerDescription,
+// Makes sure that the health check for an LBU matches the configured health check node port
+func (c *Cloud) ensureLoadBalancerHealthCheck(loadBalancer *lbu.LoadBalancerDescription,
 	protocol string, port int32, path string, annotations map[string]string) error {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("ensureLoadBalancerHealthCheck(%v,%v, %v, %v, %v)",
 		loadBalancer, protocol, port, path, annotations)
-	name := aws.StringValue(loadBalancer.LoadBalancerName)
+	name := loadBalancer.LoadBalancerName
 
 	actual := loadBalancer.HealthCheck
 	expectedTarget := protocol + ":" + strconv.FormatInt(int64(port), 10) + path
@@ -716,19 +754,19 @@ func (c *Cloud) ensureLoadBalancerHealthCheck(loadBalancer *elb.LoadBalancerDesc
 
 	// comparing attributes 1 by 1 to avoid breakage in case a new field is
 	// added to the HC which breaks the equality
-	if aws.StringValue(expected.Target) == aws.StringValue(actual.Target) &&
-		aws.Int64Value(expected.HealthyThreshold) == aws.Int64Value(actual.HealthyThreshold) &&
-		aws.Int64Value(expected.UnhealthyThreshold) == aws.Int64Value(actual.UnhealthyThreshold) &&
-		aws.Int64Value(expected.Interval) == aws.Int64Value(actual.Interval) &&
-		aws.Int64Value(expected.Timeout) == aws.Int64Value(actual.Timeout) {
+	if expected.Target == actual.Target &&
+		expected.HealthyThreshold == actual.HealthyThreshold &&
+		expected.UnhealthyThreshold == actual.UnhealthyThresold &&
+		expected.Interval == actual.Interval &&
+		expected.Timeout == actual.Timeout {
 		return nil
 	}
 
-	request := &elb.ConfigureHealthCheckInput{}
+	request := &lbu.ConfigureHealthCheckInput{}
 	request.HealthCheck = expected
 	request.LoadBalancerName = loadBalancer.LoadBalancerName
 
-	_, err = c.elb.ConfigureHealthCheck(request)
+	_, err = c.lbu.ConfigureHealthCheck(request)
 	if err != nil {
 		return fmt.Errorf("error configuring load balancer health check for %q: %q", name, err)
 	}
@@ -738,8 +776,8 @@ func (c *Cloud) ensureLoadBalancerHealthCheck(loadBalancer *elb.LoadBalancerDesc
 
 // Makes sure that exactly the specified hosts are registered as instances with the load balancer
 func (c *Cloud) ensureLoadBalancerInstances(loadBalancerName string,
-	lbInstances []*elb.Instance,
-	instanceIDs map[InstanceID]*ec2.Instance) error {
+	lbInstances []osc.Vm
+	instanceIDs map[InstanceID]osc.Vm) error {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("ensureLoadBalancerInstances(%v,%v, %v)", loadBalancerName, lbInstances, instanceIDs)
 	expected := sets.NewString()
@@ -749,32 +787,32 @@ func (c *Cloud) ensureLoadBalancerInstances(loadBalancerName string,
 
 	actual := sets.NewString()
 	for _, lbInstance := range lbInstances {
-		actual.Insert(aws.StringValue(lbInstance.InstanceId))
+		actual.Insert(lbInstance.InstanceId)
 	}
 
 	additions := expected.Difference(actual)
 	removals := actual.Difference(expected)
 
-	addInstances := []*elb.Instance{}
+	addInstances := []osc.Vm{}
 	for _, instanceID := range additions.List() {
-		addInstance := &elb.Instance{}
-		addInstance.InstanceId = aws.String(instanceID)
+		addInstance := &osc.Vm{}
+		addInstance.InstanceId = instanceID
 		addInstances = append(addInstances, addInstance)
 	}
 
-	removeInstances := []*elb.Instance{}
+	removeInstances := []osc.Vm{}
 	for _, instanceID := range removals.List() {
-		removeInstance := &elb.Instance{}
-		removeInstance.InstanceId = aws.String(instanceID)
+		removeInstance := &osc.Vm{}
+		removeInstance.InstanceId = instanceID
 		removeInstances = append(removeInstances, removeInstance)
 	}
 	klog.V(10).Infof("ensureLoadBalancerInstances register/Deregister addInstances(%v) , removeInstances(%v)", addInstances, removeInstances)
 
 	if len(addInstances) > 0 {
-		registerRequest := &elb.RegisterInstancesWithLoadBalancerInput{}
+		registerRequest := &osc.RegisterInstancesWithLoadBalancerInput{}
 		registerRequest.Instances = addInstances
-		registerRequest.LoadBalancerName = aws.String(loadBalancerName)
-		_, err := c.elb.RegisterInstancesWithLoadBalancer(registerRequest)
+		registerRequest.LoadBalancerName = loadBalancerName
+		_, err := c.lbu.RegisterInstancesWithLoadBalancer(registerRequest)
 		if err != nil {
 			return err
 		}
@@ -782,10 +820,10 @@ func (c *Cloud) ensureLoadBalancerInstances(loadBalancerName string,
 	}
 
 	if len(removeInstances) > 0 {
-		deregisterRequest := &elb.DeregisterInstancesFromLoadBalancerInput{}
+		deregisterRequest := &osc.DeregisterInstancesFromLoadBalancerInput{}
 		deregisterRequest.Instances = removeInstances
-		deregisterRequest.LoadBalancerName = aws.String(loadBalancerName)
-		_, err := c.elb.DeregisterInstancesFromLoadBalancer(deregisterRequest)
+		deregisterRequest.LoadBalancerName = loadBalancerName
+		_, err := c.lbu.DeregisterInstancesFromLoadBalancer(deregisterRequest)
 		if err != nil {
 			return err
 		}
@@ -795,34 +833,34 @@ func (c *Cloud) ensureLoadBalancerInstances(loadBalancerName string,
 	return nil
 }
 
-func (c *Cloud) getLoadBalancerTLSPorts(loadBalancer *elb.LoadBalancerDescription) []int64 {
+func (c *Cloud) getLoadBalancerTLSPorts(loadBalancer *osc.LoadBalancerDescription) []int64 {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("getLoadBalancerTLSPorts(%v)", loadBalancer)
 	ports := []int64{}
 
 	for _, listenerDescription := range loadBalancer.ListenerDescriptions {
-		protocol := aws.StringValue(listenerDescription.Listener.Protocol)
+		protocol := listenerDescription.Listener.Protocol
 		if protocol == "SSL" || protocol == "HTTPS" {
-			ports = append(ports, aws.Int64Value(listenerDescription.Listener.LoadBalancerPort))
+			ports = append(ports, listenerDescription.Listener.LoadBalancerPort)
 		}
 	}
 	return ports
 }
 
-func (c *Cloud) ensureSSLNegotiationPolicy(loadBalancer *elb.LoadBalancerDescription, policyName string) error {
+func (c *Cloud) ensureSSLNegotiationPolicy(loadBalancer *osc.LoadBalancerDescription, policyName string) error {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("ensureSSLNegotiationPolicy(%v,%v)", loadBalancer, policyName)
 	klog.V(2).Info("Describing load balancer policies on load balancer")
-	result, err := c.elb.DescribeLoadBalancerPolicies(&elb.DescribeLoadBalancerPoliciesInput{
+	result, err := c.lbu.DescribeLoadBalancerPolicies(&osc.DescribeLoadBalancerPoliciesInput{
 		LoadBalancerName: loadBalancer.LoadBalancerName,
 		PolicyNames: []*string{
-			aws.String(fmt.Sprintf(SSLNegotiationPolicyNameFormat, policyName)),
+			fmt.Sprintf(SSLNegotiationPolicyNameFormat, policyName),
 		},
 	})
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
-			case elb.ErrCodePolicyNotFoundException:
+			case lbu.ErrCodePolicyNotFoundException:
 			default:
 				return fmt.Errorf("error describing security policies on load balancer: %q", err)
 			}
@@ -834,16 +872,16 @@ func (c *Cloud) ensureSSLNegotiationPolicy(loadBalancer *elb.LoadBalancerDescrip
 	}
 
 	klog.V(2).Infof("Creating SSL negotiation policy '%s' on load balancer", fmt.Sprintf(SSLNegotiationPolicyNameFormat, policyName))
-	// there is an upper limit of 98 policies on an ELB, we're pretty safe from
+	// there is an upper limit of 98 policies on an LBU, we're pretty safe from
 	// running into it
-	_, err = c.elb.CreateLoadBalancerPolicy(&elb.CreateLoadBalancerPolicyInput{
+	_, err = c.lbu.CreateLoadBalancerPolicy(&osc.CreateLoadBalancerPolicyInput{
 		LoadBalancerName: loadBalancer.LoadBalancerName,
-		PolicyName:       aws.String(fmt.Sprintf(SSLNegotiationPolicyNameFormat, policyName)),
-		PolicyTypeName:   aws.String("SSLNegotiationPolicyType"),
-		PolicyAttributes: []*elb.PolicyAttribute{
+		PolicyName:       fmt.Sprintf(SSLNegotiationPolicyNameFormat, policyName),
+		PolicyTypeName:   "SSLNegotiationPolicyType",
+		PolicyAttributes: []*osc.PolicyAttribute{
 			{
-				AttributeName:  aws.String("Reference-Security-Policy"),
-				AttributeValue: aws.String(policyName),
+				AttributeName:  "Reference-Security-Policy",
+				AttributeValue: policyName,
 			},
 		},
 	})
@@ -857,15 +895,15 @@ func (c *Cloud) setSSLNegotiationPolicy(loadBalancerName, sslPolicyName string, 
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("setSSLNegotiationPolicy(%v,%v,%v)", loadBalancerName, sslPolicyName, port)
 	policyName := fmt.Sprintf(SSLNegotiationPolicyNameFormat, sslPolicyName)
-	request := &elb.SetLoadBalancerPoliciesOfListenerInput{
-		LoadBalancerName: aws.String(loadBalancerName),
-		LoadBalancerPort: aws.Int64(port),
+	request := &osc.SetLoadBalancerPoliciesOfListenerInput{
+		LoadBalancerName: loadBalancerName,
+		LoadBalancerPort: port,
 		PolicyNames: []*string{
-			aws.String(policyName),
+			policyName,
 		},
 	}
 	klog.V(2).Infof("Setting SSL negotiation policy '%s' on load balancer", policyName)
-	_, err := c.elb.SetLoadBalancerPoliciesOfListener(request)
+	_, err := c.lbu.SetLoadBalancerPoliciesOfListener(request)
 	if err != nil {
 		return fmt.Errorf("error setting SSL negotiation policy '%s' on load balancer: %q", policyName, err)
 	}
@@ -875,19 +913,19 @@ func (c *Cloud) setSSLNegotiationPolicy(loadBalancerName, sslPolicyName string, 
 func (c *Cloud) createProxyProtocolPolicy(loadBalancerName string) error {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("createProxyProtocolPolicy(%v)", loadBalancerName)
-	request := &elb.CreateLoadBalancerPolicyInput{
-		LoadBalancerName: aws.String(loadBalancerName),
-		PolicyName:       aws.String(ProxyProtocolPolicyName),
-		PolicyTypeName:   aws.String("ProxyProtocolPolicyType"),
-		PolicyAttributes: []*elb.PolicyAttribute{
+	request := &osc.CreateLoadBalancerPolicyOPTS{
+		LoadBalancerName: loadBalancerName),
+		PolicyName:       ProxyProtocolPolicyName,
+		PolicyTypeName:   "ProxyProtocolPolicyType",
+		PolicyAttributes: []*osc.PolicyAttribute{
 			{
-				AttributeName:  aws.String("ProxyProtocol"),
-				AttributeValue: aws.String("true"),
+				AttributeName:  "ProxyProtocol",
+				AttributeValue: "true",
 			},
 		},
 	}
 	klog.V(2).Info("Creating proxy protocol policy on load balancer")
-	_, err := c.elb.CreateLoadBalancerPolicy(request)
+	_, err := c.lbu.CreateLoadBalancerPolicy(request)
 	if err != nil {
 		return fmt.Errorf("error creating proxy protocol policy on load balancer: %q", err)
 	}
@@ -898,29 +936,29 @@ func (c *Cloud) createProxyProtocolPolicy(loadBalancerName string) error {
 func (c *Cloud) setBackendPolicies(loadBalancerName string, instancePort int64, policies []*string) error {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("setBackendPolicies(%v,%v,%v)", loadBalancerName, instancePort, policies)
-	request := &elb.SetLoadBalancerPoliciesForBackendServerInput{
-		InstancePort:     aws.Int64(instancePort),
-		LoadBalancerName: aws.String(loadBalancerName),
+	request := &osc.SetLoadBalancerPoliciesForBackendServerInput{
+		InstancePort:     instancePort,
+		LoadBalancerName: loadBalancerName,
 		PolicyNames:      policies,
 	}
 	if len(policies) > 0 {
-		klog.V(2).Infof("Adding AWS loadbalancer backend policies on node port %d", instancePort)
+		klog.V(2).Infof("Adding OSC loadbalancer backend policies on node port %d", instancePort)
 	} else {
-		klog.V(2).Infof("Removing AWS loadbalancer backend policies on node port %d", instancePort)
+		klog.V(2).Infof("Removing OSC loadbalancer backend policies on node port %d", instancePort)
 	}
-	_, err := c.elb.SetLoadBalancerPoliciesForBackendServer(request)
+	_, err := c.lbu.SetLoadBalancerPoliciesForBackendServer(request)
 	if err != nil {
-		return fmt.Errorf("error adjusting AWS loadbalancer backend policies: %q", err)
+		return fmt.Errorf("error adjusting OSC loadbalancer backend policies: %q", err)
 	}
 
 	return nil
 }
 
-func proxyProtocolEnabled(backend *elb.BackendServerDescription) bool {
+func proxyProtocolEnabled(backend *lbu.BackendServerDescription) bool {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("proxyProtocolEnabled(%v)", backend)
 	for _, policy := range backend.PolicyNames {
-		if aws.StringValue(policy) == ProxyProtocolPolicyName {
+		if policy == ProxyProtocolPolicyName {
 			return true
 		}
 	}
@@ -928,23 +966,23 @@ func proxyProtocolEnabled(backend *elb.BackendServerDescription) bool {
 	return false
 }
 
-// findInstancesForELB gets the EC2 instances corresponding to the Nodes, for setting up an ELB
+// findInstancesForLBU gets the OSC instances corresponding to the Nodes, for setting up an LBU
 // We ignore Nodes (with a log message) where the instanceid cannot be determined from the provider,
 // and we ignore instances which are not found
-func (c *Cloud) findInstancesForELB(nodes []*v1.Node) (map[InstanceID]*ec2.Instance, error) {
+func (c *Cloud) findInstancesForLBU(nodes []*v1.Node) (map[InstanceID]osc.Vm, error) {
 	debugPrintCallerFunctionName()
-	klog.V(10).Infof("findInstancesForELB(%v)", nodes)
+	klog.V(10).Infof("findInstancesForLBU(%v)", nodes)
 
 	for _, node := range nodes {
 		if node.Spec.ProviderID == "" {
 			// TODO  Need to be optimize by setting providerID which is not possible actualy
 			instance, _ := c.findInstanceByNodeName(types.NodeName(node.Name))
-			node.Spec.ProviderID = aws.StringValue(instance.InstanceId)
+			node.Spec.ProviderID = instance.InstanceId
 		}
 	}
 
 	// Map to instance ids ignoring Nodes where we cannot find the id (but logging)
-	instanceIDs := mapToAWSInstanceIDsTolerant(nodes)
+	instanceIDs := mapToOSCInstanceIDsTolerant(nodes)
 
 	cacheCriteria := cacheCriteria{
 		// MaxAge not required, because we only care about security groups, which should not change

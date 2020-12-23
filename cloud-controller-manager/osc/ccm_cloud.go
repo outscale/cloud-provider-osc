@@ -52,10 +52,10 @@ type Cloud struct {
 	region   string
 	vpcID    string
 
-	tagging awsTagging
+	tagging oscTagging
 
-	// The AWS instance that we are running on
-	// Note that we cache some state in awsInstance (mountpoints), so we must preserve the instance
+	// The OSC instance that we are running on
+	// Note that we cache some state in oscInstance (mountpoints), so we must preserve the instance
 	selfOSCInstance *oscInstance
 
 	instanceCache instanceCache
@@ -74,8 +74,8 @@ type Cloud struct {
 // ********************* CCM Cloud Object functions *********************
 
 // ********************* CCM Cloud Context functions *********************
-// Builds the awsInstance for the EC2 instance on which we are running.
-// This is called when the AWSCloud is initialized, and should not be called otherwise (because the awsInstance for the local instance is a singleton with drive mapping state)
+// Builds the oscInstance for the OSC instance on which we are running.
+// This is called when the OSCCloud is initialized, and should not be called otherwise (because the oscInstance for the local instance is a singleton with drive mapping state)
 func (c *Cloud) buildSelfOSCInstance() (*oscInstance, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("buildSelfOSCInstance()")
@@ -84,15 +84,15 @@ func (c *Cloud) buildSelfOSCInstance() (*oscInstance, error) {
 	}
 	instanceID, err := c.metadata.GetMetadata("instance-id")
 	if err != nil {
-		return nil, fmt.Errorf("error fetching instance-id from ec2 metadata service: %q", err)
+		return nil, fmt.Errorf("error fetching instance-id from osc metadata service: %q", err)
 	}
 
-	// We want to fetch the hostname via the EC2 metadata service
+	// We want to fetch the hostname via the OSC metadata service
 	// (`GetMetadata("local-hostname")`): But see #11543 - we need to use
-	// the EC2 API to get the privateDnsName in case of a private DNS zone
+	// the OSC API to get the privateDnsName in case of a private DNS zone
 	// e.g. mydomain.io, because the metadata service returns the wrong
 	// hostname.  Once we're doing that, we might as well get all our
-	// information from the instance returned by the EC2 API - it is a
+	// information from the instance returned by the OSC API - it is a
 	// single API call to get all the information, and it means we don't
 	// have two code paths.
 	instance, err := c.getInstanceByID(instanceID)
@@ -102,7 +102,7 @@ func (c *Cloud) buildSelfOSCInstance() (*oscInstance, error) {
 	return newOSCInstance(c.fcu, instance), nil
 }
 
-// SetInformers implements InformerUser interface by setting up informer-fed caches for aws lib to
+// SetInformers implements InformerUser interface by setting up informer-fed caches for osc lib to
 // leverage Kubernetes API for caching
 func (c *Cloud) SetInformers(informerFactory informers.SharedInformerFactory) {
 	debugPrintCallerFunctionName()
@@ -123,7 +123,7 @@ func (c *Cloud) AddSSHKeyToAllInstances(ctx context.Context, user string, keyDat
 func (c *Cloud) CurrentNodeName(ctx context.Context, hostname string) (types.NodeName, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("CurrentNodeName(%v)", hostname)
-	return c.selfAWSInstance.nodeName, nil
+	return c.selfOSCInstance.nodeName, nil
 }
 
 // Initialize passes a Kubernetes clientBuilder interface to the cloud provider
@@ -217,7 +217,7 @@ func (c *Cloud) NodeAddresses(ctx context.Context, name types.NodeName) ([]v1.No
 		externalIP, err := c.metadata.GetMetadata("public-ipv4")
 		if err != nil {
 			//TODO: It would be nice to be able to determine the reason for the failure,
-			// but the AWS client masks all failures with the same error description.
+			// but the OSC client masks all failures with the same error description.
 			klog.V(4).Info("Could not determine public IP from OSC metadata.")
 		} else {
 			addresses = append(addresses, v1.NodeAddress{Type: v1.NodeExternalIP, Address: externalIP})
@@ -226,7 +226,7 @@ func (c *Cloud) NodeAddresses(ctx context.Context, name types.NodeName) ([]v1.No
 		localHostname, err := c.metadata.GetMetadata("local-hostname")
 		if err != nil || len(localHostname) == 0 {
 			//TODO: It would be nice to be able to determine the reason for the failure,
-			// but the AWS client masks all failures with the same error description.
+			// but the OSC client masks all failures with the same error description.
 			klog.V(4).Info("Could not determine private DNS from OSC metadata.")
 		} else {
 			hostname, internalDNS := parseMetadataLocalHostname(localHostname)
@@ -239,8 +239,8 @@ func (c *Cloud) NodeAddresses(ctx context.Context, name types.NodeName) ([]v1.No
 		externalDNS, err := c.metadata.GetMetadata("public-hostname")
 		if err != nil || len(externalDNS) == 0 {
 			//TODO: It would be nice to be able to determine the reason for the failure,
-			// but the AWS client masks all failures with the same error description.
-			klog.V(4).Info("Could not determine public DNS from AWS metadata.")
+			// but the OSC client masks all failures with the same error description.
+			klog.V(4).Info("Could not determine public DNS from OSC metadata.")
 		} else {
 			addresses = append(addresses, v1.NodeAddress{Type: v1.NodeExternalDNS, Address: externalDNS})
 		}
@@ -261,7 +261,7 @@ func (c *Cloud) NodeAddresses(ctx context.Context, name types.NodeName) ([]v1.No
 func (c *Cloud) NodeAddressesByProviderID(ctx context.Context, providerID string) ([]v1.NodeAddress, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("NodeAddressesByProviderID(%v)", providerID)
-	instanceID, err := KubernetesInstanceID(providerID).MapToAWSInstanceID()
+	instanceID, err := KubernetesInstanceID(providerID).MapToOSCInstanceID()
 	if err != nil {
 		return nil, err
 	}
@@ -279,7 +279,7 @@ func (c *Cloud) NodeAddressesByProviderID(ctx context.Context, providerID string
 func (c *Cloud) InstanceExistsByProviderID(ctx context.Context, providerID string) (bool, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("InstanceExistsByProviderID(%v)", providerID)
-	instanceID, err := KubernetesInstanceID(providerID).MapToAWSInstanceID()
+	instanceID, err := KubernetesInstanceID(providerID).MapToOSCInstanceID()
 	if err != nil {
 		return false, err
 	}
@@ -304,8 +304,8 @@ func (c *Cloud) InstanceExistsByProviderID(ctx context.Context, providerID strin
 		return false, fmt.Errorf("multiple instances found for instance: %s", instanceID)
 	}
 
-	state := instances[0].State.Name
-	if *state == ec2.InstanceStateNameTerminated {
+	state := instances.Vms[0].State
+	if state == "terminated" {
 		klog.Warningf("the instance %s is terminated", instanceID)
 		return false, nil
 	}
@@ -317,7 +317,7 @@ func (c *Cloud) InstanceExistsByProviderID(ctx context.Context, providerID strin
 func (c *Cloud) InstanceShutdownByProviderID(ctx context.Context, providerID string) (bool, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("InstanceShutdownByProviderID(%v)", providerID)
-	instanceID, err := KubernetesInstanceID(providerID).MapToAWSInstanceID()
+	instanceID, err := KubernetesInstanceID(providerID).MapToOSCInstanceID()
 	if err != nil {
 		return false, err
 	}
@@ -345,11 +345,11 @@ func (c *Cloud) InstanceShutdownByProviderID(ctx context.Context, providerID str
 		return false, fmt.Errorf("multiple instances found for instance: %s", instanceID)
 	}
 
-	instance := instances[0]
+	instance := instances.Vms[0]
 	if instance.State != nil {
 		state := instance.State.Name
 		// valid state for detaching volumes
-		if state == ec2.InstanceStateNameStopped {
+		if state == "stopped" {
 			return true, nil
 		}
 	}
@@ -362,8 +362,8 @@ func (c *Cloud) InstanceID(ctx context.Context, nodeName types.NodeName) (string
 	klog.V(10).Infof("InstanceID(%v)", nodeName)
 	// In the future it is possible to also return an endpoint as:
 	// <endpoint>/<zone>/<instanceid>
-	if c.selfAWSInstance.nodeName == nodeName {
-		return "/" + c.selfAWSInstance.availabilityZone + "/" + c.selfAWSInstance.awsID, nil
+	if c.selfOSCInstance.nodeName == nodeName {
+		return "/" + c.selfOSCInstance.availabilityZone + "/" + c.selfOSCInstance.oscID, nil
 	}
 	inst, err := c.getInstanceByNodeName(nodeName)
 	if err != nil {
@@ -382,7 +382,7 @@ func (c *Cloud) InstanceID(ctx context.Context, nodeName types.NodeName) (string
 func (c *Cloud) InstanceTypeByProviderID(ctx context.Context, providerID string) (string, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("InstanceTypeByProviderID(%v)", providerID)
-	instanceID, err := KubernetesInstanceID(providerID).MapToAWSInstanceID()
+	instanceID, err := KubernetesInstanceID(providerID).MapToOSCInstanceID()
 	if err != nil {
 		return "", err
 	}
@@ -399,21 +399,21 @@ func (c *Cloud) InstanceTypeByProviderID(ctx context.Context, providerID string)
 func (c *Cloud) InstanceType(ctx context.Context, nodeName types.NodeName) (string, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("InstanceType(%v)", nodeName)
-	if c.selfAWSInstance.nodeName == nodeName {
-		return c.selfAWSInstance.instanceType, nil
+	if c.selfOSCInstance.nodeName == nodeName {
+		return c.selfOSCInstance.instanceType, nil
 	}
 	inst, err := c.getInstanceByNodeName(nodeName)
 	if err != nil {
 		return "", fmt.Errorf("getInstanceByNodeName failed for %q with %q", nodeName, err)
 	}
-	return aws.StringValue(inst.InstanceType), nil
+	return inst.InstanceType, nil
 }
 
 // GetZone implements Zones.GetZone
 func (c *Cloud) GetZone(ctx context.Context) (cloudprovider.Zone, error) {
 	debugPrintCallerFunctionName()
 	return cloudprovider.Zone{
-		FailureDomain: c.selfAWSInstance.availabilityZone,
+		FailureDomain: c.selfOSCInstance.availabilityZone,
 		Region:        c.region,
 	}, nil
 }
@@ -424,7 +424,7 @@ func (c *Cloud) GetZone(ctx context.Context) (cloudprovider.Zone, error) {
 func (c *Cloud) GetZoneByProviderID(ctx context.Context, providerID string) (cloudprovider.Zone, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("GetZoneByProviderID(%v)", providerID)
-	instanceID, err := KubernetesInstanceID(providerID).MapToAWSInstanceID()
+	instanceID, err := KubernetesInstanceID(providerID).MapToOSCInstanceID()
 	if err != nil {
 		return cloudprovider.Zone{}, err
 	}
@@ -605,7 +605,7 @@ func (c *Cloud) setSecurityGroupIngress(securityGroupID string, permissions Secu
 
 	actual := NewSecurityGroupRuleSet(group.SecurityGroupRules...)
 
-	// EC2 groups rules together, for example combining:
+	// OSC groups rules together, for example combining:
 	//
 	// { Port=80, Range=[A] } and { Port=80, Range=[B] }
 	//
@@ -613,7 +613,7 @@ func (c *Cloud) setSecurityGroupIngress(securityGroupID string, permissions Secu
 	//
 	// We have to ungroup them, because otherwise the logic becomes really
 	// complicated, and also because if we have Range=[A,B] and we try to
-	// add Range=[A] then EC2 complains about a duplicate rule.
+	// add Range=[A] then OSC complains about a duplicate rule.
 	permissions = permissions.Ungroup()
 	actual = actual.Ungroup()
 
@@ -626,7 +626,7 @@ func (c *Cloud) setSecurityGroupIngress(securityGroupID string, permissions Secu
 
 	// TODO: There is a limit in VPC of 100 rules per security group, so we
 	// probably should try grouping or combining to fit under this limit.
-	// But this is only used on the ELB security group currently, so it
+	// But this is only used on the LBU security group currently, so it
 	// would require (ports * CIDRS) > 100.  Also, it isn't obvious exactly
 	// how removing single permissions from compound rules works, and we
 	// don't want to accidentally open more than intended while we're
@@ -832,7 +832,7 @@ func (c *Cloud) ensureSecurityGroup(name string, description string, additionalT
 	for {
 		attempt++
 
-		// Note that we do _not_ add our tag filters; group-name + vpc-id is the EC2 primary key.
+		// Note that we do _not_ add our tag filters; group-name + vpc-id is the OSC primary key.
 		// However, we do check that it matches our tags.
 		// If it doesn't have any tags, we tag it; this is how we recover if we failed to tag before.
 		// If it has a different cluster's tags, that is an error.
@@ -843,7 +843,7 @@ func (c *Cloud) ensureSecurityGroup(name string, description string, additionalT
 		}
 
 		if c.vpcID != "" {
-			request.Filters = append(request.Filters, newEc2Filter("vpc-id", c.vpcID))
+			request.Filters = append(request.Filters, newNetFilter("vpc-id", c.vpcID))
 		}
 
 		securityGroups, err := c.fcu.ReadSecurityGroups(request)
@@ -950,7 +950,7 @@ func (c *Cloud) findSubnets() ([]osc.Subnet, error) {
 		}
 	}
 
-	if c.selfAWSInstance.subnetID != "" {
+	if c.selfOSCInstance.subnetID != "" {
 		// Fall back to the current instance subnets, if nothing is tagged
 		klog.Warningf("No tagged subnets found; will fall-back to the current subnet only.  This is likely to be an error in a future version of k8s.")
 
@@ -975,12 +975,12 @@ func (c *Cloud) findSubnets() ([]osc.Subnet, error) {
 
 }
 
-// Finds the subnets to use for an ELB we are creating.
-// Normal (Internet-facing) ELBs must use public subnets, so we skip private subnets.
-// Internal ELBs can use public or private subnets, but if we have a private subnet we should prefer that.
-func (c *Cloud) findELBSubnets(internalELB bool) ([]string, error) {
+// Finds the subnets to use for an LBU we are creating.
+// Normal (Internet-facing) LBUs must use public subnets, so we skip private subnets.
+// Internal LBUs can use public or private subnets, but if we have a private subnet we should prefer that.
+func (c *Cloud) findLBUSubnets(internalLBU bool) ([]string, error) {
 	debugPrintCallerFunctionName()
-	klog.V(10).Infof("findELBSubnets(%v)", internalELB)
+	klog.V(10).Infof("findLBUSubnets(%v)", internalLBU)
 
 	subnets, err := c.findSubnets()
 	if err != nil {
@@ -1011,10 +1011,10 @@ func (c *Cloud) findELBSubnets(internalELB bool) ([]string, error) {
 
 	// Try to break the tie using a tag
 	var tagName string
-	if internalELB {
-		tagName = TagNameSubnetInternalELB
+	if internalLBU {
+		tagName = TagNameSubnetInternalLBU
 	} else {
-		tagName = TagNameSubnetPublicELB
+		tagName = TagNameSubnetPublicLBU
 	}
 
 	subnetsByAZ := make(map[string]osc.Subnet)
@@ -1030,8 +1030,8 @@ func (c *Cloud) findELBSubnets(internalELB bool) ([]string, error) {
 		if err != nil {
 			return nil, err
 		}
-		if !internalELB && !isPublic {
-			klog.V(2).Infof("Ignoring private subnet for public ELB %q", id)
+		if !internalLBU && !isPublic {
+			klog.V(2).Infof("Ignoring private subnet for public LBU %q", id)
 			continue
 		}
 
@@ -1040,7 +1040,7 @@ func (c *Cloud) findELBSubnets(internalELB bool) ([]string, error) {
 		if existing == nil {
 			if subnetHasTag {
 				subnetsByAZ[az] = subnet
-			} else if isPublic && !internalELB {
+			} else if isPublic && !internalLBU {
 				subnetsByAZ[az] = subnet
 			}
 			continue
@@ -1076,30 +1076,30 @@ func (c *Cloud) findELBSubnets(internalELB bool) ([]string, error) {
 
 	var subnetIDs []string
 	for _, key := range azNames {
-		subnetIDs = append(subnetIDs, aws.StringValue(subnetsByAZ[key].SubnetId))
+		subnetIDs = append(subnetIDs, subnetsByAZ[key].SubnetId)
 	}
 
 	return subnetIDs, nil
 }
 
-// buildELBSecurityGroupList returns list of SecurityGroups which should be
-// attached to ELB created by a service. List always consist of at least
+// buildLBUSecurityGroupList returns list of SecurityGroups which should be
+// attached to LBU created by a service. List always consist of at least
 // 1 member which is an SG created for this service or a SG from the Global config.
 // Extra groups can be specified via annotation, as can extra tags for any
 // new groups. The annotation "ServiceAnnotationLoadBalancerSecurityGroups" allows for
 // setting the security groups specified.
-func (c *Cloud) buildELBSecurityGroupList(serviceName types.NamespacedName, loadBalancerName string, annotations map[string]string) ([]string, error) {
+func (c *Cloud) buildLBUSecurityGroupList(serviceName types.NamespacedName, loadBalancerName string, annotations map[string]string) ([]string, error) {
 	debugPrintCallerFunctionName()
-	klog.V(10).Infof("buildELBSecurityGroupList(%v,%v,%v)", serviceName, loadBalancerName, annotations)
+	klog.V(10).Infof("buildLBUSecurityGroupList(%v,%v,%v)", serviceName, loadBalancerName, annotations)
 	var err error
 	var securityGroupID string
 
-	if c.cfg.Global.ElbSecurityGroup != "" {
-		securityGroupID = c.cfg.Global.ElbSecurityGroup
+	if c.cfg.Global.LbuSecurityGroup != "" {
+		securityGroupID = c.cfg.Global.LbuSecurityGroup
 	} else {
 		// Create a security group for the load balancer
 		sgName := "k8s-elb-" + loadBalancerName
-		sgDescription := fmt.Sprintf("Security group for Kubernetes ELB %s (%v)", loadBalancerName, serviceName)
+		sgDescription := fmt.Sprintf("Security group for Kubernetes LBU %s (%v)", loadBalancerName, serviceName)
 		securityGroupID, err = c.ensureSecurityGroup(sgName, sgDescription, getLoadBalancerAdditionalTags(annotations))
 		if err != nil {
 			klog.Errorf("Error creating load balancer security group: %q", err)
@@ -1148,13 +1148,13 @@ func (c *Cloud) EnsureLoadBalancer(ctx context.Context, clusterName string, apiS
 	}
 
 	// Figure out what mappings we want on the load balancer
-	listeners := []*osc.Listener{}
+	listeners := []osc.Listener{}
 
 	sslPorts := getPortSets(annotations[ServiceAnnotationLoadBalancerSSLPorts])
 
 	for _, port := range apiService.Spec.Ports {
 		if port.Protocol != v1.ProtocolTCP {
-			return nil, fmt.Errorf("Only TCP LoadBalancer is supported for AWS ELB")
+			return nil, fmt.Errorf("Only TCP LoadBalancer is supported for OSC LBU")
 		}
 		if port.NodePort == 0 {
 			klog.Errorf("Ignoring port without NodePort defined: %v", port)
@@ -1169,11 +1169,11 @@ func (c *Cloud) EnsureLoadBalancer(ctx context.Context, clusterName string, apiS
 	}
 
 	if apiService.Spec.LoadBalancerIP != "" {
-		return nil, fmt.Errorf("LoadBalancerIP cannot be specified for AWS ELB")
+		return nil, fmt.Errorf("LoadBalancerIP cannot be specified for OSC LBU")
 	}
 
-	instances, err := c.findInstancesForELB(nodes)
-	klog.V(10).Infof("Debug OSC: c.findInstancesForELB(nodes) : %v", instances)
+	instances, err := c.findInstancesForLBU(nodes)
+	klog.V(10).Infof("Debug OSC: c.findInstancesForLBU(nodes) : %v", instances)
 	if err != nil {
 		return nil, err
 	}
@@ -1184,15 +1184,15 @@ func (c *Cloud) EnsureLoadBalancer(ctx context.Context, clusterName string, apiS
 		return nil, err
 	}
 
-	// Determine if this is tagged as an Internal ELB
-	internalELB := false
+	// Determine if this is tagged as an Internal LBU
+	internalLBU := false
 	internalAnnotation := apiService.Annotations[ServiceAnnotationLoadBalancerInternal]
 	if internalAnnotation == "false" {
-		internalELB = false
+		internalLBU = false
 	} else if internalAnnotation != "" {
-		internalELB = true
+		internalLBU = true
 	}
-	klog.V(10).Infof("Debug OSC:  internalELB : %v", internalELB)
+	klog.V(10).Infof("Debug OSC:  internalLBU : %v", internalLBU)
 
 	// Determine if we need to set the Proxy protocol policy
 	proxyProtocol := false
@@ -1294,7 +1294,7 @@ func (c *Cloud) EnsureLoadBalancer(ctx context.Context, clusterName string, apiS
 	}
 
 	// Find the subnets that the LBU will live in
-	subnetIDs, err := c.findLBUSubnets(internalELB)
+	subnetIDs, err := c.findLBUSubnets(internalLBU)
 	klog.V(2).Infof("Debug OSC:  c.findLBUSubnets(internalLBU) : %v", subnetIDs)
 
 	if err != nil {
@@ -1319,7 +1319,7 @@ func (c *Cloud) EnsureLoadBalancer(ctx context.Context, clusterName string, apiS
 	if len(subnetIDs) == 0 || c.vpcID == "" {
 		securityGroupIDs = []string{DefaultSrcSgName}
 	} else {
-		securityGroupIDs, err = c.buildELBSecurityGroupList(serviceName, loadBalancerName, annotations)
+		securityGroupIDs, err = c.buildLBUSecurityGroupList(serviceName, loadBalancerName, annotations)
 	}
 
 	klog.V(10).Infof("Debug OSC:  ensured securityGroupIDs : %v", securityGroupIDs)
@@ -1328,13 +1328,13 @@ func (c *Cloud) EnsureLoadBalancer(ctx context.Context, clusterName string, apiS
 		return nil, err
 	}
 	if len(securityGroupIDs) == 0 {
-		return nil, fmt.Errorf("[BUG] ELB can't have empty list of Security Groups to be assigned, this is a Kubernetes bug, please report")
+		return nil, fmt.Errorf("[BUG] LBU can't have empty list of Security Groups to be assigned, this is a Kubernetes bug, please report")
 	}
 
 	if len(subnetIDs) > 0 && c.vpcID != "" {
-		ec2SourceRanges := []*ec2.IpRange{}
+		oscSourceRanges := []string
 		for _, sourceRange := range sourceRanges.StringSlice() {
-			ec2SourceRanges = append(ec2SourceRanges, &ec2.IpRange{CidrIp: aws.String(sourceRange)})
+			oscSourceRanges = append(oscSourceRanges, sourceRange})
 		}
 
 		permissions := NewSecurityGroupRuleSet()
@@ -1346,7 +1346,7 @@ func (c *Cloud) EnsureLoadBalancer(ctx context.Context, clusterName string, apiS
 			permission := &osc.SecurityGroupRule{}
 			permission.FromPort = &portInt64
 			permission.ToPort = &portInt64
-			permission.IpRanges = ec2SourceRanges
+			permission.IpRanges = oscSourceRanges
 			permission.IpProtocol = &protocol
 
 			permissions.Insert(permission)
@@ -1355,10 +1355,10 @@ func (c *Cloud) EnsureLoadBalancer(ctx context.Context, clusterName string, apiS
 		// Allow ICMP fragmentation packets, important for MTU discovery
 		{
 			permission := &osc.SecurityGroupRule{
-				IpProtocol: aws.String("icmp"),
-				FromPort:   aws.Int64(3),
-				ToPort:     aws.Int64(4),
-				IpRanges:   ec2SourceRanges,
+				IpProtocol: "icmp",
+				FromPort:   3,
+				ToPort:     4,
+				IpRanges:   oscSourceRanges,
 			}
 
 			permissions.Insert(permission)
@@ -1376,7 +1376,7 @@ func (c *Cloud) EnsureLoadBalancer(ctx context.Context, clusterName string, apiS
 		listeners,
 		subnetIDs,
 		securityGroupIDs,
-		internalELB,
+		internalLBU,
 		proxyProtocol,
 		loadBalancerAttributes,
 		annotations,
@@ -1436,13 +1436,13 @@ func (c *Cloud) EnsureLoadBalancer(ctx context.Context, clusterName string, apiS
 		return nil, err
 	}
 
-	err = c.ensureLoadBalancerInstances(aws.StringValue(loadBalancer.LoadBalancerName), loadBalancer.Instances, instances)
+	err = c.ensureLoadBalancerInstances(loadBalancer.LoadBalancerName, loadBalancer.Instances, instances)
 	if err != nil {
 		klog.Warningf("Error registering instances with the load balancer: %q", err)
 		return nil, err
 	}
 
-	klog.V(1).Infof("Loadbalancer %s (%v) has DNS name %s", loadBalancerName, serviceName, aws.StringValue(loadBalancer.DNSName))
+	klog.V(1).Infof("Loadbalancer %s (%v) has DNS name %s", loadBalancerName, serviceName, loadBalancer.DNSName)
 
 	// TODO: Wait for creation?
 
@@ -1482,13 +1482,12 @@ func (c *Cloud) getTaggedSecurityGroups() (map[string]osc.SecurityGroup, error) 
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("getTaggedSecurityGroups()")
 	request := &osc.ReadSecurityGroupsOpts{}
-	request.Filters = []*ec2.Filter{
-		newEc2Filter("tag:"+c.tagging.clusterTagKey(),
-			[]string{ResourceLifecycleOwned, ResourceLifecycleShared}...),
-		newEc2Filter("tag:"+TagNameMainSG+c.tagging.clusterID(), "True"),
+	request.Filters = []osc.FiltersTag{
+		newTagFilter(c.tagging.clusterTagKey(), []string{ResourceLifecycleOwned, ResourceLifecycleShared}...),
+		newtagFilter(TagNameMainSG+c.tagging.clusterID(), "True"),
 	}
 
-	groups, err := c.fcu.DescribeSecurityGroups(request)
+	groups, err := c.fcu.ReadSecurityGroups(ctx, request)
 	if err != nil {
 		return nil, fmt.Errorf("error querying security groups: %q", err)
 	}
@@ -1511,7 +1510,7 @@ func (c *Cloud) getTaggedSecurityGroups() (map[string]osc.SecurityGroup, error) 
 
 // Open security group ingress rules on the instances so that the load balancer can talk to them
 // Will also remove any security groups ingress rules for the load balancer that are _not_ needed for allInstances
-func (c *Cloud) updateInstanceSecurityGroupsForLoadBalancer(lb *lbu.LoadBalancerDescription,
+func (c *Cloud) updateInstanceSecurityGroupsForLoadBalancer(lb lbu.LoadBalancer,
 	instances map[InstanceID]osc.Vm,
 	securityGroupIDs []string) error {
 	debugPrintCallerFunctionName()
@@ -1522,11 +1521,11 @@ func (c *Cloud) updateInstanceSecurityGroupsForLoadBalancer(lb *lbu.LoadBalancer
 	}
 
 	// Determine the load balancer security group id
-	loadBalancerSecurityGroupID := ""
+	loadBalancerSecurityGroupID := []string{}
 	securityGroupsItem := []string{}
 	if len(lb.SecurityGroups) > 0 {
 		for _, securityGroup := range lb.SecurityGroups {
-			securityGroupsItem = append(securityGroupsItem, *securityGroup)
+			securityGroupsItem = append(securityGroupsItem, securityGroup)
 		}
 	} else if len(securityGroupIDs) > 0 {
 		securityGroupsItem = securityGroupIDs
@@ -1538,13 +1537,13 @@ func (c *Cloud) updateInstanceSecurityGroupsForLoadBalancer(lb *lbu.LoadBalancer
 		}
 		if loadBalancerSecurityGroupID != "" {
 			// We create LBs with one SG
-			klog.Warningf("Multiple security groups for load balancer: %q", aws.StringValue(lb.LoadBalancerName))
+			klog.Warningf("Multiple security groups for load balancer: %q", lb.LoadBalancerName)
 		}
-		loadBalancerSecurityGroupID = securityGroup
+		loadBalancerSecurityGroupID = SecurityGroups
 	}
 
 	if loadBalancerSecurityGroupID == "" {
-		return fmt.Errorf("could not determine security group for load balancer: %s", aws.StringValue(lb.LoadBalancerName))
+		return fmt.Errorf("could not determine security group for load balancer: %s", lb.LoadBalancerName)
 	}
 
 	klog.V(10).Infof("loadBalancerSecurityGroupID(%v)", loadBalancerSecurityGroupID)
@@ -1554,17 +1553,17 @@ func (c *Cloud) updateInstanceSecurityGroupsForLoadBalancer(lb *lbu.LoadBalancer
 	{
 		describeRequest := &osc.ReadSecurityGroupsOpts{}
 		if loadBalancerSecurityGroupID != DefaultSrcSgName {
-			describeRequest.Filters = []*ec2.Filter{
-				newEc2Filter("ip-permission.group-id", loadBalancerSecurityGroupID),
+			describeRequest.Filters = []osc.FiltersSecurityGroup{
+				newSGFilter("ip-permission.group-id", loadBalancerSecurityGroupID),
 			}
 		} else {
-			describeRequest.Filters = []*ec2.Filter{
-				newEc2Filter("ip-permission.group-name", loadBalancerSecurityGroupID),
+			describeRequest.Filters = []osc.FiltersSecurityGroup{
+				newSGFilter("ip-permission.group-name", loadBalancerSecurityGroupID),
 			}
 		}
-		response, err := c.fcu.DescribeSecurityGroups(describeRequest)
+		response, err := c.fcu.ReadSecurityGroups(describeRequest)
 		if err != nil {
-			return fmt.Errorf("error querying security groups for ELB: %q", err)
+			return fmt.Errorf("error querying security groups for LBU: %q", err)
 		}
 		for _, sg := range response {
 			if !c.tagging.hasClusterTag(sg.Tags) {
@@ -1614,7 +1613,7 @@ func (c *Cloud) updateInstanceSecurityGroupsForLoadBalancer(lb *lbu.LoadBalancer
 
 	// Compare to actual groups
 	for _, actualGroup := range actualGroups {
-		actualGroupID := aws.StringValue(actualGroup.GroupId)
+		actualGroupID := actualGroup.GroupId
 		if actualGroupID == "" {
 			klog.Warning("Ignoring group without ID: ", actualGroup)
 			continue
@@ -1641,14 +1640,14 @@ func (c *Cloud) updateInstanceSecurityGroupsForLoadBalancer(lb *lbu.LoadBalancer
 		permissions := []osc.SecurityGroupRule{}
 		if !isPublicCloud {
 			// This setting is applied when we are in a vpc
-			sourceGroupID := &ec2.UserIdGroupPair{}
-			sourceGroupID.GroupId = &loadBalancerSecurityGroupID
+			sourceGroupID := osc.SecurityGroup{}
+			sourceGroupID.SecurityGroupId = loadBalancerSecurityGroupID
 
 			allProtocols := "-1"
 
 			permission := &osc.SecurityGroupRule{}
 			permission.IpProtocol = &allProtocols
-			permission.UserIdGroupPairs = []osc.UserIdGroupPair{sourceGroupID}
+			permission.SecurityGroupsMembers = []osc.SecurityGroupsMember{SecurityGroupId}
 			permissions = []osc.SecurityGroupRule{permission}
 		}
 
@@ -1697,7 +1696,7 @@ func (c *Cloud) EnsureLoadBalancerDeleted(ctx context.Context, clusterName strin
 
 	{
 		// De-register the load balancer security group from the instances security group
-		err = c.ensureLoadBalancerInstances(aws.StringValue(lb.LoadBalancerName),
+		err = c.ensureLoadBalancerInstances(lb.LoadBalancerName,
 			lb.Instances,
 			map[InstanceID]osc.Vm{})
 		if err != nil {
@@ -1735,22 +1734,13 @@ func (c *Cloud) EnsureLoadBalancerDeleted(ctx context.Context, clusterName strin
 
 		var loadBalancerSGs = securityGroupsItem
 
-		describeRequest.Filters = []ec2.Filter{
-			newEc2Filter("group-id", loadBalancerSGs...),
+		describeRequest.Filters = []osc.FiltersSecurityGroup{
+			newSGFilter("group-id", loadBalancerSGs...),
 		}
-
-		readOpts := osc.ReadSecurityGroupsOpts{
-            ReadSecurityGroupsRequest: optional.NewInterface(
-                osc.ReadSecurityGroupsRequest{
-                    Filters: osc.FiltersSecurityGroup{
-
-                    },
-                }),
-	    }
 
 		response, err := c.fcu.DescribeSecurityGroups(describeRequest)
 		if err != nil {
-			return fmt.Errorf("error querying security groups for ELB: %q", err)
+			return fmt.Errorf("error querying security groups for LBU: %q", err)
 		}
 
 		// Collect the security groups to delete
@@ -1759,7 +1749,7 @@ func (c *Cloud) EnsureLoadBalancerDeleted(ctx context.Context, clusterName strin
 		for _, sg := range response {
 			sgID := sg.SecurityGroupId
 
-			if sgID == c.cfg.Global.ElbSecurityGroup {
+			if sgID == c.cfg.Global.LbuSecurityGroup {
 				//We don't want to delete a security group that was defined in the Cloud Configuration.
 				continue
 			}
@@ -1813,7 +1803,7 @@ func (c *Cloud) EnsureLoadBalancerDeleted(ctx context.Context, clusterName strin
 					ids = append(ids, id)
 				}
 
-				return fmt.Errorf("timed out deleting ELB: %s. Could not delete security groups %v", service.Name, strings.Join(ids, ","))
+				return fmt.Errorf("timed out deleting LBU: %s. Could not delete security groups %v", service.Name, strings.Join(ids, ","))
 			}
 
 			klog.V(2).Info("Waiting for load-balancer to delete so we can delete security groups: ", service.Name)
@@ -1829,7 +1819,7 @@ func (c *Cloud) EnsureLoadBalancerDeleted(ctx context.Context, clusterName strin
 func (c *Cloud) UpdateLoadBalancer(ctx context.Context, clusterName string, service *v1.Service, nodes []*v1.Node) error {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("UpdateLoadBalancer(%v, %v, %s)", clusterName, service, nodes)
-	instances, err := c.findInstancesForELB(nodes)
+	instances, err := c.findInstancesForLBU(nodes)
 	if err != nil {
 		return err
 	}
@@ -1857,7 +1847,7 @@ func (c *Cloud) UpdateLoadBalancer(ctx context.Context, clusterName string, serv
 		}
 	}
 
-	err = c.ensureLoadBalancerInstances(aws.StringValue(lb.LoadBalancerName), lb.Instances, instances)
+	err = c.ensureLoadBalancerInstances(lb.LoadBalancerName, lb.Instances, instances)
 	if err != nil {
 		return nil
 	}
@@ -1944,7 +1934,7 @@ func (c *Cloud) getInstancesByNodeNames(nodeNames []string, states ...string) ([
 		nameSlice := names[i:end]
 
 		nodeNameFilter := &osc.FiltersVm{
-			Name:   aws.String("private-dns-name"),
+			Name:   "private-dns-name",
 			Values: nameSlice,
 		}
 
@@ -1958,14 +1948,14 @@ func (c *Cloud) getInstancesByNodeNames(nodeNames []string, states ...string) ([
 			klog.V(2).Infof("Failed to describe instances %v", nodeNames)
 			return nil, err
 		}
-		ec2Instances = append(ec2Instances, instances...)
+		oscInstances = append(oscInstances, instances...)
 	}
 
-	if len(ec2Instances) == 0 {
+	if len(oscInstances) == 0 {
 		klog.V(3).Infof("Failed to find any instances %v", nodeNames)
 		return nil, nil
 	}
-	return ec2Instances, nil
+	return oscInstances, nil
 }
 
 // TODO: Move to instanceCache
@@ -2035,10 +2025,10 @@ func (c *Cloud) getInstanceByNodeName(nodeName types.NodeName) (osc.Vm, error) {
 
 	// we leverage node cache to try to retrieve node's provider id first, as
 	// get instance by provider id is way more efficient than by filters in
-	// aws context
+	// osc context
 	oscID, err := c.nodeNameToProviderID(nodeName)
 	if err != nil {
-		klog.V(3).Infof("Unable to convert node name %q to aws instanceID, fall back to findInstanceByNodeName: %v", nodeName, err)
+		klog.V(3).Infof("Unable to convert node name %q to osc instanceID, fall back to findInstanceByNodeName: %v", nodeName, err)
 		instance, err = c.findInstanceByNodeName(nodeName)
 		// we need to set provider id for next calls
 
@@ -2055,15 +2045,15 @@ func (c *Cloud) getFullInstance(nodeName types.NodeName) (*oscInstance, osc.Vm, 
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("getFullInstance(%v)", nodeName)
 	if nodeName == "" {
-		instance, err := c.getInstanceByID(c.selfAWSInstance.awsID)
-		return c.selfAWSInstance, instance, err
+		instance, err := c.getInstanceByID(c.selfOSCInstance.oscID)
+		return c.selfOSCInstance, instance, err
 	}
 	instance, err := c.getInstanceByNodeName(nodeName)
 	if err != nil {
 		return nil, nil, err
 	}
-	awsInstance := newAWSInstance(c.fcu, instance)
-	return awsInstance, instance, err
+	oscInstance := newOSCInstance(c.fcu, instance)
+	return oscInstance, instance, err
 }
 
 func (c *Cloud) nodeNameToProviderID(nodeName types.NodeName) (InstanceID, error) {
@@ -2085,5 +2075,5 @@ func (c *Cloud) nodeNameToProviderID(nodeName types.NodeName) (InstanceID, error
 		return "", fmt.Errorf("node has no providerID")
 	}
 
-	return KubernetesInstanceID(node.Spec.ProviderID).MapToAWSInstanceID()
+	return KubernetesInstanceID(node.Spec.ProviderID).MapToOSCInstanceID()
 }

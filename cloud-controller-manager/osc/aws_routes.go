@@ -64,11 +64,11 @@ func (c *Cloud) findRouteTable(clusterName string) (osc.RouteTable, error) {
 	}
 
 	if len(tables) == 0 {
-		return nil, fmt.Errorf("unable to find route table for AWS cluster: %s", clusterName)
+		return nil, fmt.Errorf("unable to find route table for OSC cluster: %s", clusterName)
 	}
 
 	if len(tables) != 1 {
-		return nil, fmt.Errorf("found multiple matching AWS route tables for AWS cluster: %s", clusterName)
+		return nil, fmt.Errorf("found multiple matching OSC route tables for OSC cluster: %s", clusterName)
 	}
 	return tables[0], nil
 }
@@ -135,9 +135,13 @@ func (c *Cloud) ListRoutes(ctx context.Context, clusterName string) ([]*cloudpro
 
 // Sets the instance attribute "source-dest-check" to the specified value
 func (c *Cloud) configureInstanceSourceDestCheck(instanceID string, sourceDestCheck bool) error {
-	request := &osc.UpdateVmOpts{}
-	request.InstanceId = instanceID
-	request.SourceDestCheck = &ec2.AttributeBooleanValue{Value: aws.Bool(sourceDestCheck)}
+	request := &osc.UpdateVmOpts{
+        UpdateVmRequest: optional.NewInterface(
+			osc.UpdateVmRequest{
+                VmId: instanceID,
+                IsSourceDestChecked: sourceDestCheck,
+		}),
+	}
 
 	_, err := c.fcu.UpdateVm(request)
 	if err != nil {
@@ -155,7 +159,7 @@ func (c *Cloud) CreateRoute(ctx context.Context, clusterName string, nameHint st
 	}
 
 	// In addition to configuring the route itself, we also need to configure the instance to accept that traffic
-	// On AWS, this requires turning source-dest checks off
+	// On OSC, this requires turning source-dest checks off
 	err = c.configureInstanceSourceDestCheck(instance.InstanceId, false)
 	if err != nil {
 		return err
@@ -180,7 +184,7 @@ func (c *Cloud) CreateRoute(ctx context.Context, clusterName string, nameHint st
 	}
 
 	if deleteRoute != nil {
-		klog.Infof("deleting blackholed route: %s", aws.StringValue(deleteRoute.DestinationCidrBlock))
+		klog.Infof("deleting blackholed route: %s", deleteRoute.DestinationCidrBlock)
 
 		request := osc.DeleteRouteOpts{
             DeleteRouteRequest: optional.NewInterface(
@@ -192,7 +196,7 @@ func (c *Cloud) CreateRoute(ctx context.Context, clusterName string, nameHint st
 
 		_, err = c.fcu.DeleteRoute(ctx, request)
 		if err != nil {
-			return fmt.Errorf("error deleting blackholed AWS route (%s): %q", aws.StringValue(deleteRoute.DestinationCidrBlock), err)
+			return fmt.Errorf("error deleting blackholed OSC route (%s): %q", deleteRoute.DestinationCidrBlock, err)
 		}
 	}
 
@@ -208,7 +212,7 @@ func (c *Cloud) CreateRoute(ctx context.Context, clusterName string, nameHint st
 
 	_, err = c.fcu.CreateRoute(ctx, request)
 	if err != nil {
-		return fmt.Errorf("error creating AWS route (%s): %q", route.DestinationCIDR, err)
+		return fmt.Errorf("error creating OSC route (%s): %q", route.DestinationCIDR, err)
 	}
 
 	return nil
@@ -232,7 +236,7 @@ func (c *Cloud) DeleteRoute(ctx context.Context, clusterName string, route *clou
 
 	_, err = c.fcu.DeleteRoute(ctx, request)
 	if err != nil {
-		return fmt.Errorf("error deleting AWS route (%s): %q", route.DestinationCIDR, err)
+		return fmt.Errorf("error deleting OSC route (%s): %q", route.DestinationCIDR, err)
 	}
 
 	return nil

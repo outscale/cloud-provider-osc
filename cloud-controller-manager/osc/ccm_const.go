@@ -209,9 +209,9 @@ const DefaultSrcSgName = "outscale-elb-sg"
 const DefaultSgOwnerID = "outscale-elb"
 
 var aliveFilter = []string{
-	ec2.InstanceStateNamePending,
-	ec2.InstanceStateNameRunning,
-	ec2.InstanceStateNameShuttingDown,
-	ec2.InstanceStateNameStopping,
-	ec2.InstanceStateNameStopped,
+	"pending",
+	"running",
+	"shutting-down",
+	"stopping",
+	"stopped",
 }

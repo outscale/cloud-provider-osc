@@ -35,14 +35,14 @@ type SecurityGroupRulePredicate interface {
 }
 
 // NewSecurityGroupRuleSet creates a new SecurityGroupRuleSet
-func NewSecurityGroupRuleSet(items ...*osc.SecurityGroupRule) SecurityGroupRuleSet {
+func NewSecurityGroupRuleSet(items ...osc.SecurityGroupRule) SecurityGroupRuleSet {
 	s := make(SecurityGroupRuleSet)
 	s.Insert(items...)
 	return s
 }
 
 // Ungroup splits permissions out into individual permissions
-// EC2 will combine permissions with the same port but different SourceRanges together, for example
+// OSC will combine permissions with the same port but different SourceRanges together, for example
 // We ungroup them so we can process them
 func (s SecurityGroupRuleSet) Ungroup() SecurityGroupRuleSet {
 	l := []osc.SecurityGroupRule{}
@@ -54,21 +54,21 @@ func (s SecurityGroupRuleSet) Ungroup() SecurityGroupRuleSet {
 		for _, ipRange := range p.IpRanges {
 			c := &osc.SecurityGroupRule{}
 			*c = *p
-			c.IpRanges = []*ec2.IpRange{ipRange}
+			c.IpRanges = []string{ipRange}
 			l = append(l, c)
 		}
 	}
 
 	l2 := []osc.SecurityGroupRule{}
 	for _, p := range l {
-		if len(p.UserIdGroupPairs) <= 1 {
+		if len(p.SecurityGroupsMembers) <= 1 {
 			l2 = append(l2, p)
 			continue
 		}
-		for _, u := range p.UserIdGroupPairs {
+		for _, u := range p.SecurityGroupsMembers {
 			c := &osc.SecurityGroupRule{}
 			*c = *p
-			c.UserIdGroupPairs = []osc.UserIdGroupPair{u}
+			c.SecurityGroupsMembers = []osc.SecurityGroupsMembers{u}
 			l2 = append(l, c)
 		}
 	}
@@ -182,22 +182,24 @@ type SecurityGroupRuleMatchDesc struct {
 // Test whether specific SecurityGroupRule contains description.
 func (p SecurityGroupRuleMatchDesc) Test(perm osc.SecurityGroupRule) bool {
 	for _, v4Range := range perm.IpRanges {
-		if aws.StringValue(v4Range.Description) == p.Description {
+		if v4Range.Description == p.Description {
 			return true
 		}
 	}
-	for _, v6Range := range perm.Ipv6Ranges {
-		if aws.StringValue(v6Range.Description) == p.Description {
-			return true
-		}
-	}
+// NO IPV6
+// 	for _, v6Range := range perm.Ipv6Ranges {
+// 		if v6Range.Description == p.Description {
+// 			return true
+// 		}
+// 	}
+
 	for _, prefixListID := range perm.PrefixListIds {
-		if aws.StringValue(prefixListID.Description) == p.Description {
+		if prefixListID.Description == p.Description {
 			return true
 		}
 	}
-	for _, group := range perm.UserIdGroupPairs {
-		if aws.StringValue(group.Description) == p.Description {
+	for _, group := range perm.SecurityGroupsMembers {
+		if group.Description == p.Description {
 			return true
 		}
 	}

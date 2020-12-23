@@ -118,9 +118,9 @@ func (t *oscTagging) init(legacyClusterID string, clusterID string) error {
 	t.ClusterID = clusterID
 
 	if clusterID != "" {
-		klog.Infof("AWS cloud filtering on ClusterID: %v", clusterID)
+		klog.Infof("OSC cloud filtering on ClusterID: %v", clusterID)
 	} else {
-		return fmt.Errorf("AWS cloud failed to find ClusterID")
+		return fmt.Errorf("OSC cloud failed to find ClusterID")
 	}
 
 	return nil
@@ -224,7 +224,7 @@ func (t *oscTagging) createTags(client FCU, resourceID string, lifecycle Resourc
 			Key:   k,
 			Value: v,
 		}
-		awsTags = append(oscTags, tag)
+		oscTags = append(oscTags, tag)
 	}
 
 	backoff := wait.Backoff{
@@ -261,22 +261,22 @@ func (t *oscTagging) createTags(client FCU, resourceID string, lifecycle Resourc
 }
 
 // Add additional filters, to match on our tags
-// This lets us run multiple k8s clusters in a single EC2 AZ
-func (t *oscTagging) addFilters(filters []*ec2.Filter) []*ec2.Filter {
+// This lets us run multiple k8s clusters in a single OSC AZ
+func (t *oscTagging) addFilters(filters []osc.FiltersTag) []osc.FiltersTag {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("addFilters(%v)", filters)
 	// if there are no clusterID configured - no filtering by special tag names
 	// should be applied to revert to legacy behaviour.
 	if len(t.ClusterID) == 0 {
 		if len(filters) == 0 {
-			// We can't pass a zero-length Filters to AWS (it's an error)
+			// We can't pass a zero-length Filters to OSC (it's an error)
 			// So if we end up with no filters; just return nil
 			return nil
 		}
 		return filters
 	}
 
-	f := newEc2Filter("tag-key", t.clusterTagKey())
+	f := newTagFilter("tag-key", t.clusterTagKey())
 	filters = append(filters, f)
 	return filters
 }
@@ -284,24 +284,24 @@ func (t *oscTagging) addFilters(filters []*ec2.Filter) []*ec2.Filter {
 // Add additional filters, to match on our tags. This uses the tag for legacy
 // 1.5 -> 1.6 clusters and exists for backwards compatibility
 //
-// This lets us run multiple k8s clusters in a single EC2 AZ
-func (t *oscTagging) addLegacyFilters(filters []*ec2.Filter) []*ec2.Filter {
+// This lets us run multiple k8s clusters in a single OSC AZ
+func (t *oscTagging) addLegacyFilters(filters []osc.FiltersTag) []osc.FiltersTag {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("addLegacyFilters(%v)", filters)
 	// if there are no clusterID configured - no filtering by special tag names
 	// should be applied to revert to legacy behaviour.
 	if len(t.ClusterID) == 0 {
 		if len(filters) == 0 {
-			// We can't pass a zero-length Filters to AWS (it's an error)
+			// We can't pass a zero-length Filters to OSC (it's an error)
 			// So if we end up with no filters; just return nil
 			return nil
 		}
 		return filters
 	}
 
-	f := newEc2Filter(fmt.Sprintf("tag:%s", tagNameKubernetesCluster()), t.ClusterID)
+	f := newTagFilter(fmt.Sprintf("tag:%s", tagNameKubernetesCluster()), t.ClusterID)
 
-	// We can't pass a zero-length Filters to AWS (it's an error)
+	// We can't pass a zero-length Filters to OSC (it's an error)
 	// So if we end up with no filters; we need to return nil
 	filters = append(filters, f)
 	return filters

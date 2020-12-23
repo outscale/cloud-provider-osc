@@ -17,7 +17,7 @@ limitations under the License.
 package osc
 
 import (
-	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/outscale/osc-sdk-go/osc"
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
@@ -51,5 +51,5 @@ type oscInstance struct {
 func (i *oscInstance) describeInstance() (osc.Vm, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("describeInstance")
-	return describeInstance(i.ec2, InstanceID(i.awsID))
+	return describeInstance(i.fcu, InstanceID(i.oscID))
 }

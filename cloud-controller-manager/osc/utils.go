@@ -179,7 +179,7 @@ func mapNodeNameToPrivateDNSName(nodeName types.NodeName) string {
 	return string(nodeName)
 }
 
-// mapInstanceToNodeName maps a EC2 instance to a k8s NodeName, by extracting the PrivateDNSName
+// mapInstanceToNodeName maps a OSC instance to a k8s NodeName, by extracting the PrivateDNSName
 func mapInstanceToNodeName(i osc.Vm) types.NodeName {
 	return types.NodeName(i.PrivateDnsName)
 }
@@ -460,7 +460,7 @@ func azToRegion(az string) (string, error) {
 
 // isRegionValid accepts an AWS region name and returns if the region is a
 // valid region known to the AWS SDK. Considers the region returned from the
-// EC2 metadata service to be a valid region as it's only available on a host
+// OSC metadata service to be a valid region as it's only available on a host
 // running in a valid AWS region.
 func isRegionValid(region string, metadata EC2Metadata) bool {
 	// Does the AWS SDK know about the region?
@@ -511,7 +511,7 @@ func newOScInstance(oscService LBU, instance *osc.Vm) *OScInstance {
 	return self
 }
 
-// extractNodeAddresses maps the instance information from EC2 to an array of NodeAddresses
+// extractNodeAddresses maps the instance information from OSC to an array of NodeAddresses
 func extractNodeAddresses(instance osc.Vm) ([]v1.NodeAddress, error) {
 	// Not clear if the order matters here, but we might as well indicate a sensible preference order
 
@@ -523,38 +523,38 @@ func extractNodeAddresses(instance osc.Vm) ([]v1.NodeAddress, error) {
 
 	// handle internal network interfaces
 	if len(instance.NetworkInterfaces) > 0 {
-		for _, networkInterface := range instance.NetworkInterfaces {
+		for _, networkInterface := range instance.Nics {
 			// skip network interfaces that are not currently in use
-			if networkInterface.Status != ec2.NetworkInterfaceStatusInUse {
+			if networkInterface.State != "in-use" {
 				continue
 			}
 
-			for _, internalIP := range networkInterface.PrivateIpAddresses {
-				if ipAddress := internalIP.PrivateIpAddress; ipAddress != "" {
+			for _, internalIP := range networkInterface.PrivateIps {
+				if ipAddress := internalIP.PrivateIps; ipAddress != "" {
 					ip := net.ParseIP(ipAddress)
 					if ip == nil {
-						return nil, fmt.Errorf("OSC instance had invalid private address: %s (%q)", instance.InstanceId, ipAddress)
+						return nil, fmt.Errorf("OSC instance had invalid private address: %s (%q)", instance.VmId, ipAddress)
 					}
 					addresses = append(addresses, v1.NodeAddress{Type: v1.NodeInternalIP, Address: ip.String()})
 				}
 			}
 		}
 	} else {
-		privateIPAddress := instance.PrivateIpAddress
+		privateIPAddress := instance.PrivateIp
 		if privateIPAddress != "" {
 			ip := net.ParseIP(privateIPAddress)
 			if ip == nil {
-				return nil, fmt.Errorf("OSC instance had invalid private address: %s (%s)", instance.InstanceId, privateIPAddress)
+				return nil, fmt.Errorf("OSC instance had invalid private address: %s (%s)", instance.VmId, privateIPAddress)
 			}
 			addresses = append(addresses, v1.NodeAddress{Type: v1.NodeInternalIP, Address: ip.String()})
 		}
 	}
 	// TODO: Other IP addresses (multiple ips)?
-	publicIPAddress := instance.PublicIpAddress
+	publicIPAddress := instance.PublicIp
 	if publicIPAddress != "" {
 		ip := net.ParseIP(publicIPAddress)
 		if ip == nil {
-			return nil, fmt.Errorf("OSC instance had invalid public address: %s (%s)", instance.InstanceId, publicIPAddress)
+			return nil, fmt.Errorf("OSC instance had invalid public address: %s (%s)", instance.VmId, publicIPAddress)
 		}
 		addresses = append(addresses, v1.NodeAddress{Type: v1.NodeExternalIP, Address: ip.String()})
 	}

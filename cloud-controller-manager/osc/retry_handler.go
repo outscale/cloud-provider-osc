@@ -62,7 +62,7 @@ func (c *CrossRequestRetryDelay) BeforeSign(r *request.Request) {
 			sleepFn(delay)
 		} else if err := aws.SleepWithContext(r.Context(), delay); err != nil {
 			r.Error = awserr.New(request.CanceledErrorCode, "request context canceled", err)
-			r.Retryable = aws.Bool(false)
+			r.Retryable = false
 			return
 		}
 
@@ -97,8 +97,8 @@ func (c *CrossRequestRetryDelay) AfterRetry(r *request.Request) {
 	}
 	if awsError.Code() == "RequestLimitExceeded" {
 		c.backoff.ReportError()
-		recordAWSThrottlesMetric(operationName(r))
-		klog.Warningf("Got RequestLimitExceeded error on AWS request (%s)",
+		recordOSCThrottlesMetric(operationName(r))
+		klog.Warningf("Got RequestLimitExceeded error on OSC request (%s)",
 			describeRequest(r))
 	}
 }
