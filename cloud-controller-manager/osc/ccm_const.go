@@ -19,7 +19,6 @@ package osc
 import (
 	"time"
 
-	"github.com/outscale/osc-sdk-go/osc"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 

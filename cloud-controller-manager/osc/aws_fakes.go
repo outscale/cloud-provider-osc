@@ -47,7 +47,7 @@ func NewFakeOSCServices(clusterID string) *FakeOSCServices {
 	s := &FakeOSCServices{}
 	s.region = "us-east-1"
 	s.fcu = &FakeOSCImpl{osc: s}
-	s.lbu = &FaklBUU{osc: s}
+	s.lbu = &FakeLBU{osc: s}
 	s.metadata = &FakeMetadata{aws: s}
 
 	s.networkInterfacesMacs = []string{"aa:bb:cc:dd:ee:00", "aa:bb:cc:dd:ee:01"}
@@ -99,7 +99,7 @@ func (s *FakeOSCServices) Metadata() (EC2Metadata, error) {
 // FakeFCU is a fake EC2 client used for testing
 type FakeFCU interface {
 	FCU
-	CreateSubnet(osc.Subnet) (osc.SubregionName, error)
+	CreateSubnet(osc.Subnet) (osc.CreateSubnetResponse, error)
 	RemoveSubnets()
 	CreateRouteTable(osc.RouteTable) (osc.CreateRouteTableResponse, error)
 	RemoveRouteTables()
@@ -173,7 +173,7 @@ func (fcui *FakeFCUImpl) DeleteSecurityGroup(*osc.DeleteSecurityGroupOpts) (osc.
 
 // AuthorizeSecurityGroupIngress is not implemented but is required for
 // interface conformance
-func (fcui *FakeFCUImpl) AuthorizeSecurityGroupIngress(*osc.CreateSecurityGroupRuleOpts) (osc.SecurityGroupRuleResponse, error) {
+func (fcui *FakeFCUImpl) AuthorizeSecurityGroupIngress(*osc.CreateSecurityGroupRuleOpts) (osc.CreateSecurityGroupRuleResponse, error) {
 	panic("Not implemented")
 }
 
@@ -204,7 +204,7 @@ func (fcui *FakeFCUImpl) RemoveSubnets() {
 }
 
 // CreateTags is not implemented but is required for interface conformance
-func (fcui *FakeFCUImpl) CreateTags(*osc.CreateTagsopts) (osc.CreateTagsResponse, error) {
+func (fcui *FakeFCUImpl) CreateTags(*osc.CreateTagsOpts) (osc.CreateTagsResponse, error) {
 	panic("Not implemented")
 }
 
@@ -240,7 +240,7 @@ func (fcui *FakeFCUImpl) DeleteRoute(request *osc.DeleteRouteOpts) (osc.DeleteRo
 
 // ModifyInstanceAttribute is not implemented but is required for interface
 // conformance
-func (fcui *FakeFCUImpl) ModifyInstanceAttribute(request *osc.ModifyInstanceAttributeInput) (osc.ModifyInstanceAttributeOutput, error) {
+func (fcui *FakeFCUImpl) ModifyInstanceAttribute(request *osc.UpdateVmOpts) (osc.UpdateVmResponse, error) {
 	panic("Not implemented")
 }
 
@@ -320,108 +320,108 @@ type FakeLBU struct {
 
 // CreateLoadBalancer is not implemented but is required for interface
 // conformance
-func (lbu *FakeLBU) CreateLoadBalancer(*lbu.CreateLoadBalancerInput) (*lbu.CreateLoadBalancerOutput, error) {
+func (lbu *FakeLBU) CreateLoadBalancer(*osc.CreateLoadBalancerOpts) (osc.CreateLoadBalancerResponse, error) {
 	panic("Not implemented")
 }
 
 // DeleteLoadBalancer is not implemented but is required for interface
 // conformance
-func (lbu *FakeLBU) DeleteLoadBalancer(input *lbu.DeleteLoadBalancerInput) (*lbu.DeleteLoadBalancerOutput, error) {
+func (lbu *FakeLBU) DeleteLoadBalancer(input *osc.DeleteLoadBalancerOpts) (osc.DeleteLoadBalancerResponse, error) {
 	panic("Not implemented")
 }
 
 // DescribeLoadBalancers is not implemented but is required for interface
 // conformance
-func (lbu *FakeLBU) DescribeLoadBalancers(input *lbu.DescribeLoadBalancersInput) (*lbu.DescribeLoadBalancersOutput, error) {
+func (lbu *FakeLBU) DescribeLoadBalancers(input *osc.ReadLoadBalancersOpts) (*osc.ReadLoadBalancersResponse, error) {
 	panic("Not implemented")
 }
 
 // AddTags is not implemented but is required for interface conformance
-func (lbu *FakeLBU) AddTags(input *lbu.AddTagsInput) (*lbu.AddTagsOutput, error) {
+func (lbu *FakeLBU) AddTags(input *osc.CreateTagsOpts) (*osc.CreateTagsResponse, error) {
 	panic("Not implemented")
 }
 
 // RegisterInstancesWithLoadBalancer is not implemented but is required for
 // interface conformance
-func (lbu *FakeLBU) RegisterInstancesWithLoadBalancer(*lbu.RegisterInstancesWithLoadBalancerInput) (*lbu.RegisterInstancesWithLoadBalancerOutput, error) {
+func (lbu *FakeLBU) RegisterVmsInLoadBalancer(*osc.RegisterVmsInLoadBalancerOpts) (*osc.RegisterVmsInLoadBalancerResponse, error) {
 	panic("Not implemented")
 }
 
 // DeregisterInstancesFromLoadBalancer is not implemented but is required for
 // interface conformance
-func (lbu *FakeLBU) DeregisterInstancesFromLoadBalancer(*lbu.DeregisterInstancesFromLoadBalancerInput) (*lbu.DeregisterInstancesFromLoadBalancerOutput, error) {
+func (lbu *FakeLBU) DeregisterVmsInLoadBalancer(*osc.DeregisterVmsInLoadBalancerOpts) (*osc.DeregisterVmsInLoadBalancerResponse, error) {
 	panic("Not implemented")
 }
 
 // DetachLoadBalancerFromSubnets is not implemented but is required for
 // interface conformance
-func (lbu *FakeLBU) DetachLoadBalancerFromSubnets(*lbu.DetachLoadBalancerFromSubnetsInput) (*lbu.DetachLoadBalancerFromSubnetsOutput, error) {
+func (lbu *FakeLBU) DetachLoadBalancerFromSubnets(*osc.DeregisterVmsInLoadBalancerOpts) (*osc.DeregisterVmsInLoadBalancerResponse, error) {
 	panic("Not implemented")
 }
 
 // AttachLoadBalancerToSubnets is not implemented but is required for interface
 // conformance
-func (lbu *FakeLBU) AttachLoadBalancerToSubnets(*lbu.AttachLoadBalancerToSubnetsInput) (*lbu.AttachLoadBalancerToSubnetsOutput, error) {
+func (lbu *FakeLBU) AttachLoadBalancerToSubnets(*osc.RegisterVmsInLoadBalancerOpts) (*osc.RegisterVmsInLoadBalancerOpts, error) {
 	panic("Not implemented")
 }
 
 // CreateLoadBalancerListeners is not implemented but is required for interface
 // conformance
-func (lbu *FakeLBU) CreateLoadBalancerListeners(*lbu.CreateLoadBalancerListenersInput) (*lbu.CreateLoadBalancerListenersOutput, error) {
+func (lbu *FakeLBU) CreateLoadBalancerListeners(*osc.CreateLoadBalancerListenersOpts) (*osc.CreateLoadBalancerListenersResponse, error) {
 	panic("Not implemented")
 }
 
 // DeleteLoadBalancerListeners is not implemented but is required for interface
 // conformance
-func (lbu *FakeLBU) DeleteLoadBalancerListeners(*lbu.DeleteLoadBalancerListenersInput) (*lbu.DeleteLoadBalancerListenersOutput, error) {
+func (lbu *FakeLBU) DeleteLoadBalancerListeners(*osc.DeleteLoadBalancerListenersOpts) (*osc.DeleteLoadBalancerListenersResponse, error) {
 	panic("Not implemented")
 }
 
 // ApplySecurityGroupsToLoadBalancer is not implemented but is required for
 // interface conformance
-func (lbu *FakeLBU) ApplySecurityGroupsToLoadBalancer(*lbu.ApplySecurityGroupsToLoadBalancerInput) (*lbu.ApplySecurityGroupsToLoadBalancerOutput, error) {
+func (lbu *FakeLBU) ApplySecurityGroupsToLoadBalancer(*osc.CreateLoadBalancerListenersOpts) (*osc.CreateLoadBalancerListenersResponse, error) {
 	panic("Not implemented")
 }
 
 // ConfigureHealthCheck is not implemented but is required for interface
 // conformance
-func (lbu *FakeLBU) ConfigureHealthCheck(*lbu.ConfigureHealthCheckInput) (*lbu.ConfigureHealthCheckOutput, error) {
+func (lbu *FakeLBU) ReadVmsHealth(*osc.ReadVmsHealthOpts) (*osc.ReadVmsHealthResponse, error) {
 	panic("Not implemented")
 }
 
 // CreateLoadBalancerPolicy is not implemented but is required for interface
 // conformance
-func (lbu *FakeLBU) CreateLoadBalancerPolicy(*lbu.CreateLoadBalancerPolicyInput) (*lbu.CreateLoadBalancerPolicyOutput, error) {
+func (lbu *FakeLBU) CreateLoadBalancerPolicy(*osc.CreateLoadBalancerPolicyOpts) (*osc.CreateLoadBalancerPolicyResponse, error) {
 	panic("Not implemented")
 }
 
 // SetLoadBalancerPoliciesForBackendServer is not implemented but is required
 // for interface conformance
-func (lbu *FakeLBU) SetLoadBalancerPoliciesForBackendServer(*lbu.SetLoadBalancerPoliciesForBackendServerInput) (*lbu.SetLoadBalancerPoliciesForBackendServerOutput, error) {
+func (lbu *FakeLBU) SetLoadBalancerPoliciesForBackendServer(*osc.CreateLoadBalancerPolicyOpts) (*osc.CreateLoadBalancerPolicyResponse, error) {
 	panic("Not implemented")
 }
 
 // SetLoadBalancerPoliciesOfListener is not implemented but is required for
 // interface conformance
-func (lbu *FakeLBU) SetLoadBalancerPoliciesOfListener(input *lbu.SetLoadBalancerPoliciesOfListenerInput) (*lbu.SetLoadBalancerPoliciesOfListenerOutput, error) {
+func (lbu *FakeLBU) SetLoadBalancerPoliciesOfListener(input *osc.CreateLoadBalancerPolicyOpts) (*osc.CreateLoadBalancerPolicyResponse, error) {
 	panic("Not implemented")
 }
 
 // DescribeLoadBalancerPolicies is not implemented but is required for
 // interface conformance
-func (lbu *FakeLBU) DescribeLoadBalancerPolicies(input *lbu.DescribeLoadBalancerPoliciesInput) (*lbu.DescribeLoadBalancerPoliciesOutput, error) {
+func (lbu *FakeLBU) DescribeLoadBalancerPolicies(input *osc.ReadLoadBalancersOpts) (*osc.ReadLoadBalancersResponse, error) {
 	panic("Not implemented")
 }
 
 // DescribeLoadBalancerAttributes is not implemented but is required for
 // interface conformance
-func (lbu *FakeLBU) DescribeLoadBalancerAttributes(*lbu.DescribeLoadBalancerAttributesInput) (*lbu.DescribeLoadBalancerAttributesOutput, error) {
+func (lbu *FakeLBU) DescribeLoadBalancerAttributes(*osc.ReadLoadBalancersOpts) (*osc.ReadLoadBalancersResponse, error) {
 	panic("Not implemented")
 }
 
 // ModifyLoadBalancerAttributes is not implemented but is required for
 // interface conformance
-func (lbu *FakeLBU) ModifyLoadBalancerAttributes(*lbu.ModifyLoadBalancerAttributesInput) (*lbu.ModifyLoadBalancerAttributesOutput, error) {
+func (lbu *FakeLBU) ModifyLoadBalancerAttributes(*osc.UpdateLoadBalancerOpts) (*osc.UpdateLoadBalancerResponse, error) {
 	panic("Not implemented")
 }
 
@@ -431,7 +431,7 @@ func (lbu *FakeLBU) expectDescribeLoadBalancers(loadBalancerName string) {
 	panic("Not implemented")
 }
 
-func instanceMatchesFilter(instance osc.Vm, filter *ec2.Filter) bool {
+func instanceMatchesFilter(instance osc.Vm, filter *osc.FiltersVm) bool {
 	name := *filter.Name
 	if name == "private-dns-name" {
 		if instance.PrivateDnsName == nil {
@@ -446,7 +446,7 @@ func instanceMatchesFilter(instance osc.Vm, filter *ec2.Filter) bool {
 
 	if name == "tag-key" {
 		for _, instanceTag := range instance.Tags {
-			if contains(filter.Values, aws.StringValue(instanceTag.Key)) {
+			if contains(filter.Values, instanceTag.Key) {
 				return true
 			}
 		}
@@ -456,7 +456,7 @@ func instanceMatchesFilter(instance osc.Vm, filter *ec2.Filter) bool {
 	if strings.HasPrefix(name, "tag:") {
 		tagName := name[4:]
 		for _, instanceTag := range instance.Tags {
-			if aws.StringValue(instanceTag.Key) == tagName && contains(filter.Values, aws.StringValue(instanceTag.Value)) {
+			if instanceTag.Key == tagName && contains(filter.Values, instanceTag.Value) {
 				return true
 			}
 		}

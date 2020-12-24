@@ -23,7 +23,6 @@ import (
 	"sync"
 	"time"
 
-    "github.com/outscale/osc-sdk-go/osc"
 
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"k8s.io/klog"

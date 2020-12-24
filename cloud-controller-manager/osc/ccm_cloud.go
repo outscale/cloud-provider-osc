@@ -523,7 +523,7 @@ func (c *Cloud) describeLoadBalancer(name string) (osc.LoadBalancer, error) {
 			osc.ReadLoadBalancersRequest{
 			    Filters: osc.FiltersLoadBalancer{
 				    LoadBalancerNames: []string{loadBalancerName},
-				}
+				},
 			}),
 	}
 

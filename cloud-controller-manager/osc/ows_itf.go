@@ -20,6 +20,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/ec2metadata"
 
     "context"
+    _nethttp "net/http"
 
 	"github.com/outscale/osc-sdk-go/osc"
 )
@@ -31,7 +32,7 @@ import (
 type FCU interface {
 	// Query OSC for instances matching the filter
 	ReadVms(context.Context, *osc.ReadVmsOpts) ([]osc.Vm, *_nethttp.Response, error)
-	ReadSecurityGroups(context.Context, *osc.ReadSecurityGroupsOpts) ([]osc.SecurityGroups, *_nethttp.Response, error)
+	ReadSecurityGroups(context.Context, *osc.ReadSecurityGroupsOpts) ([]osc.SecurityGroup, *_nethttp.Response, error)
 
     CreateSecurityGroup(context.Context, *osc.CreateSecurityGroupOpts) (osc.CreateSecurityGroupResponse, *_nethttp.Response, error)
     DeleteSecurityGroup(context.Context, *osc.DeleteSecurityGroupOpts) (osc.DeleteSecurityGroupResponse, *_nethttp.Response, error)
@@ -43,7 +44,7 @@ type FCU interface {
 
     CreateTags(context.Context, *osc.CreateTagsOpts) (osc.CreateTagsResponse, *_nethttp.Response, error)
 
-    ReadRouteTables(context.Context, *osc.ReadRouteTablesOpts) ([]osc.RouteTables, *_nethttp.Response, error)
+    ReadRouteTables(context.Context, *osc.ReadRouteTablesOpts) ([]osc.RouteTable, *_nethttp.Response, error)
     CreateRouteTable(context.Context, *osc.CreateRouteTableOpts) (osc.CreateRouteTableResponse, *_nethttp.Response, error)
     DeleteRouteTable(context.Context, *osc.DeleteRouteTableOpts) (osc.DeleteRouteTableResponse, *_nethttp.Response, error)
 
@@ -54,22 +55,24 @@ type FCU interface {
 
 // LBU is a simple pass-through of OSC' LBU client interface, which allows for testing
 type LBU interface {
-    CreateLoadBalancer(context.Context, *osc.CreateLoadBalancerOpts) (osc.CreateLoadBalancerResponse, *_nethttp.Response, error)
-    DeleteLoadBalancer(context.Context, *osc.DeleteLoadBalancerOpts) (osc.DeleteLoadBalancerResponse, *_nethttp.Response, error)
-    ReadLoadBalancers(context.Context, *osc.ReadLoadBalancersOpts) (osc.ReadLoadBalancersResponse, *_nethttp.Response, error)
-    UpdateLoadBalancer(context.Context, *osc.UpdateLoadBalancerOpts) (osc.UpdateLoadBalancerResponse, *_nethttp.Response, error)
+    CreateLoadBalancer(*osc.CreateLoadBalancerOpts) (osc.CreateLoadBalancerResponse, *_nethttp.Response, error)
+    DeleteLoadBalancer(*osc.DeleteLoadBalancerOpts) (osc.DeleteLoadBalancerResponse, *_nethttp.Response, error)
+    ReadLoadBalancers(*osc.ReadLoadBalancersOpts) (osc.ReadLoadBalancersResponse, *_nethttp.Response, error)
+    UpdateLoadBalancer(*osc.UpdateLoadBalancerOpts) (osc.UpdateLoadBalancerResponse, *_nethttp.Response, error)
 
 
-    ReadLoadBalancerTags(context.Context, *osc.ReadLoadBalancerTagsOpts) (osc.ReadLoadBalancerTagsResponse, *_nethttp.Response, error)
-    CreateLoadBalancerTags(context.Context, *osc.CreateLoadBalancerTagsOpts) (osc.CreateLoadBalancerTagsResponse, *_nethttp.Response, error)
+    ReadLoadBalancerTags(*osc.ReadLoadBalancerTagsOpts) (osc.ReadLoadBalancerTagsResponse, *_nethttp.Response, error)
+    CreateLoadBalancerTags(*osc.CreateLoadBalancerTagsOpts) (osc.CreateLoadBalancerTagsResponse, *_nethttp.Response, error)
 
-    RegisterVmsInLoadBalancer(context.Context, *osc.RegisterVmsInLoadBalancerOpts) (osc.RegisterVmsInLoadBalancerResponse, *_nethttp.Response, error)
-    DeregisterVmsInLoadBalancer(context.Context, *osc.DeregisterVmsInLoadBalancerOpts) (osc.DeregisterVmsInLoadBalancerResponse, *_nethttp.Response, error)
+    RegisterVmsInLoadBalancer(*osc.RegisterVmsInLoadBalancerOpts) (osc.RegisterVmsInLoadBalancerResponse, *_nethttp.Response, error)
+    DeregisterVmsInLoadBalancer(*osc.DeregisterVmsInLoadBalancerOpts) (osc.DeregisterVmsInLoadBalancerResponse, *_nethttp.Response, error)
 
-    CreateLoadBalancerPolicy(context.Context, *osc.CreateLoadBalancerPolicyOpts) (osc.CreateLoadBalancerPolicyResponse, *_nethttp.Response, error)
+    CreateLoadBalancerPolicy(*osc.CreateLoadBalancerPolicyOpts) (osc.CreateLoadBalancerPolicyResponse, *_nethttp.Response, error)
 
-    CreateLoadBalancerListeners(context.Context, *osc.CreateLoadBalancerListenersOpts) (osc.CreateLoadBalancerListenersResponse, *_nethttp.Response, error)
-    DeleteLoadBalancerListeners(context.Context, *osc.DeleteLoadBalancerListenersOpts) (osc.DeleteLoadBalancerListenersResponse, *_nethttp.Response, error)
+    CreateLoadBalancerListeners(*osc.CreateLoadBalancerListenersOpts) (osc.CreateLoadBalancerListenersResponse, *_nethttp.Response, error)
+    DeleteLoadBalancerListeners(*osc.DeleteLoadBalancerListenersOpts) (osc.DeleteLoadBalancerListenersResponse, *_nethttp.Response, error)
+
+    ReadVmsHealth(*osc.ReadVmsHealthOpts) (osc.ReadVmsHealthResponse, *_nethttp.Response, error)
 
 }
 
