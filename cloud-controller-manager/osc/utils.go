@@ -387,7 +387,7 @@ func isEqualStringPointer(l, r *string) bool {
 	return *l == *r
 }
 
-func SecurityGroupRuleExists(newPermission, existing osc.SecurityGroupRule, compareGroupUserIDs bool) bool {
+func securityGroupRuleExists(newPermission, existing osc.SecurityGroupRule, compareGroupUserIDs bool) bool {
 	if !isEqualIntPointer(newPermission.FromPort, existing.FromPort) {
 		return false
 	}

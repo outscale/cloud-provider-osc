@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/outscale/osc-sdk-go"
+	"github.com/outscale/osc-sdk-go/osc"
 )
 
 // ********************* CCM oscSdkFCU Def & functions *********************
@@ -33,7 +33,7 @@ type oscSdkFCU struct {
 	fcu    *osc.FCU
 }
 
-// Implementation of OSC.Instances
+// Implementation of OSC.Vm
 func (s *oscSdkFCU) ReadVms(ctx context.Context, request *osc.ReadVmsOpts) ([]osc.Vm, error) {
 	// Instances are not paged
 	results := []osc.Vm{}
@@ -41,16 +41,16 @@ func (s *oscSdkFCU) ReadVms(ctx context.Context, request *osc.ReadVmsOpts) ([]os
 	for {
 		response, httpRes, err := s.api.VmApi.ReadVms(s.auth, request)
 		if err != nil {
-			recordAWSMetric("describe_instance", 0, err)
+			recordOSCMetric("describe_instance", 0, err)
 			return nil, fmt.Errorf("error listing OSC instances: %q", err)
 		}
 	}
 	timeTaken := time.Since(requestTime).Seconds()
-	recordAWSMetric("describe_instance", timeTaken, nil)
+	recordOSCMetric("describe_instance", timeTaken, nil)
 	return results.Vms, nil
 }
 
-// Implements OSC.DescribeSecurityGroups
+// Implements OSC.ReadSecurityGroups
 func (s *oscSdkFCU) ReadSecurityGroups(ctx context.Context, request *osc.ReadSecurityGroups) ([]osc.SecurityGroup, error) {
 	// Security groups are not paged
 	results := []osc.SecurityGroup{}
@@ -58,12 +58,12 @@ func (s *oscSdkFCU) ReadSecurityGroups(ctx context.Context, request *osc.ReadSec
 	for {
 		response, httpRes, err := s.api.SecurityGroupApi.ReadSecurityGroups(s.auth, request)
 		if err != nil {
-			recordAWSMetric("describe_security_groups", 0, err)
+			recordOSCMetric("describe_security_groups", 0, err)
 			return nil, fmt.Errorf("error listing OSC security groups: %q", err)
 		}
 	}
 	timeTaken := time.Since(requestTime).Seconds()
-	recordAWSMetric("describe_security_groups", timeTaken, nil)
+	recordOSCMetric("describe_security_groups", timeTaken, nil)
 	return results.SecurityGroups, nil
 }
 
@@ -97,7 +97,7 @@ func (s *oscSdkFCU) CreateTags(ctx context.Context, request *osc.CreateTagsInput
 	requestTime := time.Now()
 	resp, err := s.api.TagApi.CreateTags(s.auth, request)
 	timeTaken := time.Since(requestTime).Seconds()
-	recordAWSMetric("create_tags", timeTaken, err)
+	recordOSCMetric("create_tags", timeTaken, err)
 	return resp, err
 }
 
@@ -107,14 +107,14 @@ func (s *oscSdkFCU) DescribeRouteTables(ctx context.Context, request *osc.ReadRo
 	for {
 		response, httpRes, err := s.api.RouteTableApi.ReadRouteTables(s.auth, request)
 		if err != nil {
-			recordAWSMetric("describe_route_tables", 0, err)
+			recordOSCMetric("describe_route_tables", 0, err)
 			return nil, fmt.Errorf("error listing OSC route tables: %q", err)
 		}
 
 		results = append(results, response.RouteTables...)
 	}
 	timeTaken := time.Since(requestTime).Seconds()
-	recordAWSMetric("describe_route_tables", timeTaken, nil)
+	recordOSCMetric("describe_route_tables", timeTaken, nil)
 	return results.RouteTables, nil
 }
 

@@ -96,7 +96,7 @@ func (s *FakeOSCServices) Metadata() (EC2Metadata, error) {
 	return s.metadata, nil
 }
 
-// FakeEC2 is a fake EC2 client used for testing
+// FakeFCU is a fake EC2 client used for testing
 type FakeFCU interface {
 	FCU
 	CreateSubnet(osc.Subnet) (osc.SubregionName, error)
@@ -105,7 +105,7 @@ type FakeFCU interface {
 	RemoveRouteTables()
 }
 
-// FakeFBUImpl is an implementation of the FakeEC2 interface used for testing
+// FakeFCUImpl is an implementation of the FakeFCU interface used for testing
 type FakeFCUImpl struct {
 	osc                      *FakeOSCServices
 	Subnets                  []osc.Subnet
