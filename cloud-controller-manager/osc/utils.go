@@ -503,7 +503,7 @@ func newOScInstance(oscService LBU, instance *osc.Vm) *OScInstance {
 		awsID:            instance.InstanceId,
 		nodeName:         mapInstanceToNodeName(instance),
 		availabilityZone: az,
-		instanceType:     instance.InstanceType),
+		instanceType:     instance.InstanceType,
 		vpcID:            instance.VpcId,
 		subnetID:         instance.SubnetId,
 	}

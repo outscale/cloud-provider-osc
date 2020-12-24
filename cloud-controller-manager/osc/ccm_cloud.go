@@ -638,7 +638,7 @@ func (c *Cloud) setSecurityGroupIngress(securityGroupID string, permissions Secu
             CreateSecurityGroupRuleRequest: optional.NewInterface(
                 osc.CreateSecurityGroupRuleRequest{
                     SecurityGroupId: []string{securityGroupID},
-                    Rules: add.List()
+                    Rules: add.List(),
                 }),
 	}
 
@@ -654,7 +654,7 @@ func (c *Cloud) setSecurityGroupIngress(securityGroupID string, permissions Secu
 		request := osc.DeleteSecurityGroupRuleOpts{
             DeleteSecurityGroupRuleRequest: optional.NewInterface(
                 osc.DeleteSecurityGroupRuleRequest{
-                    SecurityGroupId:,
+                    SecurityGroupId: securityGroupID,
                     Rules: remove.List(),
                 }),
         }
@@ -926,12 +926,14 @@ func (c *Cloud) findSubnets() ([]osc.Subnet, error) {
 
 	if c.vpcID != "" {
 		//request.Filters = []*ec2.Filter{newEc2Filter("vpc-id", c.vpcID)}
-		request.ReadSubnetsRequest = optional.NewInterface(
-                                        osc.ReadSubnetsRequest{
-                                            Filters: osc.ReadSubnetsRequest{
-                                                NetIds: c.vpcID,
-                                            },
-                                    }),
+        request = &osc.ReadSubnetsOpts{
+            ReadSubnetsRequest: optional.NewInterface(
+                osc.ReadSubnetsRequest{
+                    Filters: osc.ReadSubnetsRequest{
+                    NetIds: c.vpcID,
+                },
+            }),
+        }
 
 		subnets, err := c.fcu.ReadSubnets(ctx, request)
 		if err != nil {
@@ -1332,9 +1334,9 @@ func (c *Cloud) EnsureLoadBalancer(ctx context.Context, clusterName string, apiS
 	}
 
 	if len(subnetIDs) > 0 && c.vpcID != "" {
-		oscSourceRanges := []string
+		oscSourceRanges := []string{}
 		for _, sourceRange := range sourceRanges.StringSlice() {
-			oscSourceRanges = append(oscSourceRanges, sourceRange})
+			oscSourceRanges = append(oscSourceRanges, sourceRange)
 		}
 
 		permissions := NewSecurityGroupRuleSet()
@@ -1771,9 +1773,10 @@ func (c *Cloud) EnsureLoadBalancerDeleted(ctx context.Context, clusterName strin
 		for {
 			for securityGroupID := range securityGroupIDs {
 				request := osc.DeleteSecurityGroupOpts{
-                    osc.DeleteSecurityGroupRuleRequest{
-                        SecurityGroupId: securityGroupID,
-			        }),
+				    DeleteSecurityGroupRuleRequest: optional.NewInterface(
+                        osc.DeleteSecurityGroupRuleRequest{
+                            SecurityGroupId: securityGroupID,
+                        }),
 				}
 				_, err := c.fcu.DeleteSecurityGroup(ctx, request)
 				if err == nil {
@@ -1900,8 +1903,8 @@ func (c *Cloud) getInstancesByIDs(instanceIDs []string) (map[string]osc.Vm, erro
 			osc.ReadVmsRequest{
 				VmIds: instanceIDs,
 			}),
-
-	instances, err := c.fcu.ReadVms(request)
+    }
+	instances, err := c.fcu.ReadVms(ctx, request)
 	if err != nil {
 		return nil, err
 	}
@@ -1969,7 +1972,7 @@ func (c *Cloud) describeInstances(filters []osc.FiltersVm) ([]osc.Vm, error) {
 			osc.ReadVmsRequest{
 				Filters: filters,
 			}),
-
+    }
 	response, err := c.fcu.ReadVms(ctx, request)
 	if err != nil {
 		return nil, err

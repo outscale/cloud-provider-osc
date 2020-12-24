@@ -111,7 +111,7 @@ func (c *Cloud) getVpcCidrBlocks() ([]string, error) {
 					NetIds: []string{c.vpcID},
 				},
 			}),
-	}
+	})
 	if err != nil {
 		return nil, fmt.Errorf("error querying VPC for LBU: %q", err)
 	}
@@ -443,7 +443,7 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
                     DeleteLoadBalancerListenersRequest: optional.NewInterface(
                         osc.DeleteLoadBalancerListenersRequest{
                             LoadBalancerName: loadBalancerName,
-                            LoadBalancerPorts: removals
+                            LoadBalancerPorts: removals,
                         }),
 				}
 
@@ -581,7 +581,8 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 		// Update attributes if they're dirty
 		if !reflect.DeepEqual(loadBalancerAttributes, foundAttributes) {
 			modifyAttributesRequest := &osc.UpdateLoadBalancerOpts{
-			    osc.UpdateLoadBalancerRequest {
+			    UpdateLoadBalancerRequest: optional.NewInterface(
+			        osc.UpdateLoadBalancerRequest {
                             LoadBalancerName: loadBalancerName,
                             Listeners: additions,
                         }),
@@ -776,7 +777,7 @@ func (c *Cloud) ensureLoadBalancerHealthCheck(loadBalancer *lbu.LoadBalancerDesc
 
 // Makes sure that exactly the specified hosts are registered as instances with the load balancer
 func (c *Cloud) ensureLoadBalancerInstances(loadBalancerName string,
-	lbInstances []osc.Vm
+	lbInstances []osc.Vm,
 	instanceIDs map[InstanceID]osc.Vm) error {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("ensureLoadBalancerInstances(%v,%v, %v)", loadBalancerName, lbInstances, instanceIDs)
@@ -914,7 +915,7 @@ func (c *Cloud) createProxyProtocolPolicy(loadBalancerName string) error {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("createProxyProtocolPolicy(%v)", loadBalancerName)
 	request := &osc.CreateLoadBalancerPolicyOPTS{
-		LoadBalancerName: loadBalancerName),
+		LoadBalancerName: loadBalancerName,
 		PolicyName:       ProxyProtocolPolicyName,
 		PolicyTypeName:   "ProxyProtocolPolicyType",
 		PolicyAttributes: []*osc.PolicyAttribute{
@@ -925,7 +926,7 @@ func (c *Cloud) createProxyProtocolPolicy(loadBalancerName string) error {
 		},
 	}
 	klog.V(2).Info("Creating proxy protocol policy on load balancer")
-	_, err := c.lbu.CreateLoadBalancerPolicy(request)
+	_, err := c.lbu.CreateLoadBalancerPolicy(ctx, request)
 	if err != nil {
 		return fmt.Errorf("error creating proxy protocol policy on load balancer: %q", err)
 	}

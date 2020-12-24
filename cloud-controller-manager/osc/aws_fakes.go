@@ -278,9 +278,9 @@ func (m *FakeMetadata) GetMetadata(key string) (string, error) {
 	} else if key == "instance-id" {
 		return i.InstanceId, nil
 	} else if key == "local-hostname" {
-		return aws.StringValue(i.PrivateDnsName, nil
+		return i.PrivateDnsName, nil
 	} else if key == "public-hostname" {
-		return aws.StringValue(i.PublicDnsName, nil
+		return i.PublicDnsName, nil
 	} else if key == "local-ipv4" {
 		return i.PrivateIpAddress, nil
 	} else if key == "public-ipv4" {
