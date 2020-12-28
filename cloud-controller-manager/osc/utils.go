@@ -345,7 +345,7 @@ func getPortSets(annotation string) (ports *portSets) {
 	return
 }
 
-func toStatus(lb *lbu.LoadBalancerDescription) *v1.LoadBalancerStatus {
+func toStatus(lb osc.LoadBalancer) *v1.LoadBalancerStatus {
 	status := &v1.LoadBalancerStatus{}
 
 	if lb.DNSName != "" {
@@ -417,9 +417,9 @@ func securityGroupRuleExists(newPermission, existing osc.SecurityGroupRule, comp
 		}
 	}
 
-	for _, leftPair := range newPermission.UserIdGroupPairs {
+	for _, leftPair := range newPermission.SecurityGroupsMembers {
 		found := false
-		for _, rightPair := range existing.UserIdGroupPairs {
+		for _, rightPair := range existing.SecurityGroupsMembers {
 			if isEqualUserGroupPair(leftPair, rightPair, compareGroupUserIDs) {
 				found = true
 				break
@@ -433,7 +433,7 @@ func securityGroupRuleExists(newPermission, existing osc.SecurityGroupRule, comp
 	return true
 }
 
-func isEqualUserGroupPair(l, r osc.UserIdGroupPair, compareGroupUserIDs bool) bool {
+func isEqualUserGroupPair(l, r osc.SecurityGroupsMembers, compareGroupUserIDs bool) bool {
 	klog.V(2).Infof("Comparing %v to %v", *l.GroupId, *r.GroupId)
 	if isEqualStringPointer(l.GroupId, r.GroupId) {
 		if compareGroupUserIDs {
@@ -493,14 +493,14 @@ func isRegionValid(region string, metadata EC2Metadata) bool {
 }
 
 // newOScInstance creates a new awsInstance object
-func newOScInstance(oscService LBU, instance *osc.Vm) *OScInstance {
+func newOScInstance(oscService LBU, instance *osc.Vm) *oscInstance {
 	az := ""
 	if instance.Placement != nil {
 		az = instance.Placement.AvailabilityZone
 	}
-	self := &awsInstance{
+	self := &oscInstance{
 		lbu:              oscService,
-		awsID:            instance.InstanceId,
+		oscID:            instance.InstanceId,
 		nodeName:         mapInstanceToNodeName(instance),
 		availabilityZone: az,
 		instanceType:     instance.InstanceType,
@@ -613,10 +613,10 @@ func updateConfigZone(cfg *CloudConfig, metadata EC2Metadata) error {
 	return nil
 }
 
-func newAWSSDKProvider(creds *credentials.Credentials, cfg *CloudConfig) *awsSDKProvider {
+func newOSCSDKProvider(creds *credentials.Credentials, cfg *CloudConfig) *oscSDKProvider {
 	debugPrintCallerFunctionName()
-	klog.V(10).Infof("newAWSSDKProvider(%v,%v)", creds, cfg)
-	return &awsSDKProvider{
+	klog.V(10).Infof("newOSCSDKProvider(%v,%v)", creds, cfg)
+	return &oscSDKProvider{
 		creds:          creds,
 		cfg:            cfg,
 		regionDelayers: make(map[string]*CrossRequestRetryDelay),

@@ -26,6 +26,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/ec2metadata"
 
 	"k8s.io/klog"
+
+	context "context"
 )
 
 // FakeOSCServices is an fake AWS session used for testing
@@ -46,38 +48,38 @@ type FakeOSCServices struct {
 func NewFakeOSCServices(clusterID string) *FakeOSCServices {
 	s := &FakeOSCServices{}
 	s.region = "us-east-1"
-	s.fcu = &FakeOSCImpl{osc: s}
+	s.fcu = &FakeFCU{osc: s}
 	s.lbu = &FakeLBU{osc: s}
-	s.metadata = &FakeMetadata{aws: s}
+	s.metadata = &FakeMetadata{osc: s}
 
 	s.networkInterfacesMacs = []string{"aa:bb:cc:dd:ee:00", "aa:bb:cc:dd:ee:01"}
 	s.networkInterfacesVpcIDs = []string{"vpc-mac0", "vpc-mac1"}
 
-	selfInstance := &osc.Vm{}
-	selfInstance.InstanceId = "i-self"
-	selfInstance.Placement = &osc.Placement{
+	selfInstance := osc.Vm{}
+	selfInstance.VmId = "i-self"
+	selfInstance.Placement = osc.Placement{
 		SubregionName: "us-east-1a",
 	}
 	selfInstance.PrivateDnsName = "ip-172-20-0-100.ec2.internal"
-	selfInstance.PrivateIpAddress = "192.168.0.1"
-	selfInstance.PublicIpAddress = "1.2.3.4"
+	selfInstance.PrivateIp = "192.168.0.1"
+	selfInstance.PublicIp = "1.2.3.4"
 	s.selfInstance = selfInstance
 	s.instances = []osc.Vm{selfInstance}
 
-	var tag osc.Tag
+	var tag osc.ResourceTag
 	tag.Key = TagNameKubernetesClusterLegacy
 	tag.Value = clusterID
-	selfInstance.Tags = []osc.Tag{&tag}
+	selfInstance.Tags = []osc.Tag{tag}
 
 	return s
 }
 
 // WithAz sets the ec2 placement availability zone
 func (s *FakeOSCServices) WithAz(az string) *FakeOSCServices {
-	if s.selfInstance.Placement == nil {
-		s.selfInstance.Placement = &osc.Placement{}
+	if (s.selfInstance.Placement == osc.Placement{}) {
+		s.selfInstance.Placement = osc.Placement{}
 	}
-	s.selfInstance.Placement.AvailabilityZone = az
+	s.selfInstance.Placement.SubregionName = az
 	return s
 }
 
@@ -114,19 +116,20 @@ type FakeFCUImpl struct {
 	ReadRouteTablesOpts      *osc.ReadRouteTablesOpts
 }
 
-// DescribeInstances returns fake instance descriptions
-func (fcui *FakeFCUImpl) DescribeInstances(request *osc.ReadVmsOpts) ([]osc.Vm, error) {
+// ReadVms returns fake instance descriptions
+func (fcui *FakeFCUImpl) ReadVms(ctx context.Context, request *osc.ReadVmsOpts) ([]osc.Vm, error) {
 	matches := []osc.Vm{}
+
 	for _, instance := range fcui.osc.instances {
-		if request.InstanceIds != nil {
-			if instance.InstanceId == nil {
+		if request.VmIds != nil {
+			if instance.VmId == nil {
 				klog.Warning("Instance with no instance id: ", instance)
 				continue
 			}
 
 			found := false
-			for _, instanceID := range request.InstanceIds {
-				if *instanceID == *instance.InstanceId {
+			for _, instanceID := range request.VmIds {
+				if *instanceID == instance.VmId {
 					found = true
 					break
 				}
@@ -155,31 +158,31 @@ func (fcui *FakeFCUImpl) DescribeInstances(request *osc.ReadVmsOpts) ([]osc.Vm, 
 
 // DescribeSecurityGroups is not implemented but is required for interface
 // conformance
-func (fcui *FakeFCUImpl) DescribeSecurityGroups(request *osc.ReadSecurityGroupsOpts) ([]osc.SecurityGroup, error) {
+func (fcui *FakeFCUImpl) ReadSecurityGroups(ctx context.Context, request *osc.ReadSecurityGroupsOpts) ([]osc.SecurityGroup, error) {
 	panic("Not implemented")
 }
 
 // CreateSecurityGroup is not implemented but is required for interface
 // conformance
-func (fcui *FakeFCUImpl) CreateSecurityGroup(*osc.CreateSecurityGroupOpts) (osc.CreateSecurityGroupResponse, error) {
+func (fcui *FakeFCUImpl) CreateSecurityGroup(ctx context.Context, request *osc.CreateSecurityGroupOpts) (osc.CreateSecurityGroupResponse, error) {
 	panic("Not implemented")
 }
 
 // DeleteSecurityGroup is not implemented but is required for interface
 // conformance
-func (fcui *FakeFCUImpl) DeleteSecurityGroup(*osc.DeleteSecurityGroupOpts) (osc.DeleteSecurityGroupResponse, error) {
+func (fcui *FakeFCUImpl) DeleteSecurityGroup(ctx context.Context, request *osc.DeleteSecurityGroupOpts) (osc.DeleteSecurityGroupResponse, error) {
 	panic("Not implemented")
 }
 
 // AuthorizeSecurityGroupIngress is not implemented but is required for
 // interface conformance
-func (fcui *FakeFCUImpl) AuthorizeSecurityGroupIngress(*osc.CreateSecurityGroupRuleOpts) (osc.CreateSecurityGroupRuleResponse, error) {
+func (fcui *FakeFCUImpl) CreateSecurityGroupRule(ctx context.Context, request *osc.CreateSecurityGroupRuleOpts) (osc.CreateSecurityGroupRuleResponse, error) {
 	panic("Not implemented")
 }
 
 // RevokeSecurityGroupIngress is not implemented but is required for interface
 // conformance
-func (fcui *FakeFCUImpl) RevokeSecurityGroupIngress(osc.DeleteSecurityGroupRuleOpts) (osc.DeleteSecurityGroupRuleResponse, error) {
+func (fcui *FakeFCUImpl) DeleteSecurityGroupRule(ctx context.Context, request *osc.DeleteSecurityGroupRuleOpts) (osc.DeleteSecurityGroupRuleResponse, error) {
 	panic("Not implemented")
 }
 
@@ -193,7 +196,7 @@ func (fcui *FakeFCUImpl) CreateSubnet(request *osc.Subnet) (osc.CreateSubnetResp
 }
 
 // DescribeSubnets returns fake subnet descriptions
-func (fcui *FakeFCUImpl) DescribeSubnets(request *osc.ReadSubnetsOpts) ([]osc.Subnet, error) {
+func (fcui *FakeFCUImpl) ReadSubnets(ctx context.Context, request *osc.ReadSubnetsOpts) ([]osc.Subnet, error) {
 	fcui.ReadSubnetsOpts = request
 	return fcui.Subnets, nil
 }
@@ -204,18 +207,18 @@ func (fcui *FakeFCUImpl) RemoveSubnets() {
 }
 
 // CreateTags is not implemented but is required for interface conformance
-func (fcui *FakeFCUImpl) CreateTags(*osc.CreateTagsOpts) (osc.CreateTagsResponse, error) {
+func (fcui *FakeFCUImpl) CreateTags(ctx context.Context, request *osc.CreateTagsOpts) (osc.CreateTagsResponse, error) {
 	panic("Not implemented")
 }
 
 // DescribeRouteTables returns fake route table descriptions
-func (fcui *FakeFCUImpl) DescribeRouteTables(request *osc.ReadRouteTablesOpts) ([]osc.RouteTable, error) {
+func (fcui *FakeFCUImpl) ReadRouteTables(ctx context.Context, request *osc.ReadRouteTablesOpts) ([]osc.RouteTable, error) {
 	fcui.ReadRouteTablesOpts = request
 	return fcui.RouteTables, nil
 }
 
 // CreateRouteTable creates fake route tables
-func (fcui *FakeFCUImpl) CreateRouteTable(request *osc.RouteTable) (osc.CreateRouteTableResponse, error) {
+func (fcui *FakeFCUImpl) CreateRouteTable(ctx context.Context, request *osc.RouteTable) (osc.CreateRouteTableResponse, error) {
 	fcui.RouteTables = append(fcui.RouteTables, request)
 	response := &osc.CreateRouteTableResponse{
 		RouteTable: request,
@@ -229,23 +232,23 @@ func (fcui *FakeFCUImpl) RemoveRouteTables() {
 }
 
 // CreateRoute is not implemented but is required for interface conformance
-func (fcui *FakeFCUImpl) CreateRoute(request *osc.CreateRouteOpts) (osc.CreateRouteResponse, error) {
+func (fcui *FakeFCUImpl) CreateRoute(ctx context.Context, request *osc.CreateRouteOpts) (osc.CreateRouteResponse, error) {
 	panic("Not implemented")
 }
 
 // DeleteRoute is not implemented but is required for interface conformance
-func (fcui *FakeFCUImpl) DeleteRoute(request *osc.DeleteRouteOpts) (osc.DeleteRouteResponse, error) {
+func (fcui *FakeFCUImpl) DeleteRoute(ctx context.Context, request *osc.DeleteRouteOpts) (osc.DeleteRouteResponse, error) {
 	panic("Not implemented")
 }
 
 // ModifyInstanceAttribute is not implemented but is required for interface
 // conformance
-func (fcui *FakeFCUImpl) ModifyInstanceAttribute(request *osc.UpdateVmOpts) (osc.UpdateVmResponse, error) {
+func (fcui *FakeFCUImpl) UpdateVm(ctx context.Context, request *osc.UpdateVmOpts) (osc.UpdateVmResponse, error) {
 	panic("Not implemented")
 }
 
 // DescribeVpcs returns fake VPC descriptions
-func (fcui *FakeFCUImpl) DescribeVpcs(request *osc.ReadNetsOpts) (osc.ReadNetsResponse, error) {
+func (fcui *FakeFCUImpl) ReadNets(ctx context.Context, request *osc.ReadNetsOpts) (osc.ReadNetsResponse, error) {
 	return &osc.ReadNetsResponse{NetIds: []osc.Vpc{{CidrBlock: "172.20.0.0/16"}}}, nil
 }
 
@@ -320,108 +323,108 @@ type FakeLBU struct {
 
 // CreateLoadBalancer is not implemented but is required for interface
 // conformance
-func (lbu *FakeLBU) CreateLoadBalancer(*osc.CreateLoadBalancerOpts) (osc.CreateLoadBalancerResponse, error) {
+func (lbu *FakeLBU) CreateLoadBalancer(ctx context.Context, *osc.CreateLoadBalancerOpts) (osc.CreateLoadBalancerResponse, error) {
 	panic("Not implemented")
 }
 
 // DeleteLoadBalancer is not implemented but is required for interface
 // conformance
-func (lbu *FakeLBU) DeleteLoadBalancer(input *osc.DeleteLoadBalancerOpts) (osc.DeleteLoadBalancerResponse, error) {
+func (lbu *FakeLBU) DeleteLoadBalancer(ctx context.Context, input *osc.DeleteLoadBalancerOpts) (osc.DeleteLoadBalancerResponse, error) {
 	panic("Not implemented")
 }
 
 // DescribeLoadBalancers is not implemented but is required for interface
 // conformance
-func (lbu *FakeLBU) DescribeLoadBalancers(input *osc.ReadLoadBalancersOpts) (*osc.ReadLoadBalancersResponse, error) {
+func (lbu *FakeLBU) DescribeLoadBalancers(ctx context.Context, input *osc.ReadLoadBalancersOpts) (osc.ReadLoadBalancersResponse, error) {
 	panic("Not implemented")
 }
 
 // AddTags is not implemented but is required for interface conformance
-func (lbu *FakeLBU) AddTags(input *osc.CreateTagsOpts) (*osc.CreateTagsResponse, error) {
+func (lbu *FakeLBU) AddTags(ctx context.Context, input *osc.CreateTagsOpts) (osc.CreateTagsResponse, error) {
 	panic("Not implemented")
 }
 
 // RegisterInstancesWithLoadBalancer is not implemented but is required for
 // interface conformance
-func (lbu *FakeLBU) RegisterVmsInLoadBalancer(*osc.RegisterVmsInLoadBalancerOpts) (*osc.RegisterVmsInLoadBalancerResponse, error) {
+func (lbu *FakeLBU) RegisterVmsInLoadBalancer(ctx context.Context, *osc.RegisterVmsInLoadBalancerOpts) (osc.RegisterVmsInLoadBalancerResponse, error) {
 	panic("Not implemented")
 }
 
 // DeregisterInstancesFromLoadBalancer is not implemented but is required for
 // interface conformance
-func (lbu *FakeLBU) DeregisterVmsInLoadBalancer(*osc.DeregisterVmsInLoadBalancerOpts) (*osc.DeregisterVmsInLoadBalancerResponse, error) {
+func (lbu *FakeLBU) DeregisterVmsInLoadBalancer(ctx context.Context, *osc.DeregisterVmsInLoadBalancerOpts) (osc.DeregisterVmsInLoadBalancerResponse, error) {
 	panic("Not implemented")
 }
 
 // DetachLoadBalancerFromSubnets is not implemented but is required for
 // interface conformance
-func (lbu *FakeLBU) DetachLoadBalancerFromSubnets(*osc.DeregisterVmsInLoadBalancerOpts) (*osc.DeregisterVmsInLoadBalancerResponse, error) {
+func (lbu *FakeLBU) DetachLoadBalancerFromSubnets(ctx context.Context, *osc.DeregisterVmsInLoadBalancerOpts) (osc.DeregisterVmsInLoadBalancerResponse, error) {
 	panic("Not implemented")
 }
 
 // AttachLoadBalancerToSubnets is not implemented but is required for interface
 // conformance
-func (lbu *FakeLBU) AttachLoadBalancerToSubnets(*osc.RegisterVmsInLoadBalancerOpts) (*osc.RegisterVmsInLoadBalancerOpts, error) {
+func (lbu *FakeLBU) AttachLoadBalancerToSubnets(ctx context.Context, *osc.RegisterVmsInLoadBalancerOpts) (osc.RegisterVmsInLoadBalancerOpts, error) {
 	panic("Not implemented")
 }
 
 // CreateLoadBalancerListeners is not implemented but is required for interface
 // conformance
-func (lbu *FakeLBU) CreateLoadBalancerListeners(*osc.CreateLoadBalancerListenersOpts) (*osc.CreateLoadBalancerListenersResponse, error) {
+func (lbu *FakeLBU) CreateLoadBalancerListeners(ctx context.Context, *osc.CreateLoadBalancerListenersOpts) (osc.CreateLoadBalancerListenersResponse, error) {
 	panic("Not implemented")
 }
 
 // DeleteLoadBalancerListeners is not implemented but is required for interface
 // conformance
-func (lbu *FakeLBU) DeleteLoadBalancerListeners(*osc.DeleteLoadBalancerListenersOpts) (*osc.DeleteLoadBalancerListenersResponse, error) {
+func (lbu *FakeLBU) DeleteLoadBalancerListeners(ctx context.Context, *osc.DeleteLoadBalancerListenersOpts) (osc.DeleteLoadBalancerListenersResponse, error) {
 	panic("Not implemented")
 }
 
 // ApplySecurityGroupsToLoadBalancer is not implemented but is required for
 // interface conformance
-func (lbu *FakeLBU) ApplySecurityGroupsToLoadBalancer(*osc.CreateLoadBalancerListenersOpts) (*osc.CreateLoadBalancerListenersResponse, error) {
+func (lbu *FakeLBU) ApplySecurityGroupsToLoadBalancer(ctx context.Context, *osc.CreateLoadBalancerListenersOpts) (osc.CreateLoadBalancerListenersResponse, error) {
 	panic("Not implemented")
 }
 
 // ConfigureHealthCheck is not implemented but is required for interface
 // conformance
-func (lbu *FakeLBU) ReadVmsHealth(*osc.ReadVmsHealthOpts) (*osc.ReadVmsHealthResponse, error) {
+func (lbu *FakeLBU) ReadVmsHealth(ctx context.Context, *osc.ReadVmsHealthOpts) (osc.ReadVmsHealthResponse, error) {
 	panic("Not implemented")
 }
 
 // CreateLoadBalancerPolicy is not implemented but is required for interface
 // conformance
-func (lbu *FakeLBU) CreateLoadBalancerPolicy(*osc.CreateLoadBalancerPolicyOpts) (*osc.CreateLoadBalancerPolicyResponse, error) {
+func (lbu *FakeLBU) CreateLoadBalancerPolicy(ctx context.Context, *osc.CreateLoadBalancerPolicyOpts) (osc.CreateLoadBalancerPolicyResponse, error) {
 	panic("Not implemented")
 }
 
 // SetLoadBalancerPoliciesForBackendServer is not implemented but is required
 // for interface conformance
-func (lbu *FakeLBU) SetLoadBalancerPoliciesForBackendServer(*osc.CreateLoadBalancerPolicyOpts) (*osc.CreateLoadBalancerPolicyResponse, error) {
+func (lbu *FakeLBU) SetLoadBalancerPoliciesForBackendServer(ctx context.Context, *osc.CreateLoadBalancerPolicyOpts) (osc.CreateLoadBalancerPolicyResponse, error) {
 	panic("Not implemented")
 }
 
 // SetLoadBalancerPoliciesOfListener is not implemented but is required for
 // interface conformance
-func (lbu *FakeLBU) SetLoadBalancerPoliciesOfListener(input *osc.CreateLoadBalancerPolicyOpts) (*osc.CreateLoadBalancerPolicyResponse, error) {
+func (lbu *FakeLBU) SetLoadBalancerPoliciesOfListener(ctx context.Context, input *osc.CreateLoadBalancerPolicyOpts) (osc.CreateLoadBalancerPolicyResponse, error) {
 	panic("Not implemented")
 }
 
 // DescribeLoadBalancerPolicies is not implemented but is required for
 // interface conformance
-func (lbu *FakeLBU) DescribeLoadBalancerPolicies(input *osc.ReadLoadBalancersOpts) (*osc.ReadLoadBalancersResponse, error) {
+func (lbu *FakeLBU) DescribeLoadBalancerPolicies(ctx context.Context, input *osc.ReadLoadBalancersOpts) (osc.ReadLoadBalancersResponse, error) {
 	panic("Not implemented")
 }
 
 // DescribeLoadBalancerAttributes is not implemented but is required for
 // interface conformance
-func (lbu *FakeLBU) DescribeLoadBalancerAttributes(*osc.ReadLoadBalancersOpts) (*osc.ReadLoadBalancersResponse, error) {
+func (lbu *FakeLBU) DescribeLoadBalancerAttributes(ctx context.Context, *osc.ReadLoadBalancersOpts) (osc.ReadLoadBalancersResponse, error) {
 	panic("Not implemented")
 }
 
 // ModifyLoadBalancerAttributes is not implemented but is required for
 // interface conformance
-func (lbu *FakeLBU) ModifyLoadBalancerAttributes(*osc.UpdateLoadBalancerOpts) (*osc.UpdateLoadBalancerResponse, error) {
+func (lbu *FakeLBU) ModifyLoadBalancerAttributes(ctx context.Context, *osc.UpdateLoadBalancerOpts) (osc.UpdateLoadBalancerResponse, error) {
 	panic("Not implemented")
 }
 
