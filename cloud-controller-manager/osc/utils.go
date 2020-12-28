@@ -417,9 +417,9 @@ func securityGroupRuleExists(newPermission, existing osc.SecurityGroupRule, comp
 		}
 	}
 
-	for _, leftPair := range newPermission.SecurityGroupsMembers {
+	for _, leftPair := range newPermission.SecurityGroupsMember {
 		found := false
-		for _, rightPair := range existing.SecurityGroupsMembers {
+		for _, rightPair := range existing.SecurityGroupsMember {
 			if isEqualUserGroupPair(leftPair, rightPair, compareGroupUserIDs) {
 				found = true
 				break
@@ -433,7 +433,7 @@ func securityGroupRuleExists(newPermission, existing osc.SecurityGroupRule, comp
 	return true
 }
 
-func isEqualUserGroupPair(l, r osc.SecurityGroupsMembers, compareGroupUserIDs bool) bool {
+func isEqualUserGroupPair(l, r osc.SecurityGroupsMember, compareGroupUserIDs bool) bool {
 	klog.V(2).Infof("Comparing %v to %v", *l.GroupId, *r.GroupId)
 	if isEqualStringPointer(l.GroupId, r.GroupId) {
 		if compareGroupUserIDs {

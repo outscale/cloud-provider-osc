@@ -45,8 +45,8 @@ type FCU interface {
     CreateTags(context.Context, *osc.CreateTagsOpts) (osc.CreateTagsResponse, *_nethttp.Response, error)
 
     ReadRouteTables(context.Context, *osc.ReadRouteTablesOpts) ([]osc.RouteTable, *_nethttp.Response, error)
-    CreateRoute(context.Context, *osc.CreateRouteTableOpts) (osc.CreateRouteTableResponse, *_nethttp.Response, error)
-    DeleteRoute(context.Context, *osc.DeleteRouteTableOpts) (osc.DeleteRouteTableResponse, *_nethttp.Response, error)
+    CreateRoute(context.Context, *osc.CreateRouteOpts) (osc.CreateRouteResponse, *_nethttp.Response, error)
+    DeleteRoute(context.Context, *osc.DeleteRouteOpts) (osc.DeleteRouteResponse, *_nethttp.Response, error)
 
     UpdateVm(context.Context, *osc.UpdateVmOpts) (osc.UpdateVmResponse, *_nethttp.Response, error)
 
