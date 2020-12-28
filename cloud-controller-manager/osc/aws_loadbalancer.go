@@ -207,7 +207,7 @@ func (c *Cloud) updateInstanceSecurityGroupsForNLB(lbName string, instances map[
 
 // updateInstanceSecurityGroupForNLBTraffic will manage permissions set(identified by ruleDesc) on securityGroup to match desired set(allow protocol traffic from ports/cidr).
 // Note: sgPerms will be updated to reflect the current permission set on SG after update.
-func (c *Cloud) updateInstanceSecurityGroupForNLBTraffic(sgID string, sgPerms IPPermissionSet,
+func (c *Cloud) updateInstanceSecurityGroupForNLBTraffic(sgID string, sgPerms SecurityGroupRuleSet,
 	ruleDesc string, protocol string, ports sets.Int64, cidrs []string) error {
 
 	debugPrintCallerFunctionName()
@@ -613,7 +613,7 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 // syncLbuListeners computes a plan to reconcile the desired vs actual state of the listeners on an LBU
 // NOTE: there exists an O(nlgn) implementation for this function. However, as the default limit of
 //       listeners per lbu is 100, this implementation is reduced from O(m*n) => O(n).
-func syncLbuListeners(loadBalancerName string, listeners []lbu.Listener, listenerDescriptions []osc.Listener) ([]osc.Listener, []*int64) {
+func syncLbuListeners(loadBalancerName string, listeners []osc.Listener, listenerDescriptions []osc.Listener) ([]osc.Listener, []*int64) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("syncLbuListeners(%v,%v,%v)", loadBalancerName, listeners, listenerDescriptions)
 	foundSet := make(map[int]bool)
@@ -700,10 +700,10 @@ func awsArnEquals(l, r *string) bool {
 
 // getExpectedHealthCheck returns an lbu.Healthcheck for the provided target
 // and using either sensible defaults or overrides via Service annotations
-func (c *Cloud) getExpectedHealthCheck(target string, annotations map[string]string) (*lbu.HealthCheck, error) {
+func (c *Cloud) getExpectedHealthCheck(target string, annotations map[string]string) (osc.HealthCheck, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("getExpectedHealthCheck(%v,%v)", target, annotations)
-	healthcheck := &lbu.HealthCheck{Target: &target}
+	healthcheck := &osc.HealthCheck{Protocol: &target}
 	getOrDefault := func(annotation string, defaultValue int64) (*int64, error) {
 		i64 := defaultValue
 		var err error
@@ -728,7 +728,7 @@ func (c *Cloud) getExpectedHealthCheck(target string, annotations map[string]str
 	if err != nil {
 		return nil, err
 	}
-	healthcheck.Interval, err = getOrDefault(ServiceAnnotationLoadBalancerHCInterval, defaultHCInterval)
+	healthcheck.CheckInterval, err = getOrDefault(ServiceAnnotationLoadBalancerHCInterval, defaultHCInterval)
 	if err != nil {
 		return nil, err
 	}
@@ -739,7 +739,7 @@ func (c *Cloud) getExpectedHealthCheck(target string, annotations map[string]str
 }
 
 // Makes sure that the health check for an LBU matches the configured health check node port
-func (c *Cloud) ensureLoadBalancerHealthCheck(loadBalancer *lbu.LoadBalancerDescription,
+func (c *Cloud) ensureLoadBalancerHealthCheck(loadBalancer osc.LoadBalancer,
 	protocol string, port int32, path string, annotations map[string]string) error {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("ensureLoadBalancerHealthCheck(%v,%v, %v, %v, %v)",
@@ -763,11 +763,17 @@ func (c *Cloud) ensureLoadBalancerHealthCheck(loadBalancer *lbu.LoadBalancerDesc
 		return nil
 	}
 
-	request := &lbu.ConfigureHealthCheckInput{}
-	request.HealthCheck = expected
-	request.LoadBalancerName = loadBalancer.LoadBalancerName
 
-	_, err = c.lbu.ConfigureHealthCheck(request)
+    request := &osc.UpdateLoadBalancerOpts{
+            UpdateLoadBalancerRequest: optional.NewInterface(
+                osc.UpdateLoadBalancerRequest{
+                    HealthCheck: expected,
+                    LoadBalancerName: loadBalancer.LoadBalancerName,
+                }),
+    }
+
+
+	_, err = c.lbu.UpdateLoadBalancer(ctx, request)
 	if err != nil {
 		return fmt.Errorf("error configuring load balancer health check for %q: %q", name, err)
 	}
@@ -834,7 +840,7 @@ func (c *Cloud) ensureLoadBalancerInstances(loadBalancerName string,
 	return nil
 }
 
-func (c *Cloud) getLoadBalancerTLSPorts(loadBalancer *osc.LoadBalancerDescription) []int64 {
+func (c *Cloud) getLoadBalancerTLSPorts(loadBalancer osc.LoadBalancer) []int64 {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("getLoadBalancerTLSPorts(%v)", loadBalancer)
 	ports := []int64{}
@@ -848,7 +854,7 @@ func (c *Cloud) getLoadBalancerTLSPorts(loadBalancer *osc.LoadBalancerDescriptio
 	return ports
 }
 
-func (c *Cloud) ensureSSLNegotiationPolicy(loadBalancer *osc.LoadBalancerDescription, policyName string) error {
+func (c *Cloud) ensureSSLNegotiationPolicy(loadBalancer osc.LoadBalancer, policyName string) error {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("ensureSSLNegotiationPolicy(%v,%v)", loadBalancer, policyName)
 	klog.V(2).Info("Describing load balancer policies on load balancer")
@@ -955,10 +961,12 @@ func (c *Cloud) setBackendPolicies(loadBalancerName string, instancePort int64, 
 	return nil
 }
 
-func proxyProtocolEnabled(backend *lbu.BackendServerDescription) bool {
+
+// A Verifier
+func proxyProtocolEnabled(backend string) bool {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("proxyProtocolEnabled(%v)", backend)
-	for _, policy := range backend.PolicyNames {
+	for _, policy := range backend.LoadBalancerStickyCookiePolicies[0].PolicyNames {
 		if policy == ProxyProtocolPolicyName {
 			return true
 		}

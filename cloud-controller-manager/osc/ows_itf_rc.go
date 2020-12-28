@@ -21,6 +21,6 @@ import (
 )
 
 // Interface to make the CloudConfig immutable for awsSDKProvider
-type awsCloudConfigProvider interface {
+type oscCloudConfigProvider interface {
 	getResolver() endpoints.ResolverFunc
 }

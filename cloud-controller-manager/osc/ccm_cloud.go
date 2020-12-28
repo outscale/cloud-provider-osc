@@ -1512,7 +1512,7 @@ func (c *Cloud) getTaggedSecurityGroups() (map[string]osc.SecurityGroup, error) 
 
 // Open security group ingress rules on the instances so that the load balancer can talk to them
 // Will also remove any security groups ingress rules for the load balancer that are _not_ needed for allInstances
-func (c *Cloud) updateInstanceSecurityGroupsForLoadBalancer(lb lbu.LoadBalancer,
+func (c *Cloud) updateInstanceSecurityGroupsForLoadBalancer(lb osc.LoadBalancer,
 	instances map[InstanceID]osc.Vm,
 	securityGroupIDs []string) error {
 	debugPrintCallerFunctionName()

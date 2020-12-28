@@ -238,14 +238,14 @@ func findSecurityGroupForInstance(instance osc.Vm, taggedSecurityGroups map[stri
 
 // buildListener creates a new listener from the given port, adding an SSL certificate
 // if indicated by the appropriate annotations.
-func buildListener(port v1.ServicePort, annotations map[string]string, sslPorts *portSets) (*lbu.Listener, error) {
+func buildListener(port v1.ServicePort, annotations map[string]string, sslPorts *portSets) (osc.Listener, error) {
 	loadBalancerPort := int64(port.Port)
 	portName := strings.ToLower(port.Name)
 	instancePort := int64(port.NodePort)
 	protocol := strings.ToLower(string(port.Protocol))
 	instanceProtocol := protocol
 
-	listener := &lbu.Listener{}
+	listener := &osc.Listener{}
 	listener.InstancePort = &instancePort
 	listener.LoadBalancerPort = &loadBalancerPort
 	certID := annotations[ServiceAnnotationLoadBalancerCertificate]

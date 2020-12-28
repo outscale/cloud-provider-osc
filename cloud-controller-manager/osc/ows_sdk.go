@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/outscale/osc-sdk-go/osc"
+	context "context"
 )
 
 // ********************* CCM oscSdkFCU Def & functions *********************
@@ -30,7 +31,7 @@ type oscSdkFCU struct {
 	config *osc.Configuration
 	auth   context.Context
 	api    *osc.APIClient
-	fcu    *osc.FCU
+	fcu    *osc.
 }
 
 // Implementation of OSC.Vm
@@ -51,7 +52,7 @@ func (s *oscSdkFCU) ReadVms(ctx context.Context, request *osc.ReadVmsOpts) ([]os
 }
 
 // Implements OSC.ReadSecurityGroups
-func (s *oscSdkFCU) ReadSecurityGroups(ctx context.Context, request *osc.ReadSecurityGroups) ([]osc.SecurityGroup, error) {
+func (s *oscSdkFCU) ReadSecurityGroups(ctx context.Context, request *osc.ReadSecurityGroupsOpts) ([]osc.SecurityGroup, error) {
 	// Security groups are not paged
 	results := []osc.SecurityGroup{}
 	requestTime := time.Now()
@@ -92,7 +93,7 @@ func (s *oscSdkFCU) DeleteSecurityGroupRuleRequest(ctx context.Context, request 
 	return s.api.SecurityGroupApi.DeleteSecurityGroupRuleRequest(s.auth, request)
 }
 
-func (s *oscSdkFCU) CreateTags(ctx context.Context, request *osc.CreateTagsInput) (osc.CreateTagsOutput, error) {
+func (s *oscSdkFCU) CreateTags(ctx context.Context, request *osc.CreateTagsOpts) (osc.CreateTagsResponse, error) {
 	debugPrintCallerFunctionName()
 	requestTime := time.Now()
 	resp, err := s.api.TagApi.CreateTags(s.auth, request)
@@ -101,7 +102,7 @@ func (s *oscSdkFCU) CreateTags(ctx context.Context, request *osc.CreateTagsInput
 	return resp, err
 }
 
-func (s *oscSdkFCU) DescribeRouteTables(ctx context.Context, request *osc.ReadRouteTablesOpts) ([]osc.RouteTables, error) {
+func (s *oscSdkFCU) DescribeRouteTables(ctx context.Context, request *osc.ReadRouteTablesOpts) ([]osc.RouteTable, error) {
 	results := []*osc.RouteTable{}
 	requestTime := time.Now()
 	for {

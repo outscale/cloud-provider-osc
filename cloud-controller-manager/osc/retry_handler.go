@@ -25,6 +25,7 @@ import (
 
 
 	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/aws/request"
 	"k8s.io/klog"
 )
 
