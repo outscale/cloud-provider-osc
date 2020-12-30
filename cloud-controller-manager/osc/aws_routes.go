@@ -24,6 +24,7 @@ import (
 
 	"github.com/outscale/osc-sdk-go/osc"
 	"k8s.io/klog"
+	"github.com/antihax/optional"
 
 	cloudprovider "k8s.io/cloud-provider"
 )

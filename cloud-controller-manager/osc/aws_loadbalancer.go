@@ -26,6 +26,8 @@ import (
 
     "github.com/outscale/osc-sdk-go/osc"
 
+    "github.com/aws/aws-sdk-go/aws/awserr"
+
 	"k8s.io/klog"
 
 	"k8s.io/api/core/v1"
@@ -380,7 +382,7 @@ func (c *Cloud) ensureLoadBalancer(ctx context.Context, namespacedName types.Nam
 		}
 
 		if proxyProtocol {
-			err = c.createProxyProtocolPolicy(loadBalancerName)
+			err = c.createProxyProtocolPolicy(ctx, loadBalancerName)
 			if err != nil {
 				return osc.LoadBalancer{}, err
 			}
@@ -477,7 +479,7 @@ func (c *Cloud) ensureLoadBalancer(ctx context.Context, namespacedName types.Nam
 				// back if a policy of the same name already exists. However, the aws-sdk does not
 				// seem to return an error to us in these cases. Therefore, this will issue an API
 				// request every time.
-				err := c.createProxyProtocolPolicy(loadBalancerName)
+				err := c.createProxyProtocolPolicy(ctx, loadBalancerName)
 				if err != nil {
 					return osc.LoadBalancer{}, err
 				}
@@ -565,7 +567,7 @@ func (c *Cloud) ensureLoadBalancer(ctx context.Context, namespacedName types.Nam
 			return osc.LoadBalancer{}, err
 		}
 
-		foundAttributes := describeAttributesOutput.LoadBalancer[0]
+		foundAttributes := describeAttributesOutput.LoadBalancers[0]
 
 		// Update attributes if they're dirty
 		if !reflect.DeepEqual(loadBalancerAttributes, foundAttributes) {
@@ -573,16 +575,16 @@ func (c *Cloud) ensureLoadBalancer(ctx context.Context, namespacedName types.Nam
 			    UpdateLoadBalancerRequest: optional.NewInterface(
 			        osc.UpdateLoadBalancerRequest {
                             LoadBalancerName: loadBalancerName,
-                            Listeners: additions,
+			                HealthCheck: loadBalancerAttributes.HealthCheck,
+			                AccessLog: loadBalancerAttributes.AccessLog,
                         }),
 			}
-			modifyAttributesRequest.LoadBalancerName = loadBalancerName
-			modifyAttributesRequest.LoadBalancerAttributes = loadBalancerAttributes
+
 			klog.V(2).Infof("Updating load-balancer attributes for %q with attributes (%v)",
 				loadBalancerName, loadBalancerAttributes)
-			_, err = c.lbu.UpdateLoadBalancer(ctx, modifyAttributesRequest)
+			_, httpRes, err = c.lbu.UpdateLoadBalancer(ctx, modifyAttributesRequest)
 			if err != nil {
-				return osc.LoadBalancer{}, fmt.Errorf("Unable to update load balancer attributes during attribute sync: %q", err)
+				return osc.LoadBalancer{}, fmt.Errorf("Unable to update load balancer attributes during attribute sync: %q httpRes: %q", err, httpRes)
 			}
 			dirty = true
 		}
@@ -606,19 +608,19 @@ func syncLbuListeners(loadBalancerName string, listeners []osc.ListenerForCreati
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("syncLbuListeners(%v,%v,%v)", loadBalancerName, listeners, listenerDescriptions)
 	foundSet := make(map[int]bool)
-	removals := []*int64{}
+	removals := []int32{}
 	additions := []osc.ListenerForCreation{}
 
 	for _, listenerDescription := range listenerDescriptions {
 		actual := listenerDescription
-		if actual == nil {
+		if actual.LoadBalancerPort == 0 {
 			klog.Warning("Ignoring empty listener in OSC loadbalancer: ", loadBalancerName)
 			continue
 		}
 
 		found := false
 		for i, expected := range listeners {
-			if expected == nil {
+			if expected == (osc.ListenerForCreation{}) {
 				klog.Warning("Ignoring empty desired listener for loadbalancer: ", loadBalancerName)
 				continue
 			}
@@ -644,22 +646,22 @@ func syncLbuListeners(loadBalancerName string, listeners []osc.ListenerForCreati
 	return additions, removals
 }
 
-func lbuListenersAreEqual(actual, expected osc.Listener) bool {
+func lbuListenersAreEqual(actual osc.Listener, expected osc.ListenerForCreation) bool {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("lbuListenersAreEqual(%v,%v)", actual, expected)
-	if !lbuProtocolsAreEqual(actual.Protocol, expected.Protocol) {
+	if !lbuProtocolsAreEqual(actual.LoadBalancerProtocol, expected.LoadBalancerProtocol) {
 		return false
 	}
-	if !lbuProtocolsAreEqual(actual.InstanceProtocol, expected.InstanceProtocol) {
+	if !lbuProtocolsAreEqual(actual.BackendProtocol, expected.BackendProtocol) {
 		return false
 	}
-	if actual.InstancePort != expected.InstancePort {
+	if actual.BackendPort != expected.BackendPort {
 		return false
 	}
 	if actual.LoadBalancerPort != expected.LoadBalancerPort {
 		return false
 	}
-	if !awsArnEquals(actual.SSLCertificateId, expected.SSLCertificateId) {
+	if !oscArnEquals(actual.ServerCertificateId, expected.ServerCertificateId) {
 		return false
 	}
 	return true
@@ -667,21 +669,21 @@ func lbuListenersAreEqual(actual, expected osc.Listener) bool {
 
 // lbuProtocolsAreEqual checks if two LBU protocol strings are considered the same
 // Comparison is case insensitive
-func lbuProtocolsAreEqual(l, r *string) bool {
+func lbuProtocolsAreEqual(l, r string) bool {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("lbuProtocolsAreEqual(%v,%v)", l, r)
-	if l == nil || r == nil {
+	if l == "" || r == "" {
 		return l == r
 	}
 	return strings.EqualFold(l, r)
 }
 
-// awsArnEquals checks if two ARN strings are considered the same
+// oscArnEquals checks if two ARN strings are considered the same
 // Comparison is case insensitive
-func awsArnEquals(l, r *string) bool {
+func oscArnEquals(l, r string) bool {
 	debugPrintCallerFunctionName()
-	klog.V(10).Infof("awsArnEquals(%v,%v)", l, r)
-	if l == nil || r == nil {
+	klog.V(10).Infof("oscArnEquals(%v,%v)", l, r)
+	if l == "" || r == "" {
 		return l == r
 	}
 	return strings.EqualFold(l, r)
@@ -692,43 +694,45 @@ func awsArnEquals(l, r *string) bool {
 func (c *Cloud) getExpectedHealthCheck(target string, annotations map[string]string) (osc.HealthCheck, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("getExpectedHealthCheck(%v,%v)", target, annotations)
-	healthcheck := &osc.HealthCheck{Protocol: &target}
-	getOrDefault := func(annotation string, defaultValue int64) (*int64, error) {
-		i64 := defaultValue
+	healthcheck := osc.HealthCheck{Protocol: target}
+	getOrDefault := func(annotation string, defaultValue int64) (int32, error) {
+		i32 := defaultValue
 		var err error
 		if s, ok := annotations[annotation]; ok {
-			i64, err = strconv.ParseInt(s, 10, 0)
+			i32, err = strconv.ParseInt(s, 10, 0)
 			if err != nil {
-				return nil, fmt.Errorf("failed parsing health check annotation value: %v", err)
+				return 0, fmt.Errorf("failed parsing health check annotation value: %v", err)
 			}
 		}
-		return &i64, nil
+		return int32(i32), nil
 	}
 	var err error
 	healthcheck.HealthyThreshold, err = getOrDefault(ServiceAnnotationLoadBalancerHCHealthyThreshold, defaultHCHealthyThreshold)
 	if err != nil {
-		return nil, err
+		return osc.HealthCheck{}, err
 	}
 	healthcheck.UnhealthyThreshold, err = getOrDefault(ServiceAnnotationLoadBalancerHCUnhealthyThreshold, defaultHCUnhealthyThreshold)
 	if err != nil {
-		return nil, err
+		return osc.HealthCheck{}, err
 	}
 	healthcheck.Timeout, err = getOrDefault(ServiceAnnotationLoadBalancerHCTimeout, defaultHCTimeout)
 	if err != nil {
-		return nil, err
+		return osc.HealthCheck{}, err
 	}
 	healthcheck.CheckInterval, err = getOrDefault(ServiceAnnotationLoadBalancerHCInterval, defaultHCInterval)
 	if err != nil {
-		return nil, err
+		return osc.HealthCheck{}, err
 	}
-	if err = healthcheck.Validate(); err != nil {
-		return nil, fmt.Errorf("some of the load balancer health check parameters are invalid: %v", err)
-	}
+
+	// No method Validate for osc sdk go
+// 	if err = healthcheck.Validate(); err != nil {
+// 		return osc.HealthCheck{}, fmt.Errorf("some of the load balancer health check parameters are invalid: %v", err)
+// 	}
 	return healthcheck, nil
 }
 
 // Makes sure that the health check for an LBU matches the configured health check node port
-func (c *Cloud) ensureLoadBalancerHealthCheck(loadBalancer osc.LoadBalancer,
+func (c *Cloud) ensureLoadBalancerHealthCheck(ctx context.Context, loadBalancer osc.LoadBalancer,
 	protocol string, port int32, path string, annotations map[string]string) error {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("ensureLoadBalancerHealthCheck(%v,%v, %v, %v, %v)",
@@ -744,10 +748,10 @@ func (c *Cloud) ensureLoadBalancerHealthCheck(loadBalancer osc.LoadBalancer,
 
 	// comparing attributes 1 by 1 to avoid breakage in case a new field is
 	// added to the HC which breaks the equality
-	if expected.Target == actual.Target &&
+	if expected.Path == actual.Path &&
 		expected.HealthyThreshold == actual.HealthyThreshold &&
-		expected.UnhealthyThreshold == actual.UnhealthyThresold &&
-		expected.Interval == actual.Interval &&
+		expected.UnhealthyThreshold == actual.UnhealthyThreshold &&
+		expected.CheckInterval == actual.CheckInterval &&
 		expected.Timeout == actual.Timeout {
 		return nil
 	}
@@ -761,17 +765,16 @@ func (c *Cloud) ensureLoadBalancerHealthCheck(loadBalancer osc.LoadBalancer,
                 }),
     }
 
-
-	_, err = c.lbu.UpdateLoadBalancer(ctx, request)
+	_, httpRes, errUpdate := c.lbu.UpdateLoadBalancer(ctx, request)
 	if err != nil {
-		return fmt.Errorf("error configuring load balancer health check for %q: %q", name, err)
+		return fmt.Errorf("error configuring load balancer health check for %q: %q http %q", name, errUpdate, httpRes)
 	}
 
 	return nil
 }
 
 // Makes sure that exactly the specified hosts are registered as instances with the load balancer
-func (c *Cloud) ensureLoadBalancerInstances(loadBalancerName string,
+func (c *Cloud) ensureLoadBalancerInstances(ctx context.Context, loadBalancerName string,
 	lbInstances []osc.Vm,
 	instanceIDs map[InstanceID]osc.Vm) error {
 	debugPrintCallerFunctionName()
@@ -783,44 +786,52 @@ func (c *Cloud) ensureLoadBalancerInstances(loadBalancerName string,
 
 	actual := sets.NewString()
 	for _, lbInstance := range lbInstances {
-		actual.Insert(lbInstance.InstanceId)
+		actual.Insert(lbInstance.VmId)
 	}
 
 	additions := expected.Difference(actual)
 	removals := actual.Difference(expected)
 
-	addInstances := []osc.Vm{}
+	addInstances := []string{}
 	for _, instanceID := range additions.List() {
-		addInstance := &osc.Vm{}
-		addInstance.InstanceId = instanceID
-		addInstances = append(addInstances, addInstance)
+		addInstance := osc.Vm{}
+		addInstance.VmId = instanceID
+		addInstances = append(addInstances, addInstance.VmId)
 	}
 
-	removeInstances := []osc.Vm{}
+	removeInstances := []string{}
 	for _, instanceID := range removals.List() {
-		removeInstance := &osc.Vm{}
-		removeInstance.InstanceId = instanceID
-		removeInstances = append(removeInstances, removeInstance)
+		removeInstance := osc.Vm{}
+		removeInstance.VmId = instanceID
+		removeInstances = append(removeInstances, removeInstance.VmId)
 	}
 	klog.V(10).Infof("ensureLoadBalancerInstances register/Deregister addInstances(%v) , removeInstances(%v)", addInstances, removeInstances)
 
 	if len(addInstances) > 0 {
-		registerRequest := &osc.RegisterInstancesWithLoadBalancerInput{}
-		registerRequest.Instances = addInstances
-		registerRequest.LoadBalancerName = loadBalancerName
-		_, err := c.lbu.RegisterInstancesWithLoadBalancer(registerRequest)
+	    request := osc.RegisterVmsInLoadBalancerRequest{
+	        BackendVmIds: addInstances,
+	        LoadBalancerName: loadBalancerName,
+	    }
+		registerRequest := &osc.RegisterVmsInLoadBalancerOpts{optional.NewInterface(request)}
+
+		_, httpRes, err := c.lbu.RegisterVmsInLoadBalancer(ctx, registerRequest)
 		if err != nil {
+		    fmt.Errorf("Http result %q", httpRes)
 			return err
 		}
 		klog.V(1).Infof("Instances added to load-balancer %s", loadBalancerName)
 	}
 
 	if len(removeInstances) > 0 {
-		deregisterRequest := &osc.DeregisterInstancesFromLoadBalancerInput{}
-		deregisterRequest.Instances = removeInstances
-		deregisterRequest.LoadBalancerName = loadBalancerName
-		_, err := c.lbu.DeregisterInstancesFromLoadBalancer(deregisterRequest)
+	    request := osc.DeregisterVmsInLoadBalancerRequest{
+	        BackendVmIds: removeInstances,
+		    LoadBalancerName: loadBalancerName,
+	    }
+		deregisterRequest := &osc.DeregisterVmsInLoadBalancerOpts{optional.NewInterface(request)}
+
+		_, httpRes, err := c.lbu.DeregisterVmsInLoadBalancer(ctx, deregisterRequest)
 		if err != nil {
+		    fmt.Errorf("Http %q", httpRes)
 			return err
 		}
 		klog.V(1).Infof("Instances removed from load-balancer %s", loadBalancerName)
@@ -829,101 +840,103 @@ func (c *Cloud) ensureLoadBalancerInstances(loadBalancerName string,
 	return nil
 }
 
-func (c *Cloud) getLoadBalancerTLSPorts(loadBalancer osc.LoadBalancer) []int64 {
+func (c *Cloud) getLoadBalancerTLSPorts(loadBalancer osc.LoadBalancer) []int32 {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("getLoadBalancerTLSPorts(%v)", loadBalancer)
-	ports := []int64{}
+	ports := []int32{}
 
-	for _, listenerDescription := range loadBalancer.ListenerDescriptions {
-		protocol := listenerDescription.Listener.Protocol
+	for _, listenerDescription := range loadBalancer.Listeners {
+		protocol := listenerDescription.LoadBalancerProtocol
 		if protocol == "SSL" || protocol == "HTTPS" {
-			ports = append(ports, listenerDescription.Listener.LoadBalancerPort)
+			ports = append(ports, listenerDescription.LoadBalancerPort)
 		}
 	}
 	return ports
 }
 
-func (c *Cloud) ensureSSLNegotiationPolicy(loadBalancer osc.LoadBalancer, policyName string) error {
+func (c *Cloud) ensureSSLNegotiationPolicy(ctx context.Context, loadBalancer osc.LoadBalancer, policyName string) error {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("ensureSSLNegotiationPolicy(%v,%v)", loadBalancer, policyName)
 	klog.V(2).Info("Describing load balancer policies on load balancer")
-	result, err := c.lbu.DescribeLoadBalancerPolicies(&osc.DescribeLoadBalancerPoliciesInput{
-		LoadBalancerName: loadBalancer.LoadBalancerName,
-		PolicyNames: []*string{
-			fmt.Sprintf(SSLNegotiationPolicyNameFormat, policyName),
-		},
-	})
+	result, httpRes, err := c.lbu.ReadLoadBalancers(ctx, &osc.ReadLoadBalancersOpts{
+	    ReadLoadBalancersRequest: optional.NewInterface(
+	        osc.ReadLoadBalancersRequest{
+	            Filters: osc.FiltersLoadBalancer{
+	                LoadBalancerNames: []string{loadBalancer.LoadBalancerName},
+	            },
+
+	        }),
+	    })
+
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
-			case lbu.ErrCodePolicyNotFoundException:
+			//case osc.ErrCodePolicyNotFoundException:
 			default:
-				return fmt.Errorf("error describing security policies on load balancer: %q", err)
+				return fmt.Errorf("error describing security policies on load balancer: %q %q", err, httpRes)
 			}
 		}
 	}
 
-	if len(result.PolicyDescriptions) > 0 {
+	if len(result.LoadBalancers[0].LoadBalancerStickyCookiePolicies) > 0 {
 		return nil
 	}
 
 	klog.V(2).Infof("Creating SSL negotiation policy '%s' on load balancer", fmt.Sprintf(SSLNegotiationPolicyNameFormat, policyName))
 	// there is an upper limit of 98 policies on an LBU, we're pretty safe from
 	// running into it
-	_, err = c.lbu.CreateLoadBalancerPolicy(&osc.CreateLoadBalancerPolicyInput{
-		LoadBalancerName: loadBalancer.LoadBalancerName,
-		PolicyName:       fmt.Sprintf(SSLNegotiationPolicyNameFormat, policyName),
-		PolicyTypeName:   "SSLNegotiationPolicyType",
-		PolicyAttributes: []*osc.PolicyAttribute{
-			{
-				AttributeName:  "Reference-Security-Policy",
-				AttributeValue: policyName,
-			},
-		},
-	})
+	_, httpRes, err = c.lbu.CreateLoadBalancerPolicy(ctx,
+	    &osc.CreateLoadBalancerPolicyOpts{
+	        CreateLoadBalancerPolicyRequest: optional.NewInterface(
+	            osc.CreateLoadBalancerPolicyRequest{
+	                    LoadBalancerName: loadBalancer.LoadBalancerName,
+                        PolicyName:       fmt.Sprintf(SSLNegotiationPolicyNameFormat, policyName),
+                        PolicyType:   "SSLNegotiationPolicyType",
+	    			}),
+	    })
 	if err != nil {
-		return fmt.Errorf("error creating security policy on load balancer: %q", err)
+		return fmt.Errorf("error creating security policy on load balancer: %q %q", err, httpRes)
 	}
 	return nil
 }
 
-func (c *Cloud) setSSLNegotiationPolicy(loadBalancerName, sslPolicyName string, port int64) error {
+func (c *Cloud) setSSLNegotiationPolicy(ctx context.Context, loadBalancerName, sslPolicyName string, port int64) error {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("setSSLNegotiationPolicy(%v,%v,%v)", loadBalancerName, sslPolicyName, port)
 	policyName := fmt.Sprintf(SSLNegotiationPolicyNameFormat, sslPolicyName)
-	request := &osc.SetLoadBalancerPoliciesOfListenerInput{
-		LoadBalancerName: loadBalancerName,
-		LoadBalancerPort: port,
-		PolicyNames: []*string{
-			policyName,
-		},
+	request := &osc.CreateLoadBalancerListenersOpts{
+	    CreateLoadBalancerListenersRequest: optional.NewInterface(
+	        osc.CreateLoadBalancerListenersRequest{
+	            LoadBalancerName: loadBalancerName,
+	            //A verifier
+	            //Listeners: []ListenerForCreation{}
+	        }),
+
 	}
 	klog.V(2).Infof("Setting SSL negotiation policy '%s' on load balancer", policyName)
-	_, err := c.lbu.SetLoadBalancerPoliciesOfListener(request)
+	_, httpRes, err := c.lbu.CreateLoadBalancerListeners(ctx, request)
 	if err != nil {
-		return fmt.Errorf("error setting SSL negotiation policy '%s' on load balancer: %q", policyName, err)
+		return fmt.Errorf("error setting SSL negotiation policy '%s' on load balancer: %q %q", policyName, err, httpRes)
 	}
 	return nil
 }
 
-func (c *Cloud) createProxyProtocolPolicy(loadBalancerName string) error {
+func (c *Cloud) createProxyProtocolPolicy(ctx context.Context, loadBalancerName string) error {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("createProxyProtocolPolicy(%v)", loadBalancerName)
-	request := &osc.CreateLoadBalancerPolicyOPTS{
-		LoadBalancerName: loadBalancerName,
-		PolicyName:       ProxyProtocolPolicyName,
-		PolicyTypeName:   "ProxyProtocolPolicyType",
-		PolicyAttributes: []*osc.PolicyAttribute{
-			{
-				AttributeName:  "ProxyProtocol",
-				AttributeValue: "true",
-			},
-		},
+	request := &osc.CreateLoadBalancerPolicyOpts{
+	    CreateLoadBalancerPolicyRequest: optional.NewInterface(
+	        osc.CreateLoadBalancerPolicyRequest{
+	            LoadBalancerName: loadBalancerName,
+	            PolicyName: ProxyProtocolPolicyName,
+	            PolicyType: "ProxyProtocolPolicyType",
+
+	        }),
 	}
 	klog.V(2).Info("Creating proxy protocol policy on load balancer")
-	_, err := c.lbu.CreateLoadBalancerPolicy(ctx, request)
+	_, httpRes, err := c.lbu.CreateLoadBalancerPolicy(ctx, request)
 	if err != nil {
-		return fmt.Errorf("error creating proxy protocol policy on load balancer: %q", err)
+		return fmt.Errorf("error creating proxy protocol policy on load balancer: %q %q", err, httpRes)
 	}
 
 	return nil
@@ -932,11 +945,23 @@ func (c *Cloud) createProxyProtocolPolicy(loadBalancerName string) error {
 func (c *Cloud) setBackendPolicies(loadBalancerName string, instancePort int32, policies []string) error {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("setBackendPolicies(%v,%v,%v)", loadBalancerName, instancePort, policies)
-	request := &osc.SetLoadBalancerPoliciesForBackendServerInput{
+
+    //A verifier
+    request := &osc.CreateLoadBalancerPolicyOpts{
+	    CreateLoadBalancerPolicyRequest: optional.NewInterface(
+	        osc.CreateLoadBalancerPolicyRequest{
+	            LoadBalancerName: loadBalancerName,
+	            PolicyName: ProxyProtocolPolicyName,
+	            PolicyType: "ProxyProtocolPolicyType",
+
+	        }),
+	}
+
+	/* request := &osc.SetLoadBalancerPoliciesForBackendServerInput{
 		InstancePort:     instancePort,
 		LoadBalancerName: loadBalancerName,
 		PolicyNames:      policies,
-	}
+	} */
 	if len(policies) > 0 {
 		klog.V(2).Infof("Adding OSC loadbalancer backend policies on node port %d", instancePort)
 	} else {
@@ -975,7 +1000,7 @@ func (c *Cloud) findInstancesForLBU(nodes []*v1.Node) (map[InstanceID]osc.Vm, er
 		if node.Spec.ProviderID == "" {
 			// TODO  Need to be optimize by setting providerID which is not possible actualy
 			instance, _ := c.findInstanceByNodeName(types.NodeName(node.Name))
-			node.Spec.ProviderID = instance.InstanceId
+			node.Spec.ProviderID = instance.VmId
 		}
 	}
 
