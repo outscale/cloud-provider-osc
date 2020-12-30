@@ -33,9 +33,9 @@ func stringSetToPointers(in sets.String) []*string {
 	return out
 }
 
-func stringSetFromPointers(in []*string) sets.String {
-	if in == nil {
-		return nil
+func stringSetFromPointers(in []string) sets.String {
+	if in == "" {
+		return ""
 	}
 	out := sets.NewString()
 	for i := range in {

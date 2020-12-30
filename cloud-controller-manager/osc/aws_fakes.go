@@ -121,6 +121,17 @@ type FakeFCUImpl struct {
 func (fcui *FakeFCUImpl) ReadVms(ctx context.Context, request *osc.ReadVmsOpts) ([]osc.Vm, *_nethttp.Response, error) {
 	matches := []osc.Vm{}
 
+	readOpts := osc.ReadVmsOpts{
+		ReadVmsRequest: optional.NewInterface(
+			osc.ReadVmsRequest{
+				Filters: osc.FiltersVm{
+					VmIds: []string{VMID},
+				},
+		}),
+	}
+
+	read := fcui.osc.fcu.FCU.ReadVms
+
 	for _, instance := range fcui.osc.instances {
 		if request.VmIds != nil {
 			if instance.VmId == "" {
@@ -139,18 +150,18 @@ func (fcui *FakeFCUImpl) ReadVms(ctx context.Context, request *osc.ReadVmsOpts) 
 				continue
 			}
 		}
-		if request.Filters != nil {
-			allMatch := true
-			for _, filter := range request.Filters {
-				if !instanceMatchesFilter(instance, filter) {
-					allMatch = false
-					break
-				}
-			}
-			if !allMatch {
-				continue
-			}
-		}
+// 		if request.Filters != nil {
+// 			allMatch := true
+// 			for _, filter := range request.Filters {
+// 				if !instanceMatchesFilter(instance, filter) {
+// 					allMatch = false
+// 					break
+// 				}
+// 			}
+// 			if !allMatch {
+// 				continue
+// 			}
+// 		}
 		matches = append(matches, instance)
 	}
 
@@ -441,40 +452,45 @@ func (lbu *FakeLBU) expectDescribeLoadBalancers(loadBalancerName string) {
 	panic("Not implemented")
 }
 
-func instanceMatchesFilter(instance osc.Vm, filter *osc.FiltersVm) bool {
-	name := *filter.Name
-	if name == "private-dns-name" {
-		if instance.PrivateDnsName == "" {
-			return false
-		}
-		return contains(filter.Values, *instance.PrivateDnsName)
-	}
-
-	if name == "instance-state-name" {
-		return contains(filter.Values, *instance.State.Name)
-	}
-
-	if name == "tag-key" {
-		for _, instanceTag := range instance.Tags {
-			if contains(filter.Values, instanceTag.Key) {
-				return true
-			}
-		}
-		return false
-	}
-
-	if strings.HasPrefix(name, "tag:") {
-		tagName := name[4:]
-		for _, instanceTag := range instance.Tags {
-			if instanceTag.Key == tagName && contains(filter.Values, instanceTag.Value) {
-				return true
-			}
-		}
-		return false
-	}
-
-	panic("Unknown filter name: " + name)
-}
+// func instanceMatchesFilter(instance osc.Vm, filter *osc.FiltersVm) bool {
+//     filter.VmIds[0]
+//     instance.PrivateDnsName
+//
+//
+//
+// 	name := *filter.Name
+// 	if name == "private-dns-name" {
+// 		if instance.PrivateDnsName == "" {
+// 			return false
+// 		}
+// 		return contains(filter.Values, *instance.PrivateDnsName)
+// 	}
+//
+// 	if name == "instance-state-name" {
+// 		return contains(filter.Values, *instance.State.Name)
+// 	}
+//
+// 	if name == "tag-key" {
+// 		for _, instanceTag := range instance.Tags {
+// 			if contains(filter.Values, instanceTag.Key) {
+// 				return true
+// 			}
+// 		}
+// 		return false
+// 	}
+//
+// 	if strings.HasPrefix(name, "tag:") {
+// 		tagName := name[4:]
+// 		for _, instanceTag := range instance.Tags {
+// 			if instanceTag.Key == tagName && contains(filter.Values, instanceTag.Value) {
+// 				return true
+// 			}
+// 		}
+// 		return false
+// 	}
+//
+// 	panic("Unknown filter name: " + name)
+// }
 
 func contains(haystack []*string, needle string) bool {
 	for _, s := range haystack {

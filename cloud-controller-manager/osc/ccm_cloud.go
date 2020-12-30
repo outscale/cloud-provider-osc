@@ -50,7 +50,7 @@ type Cloud struct {
 	metadata EC2Metadata
 	cfg      *CloudConfig
 	region   string
-	vpcID    string
+	netID    string
 
 	tagging oscTagging
 

@@ -31,6 +31,10 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
+
+	"github.com/antihax/optional"
+
+	context "context"
 )
 
 const (
@@ -102,33 +106,34 @@ func getLoadBalancerAdditionalTags(annotations map[string]string) map[string]str
 	return additionalTags
 }
 
-func (c *Cloud) getVpcCidrBlocks() ([]string, error) {
+func (c *Cloud) getVpcCidrBlocks(ctx context.Context) ([]string, error) {
 	debugPrintCallerFunctionName()
-	vpcs, err := c.fcu.ReadNets(&osc.ReadNetsOpts{
+	vpcs, httpRes, err := c.fcu.ReadNets(ctx, &osc.ReadNetsOpts{
 		ReadNetsRequest: optional.NewInterface(
 			osc.ReadNetsRequest{
 				Filters: osc.FiltersNet{
-					NetIds: []string{c.vpcID},
+					NetIds: []string{c.netID},
 				},
 			}),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("error querying VPC for LBU: %q", err)
+		return nil, fmt.Errorf("error querying VPC for LBU: %q httpRes :%q", err, httpRes.Status)
 	}
-	if len(vpcs.Vpcs) != 1 {
-		return nil, fmt.Errorf("error querying VPC for LBU, got %d vpcs for %s", len(vpcs.Vpcs), c.vpcID)
+	if len(vpcs.Nets) != 1 {
+		return nil, fmt.Errorf("error querying VPC for LBU, got %d vpcs for %s", len(vpcs.Nets), c.netID)
 	}
 
-	cidrBlocks := make([]string, 0, len(vpcs.Vpcs[0].CidrBlockAssociationSet))
-	for _, cidr := range vpcs.Vpcs[0].CidrBlockAssociationSet {
-		cidrBlocks = append(cidrBlocks, cidr.CidrBlock)
+    //A verifier
+	cidrBlocks := make([]string, 0, len(vpcs.Nets[0].IpRange))
+	for _, cidr := range vpcs.Nets[0].IpRange {
+		cidrBlocks = append(cidrBlocks, cidr)
 	}
 	return cidrBlocks, nil
 }
 
 // updateInstanceSecurityGroupsForNLB will adjust securityGroup's settings to allow inbound traffic into instances from clientCIDRs and portMappings.
 // TIP: if either instances or clientCIDRs or portMappings are nil, then the securityGroup rules for lbName are cleared.
-func (c *Cloud) updateInstanceSecurityGroupsForNLB(lbName string, instances map[InstanceID]osc.Vm, clientCIDRs []string, portMappings []nlbPortMapping) error {
+func (c *Cloud) updateInstanceSecurityGroupsForNLB(ctx context.Context, lbName string, instances map[InstanceID]osc.Vm, clientCIDRs []string, portMappings []nlbPortMapping) error {
 	debugPrintCallerFunctionName()
 
 	if c.cfg.Global.DisableSecurityGroupIngress {
@@ -146,11 +151,11 @@ func (c *Cloud) updateInstanceSecurityGroupsForNLB(lbName string, instances map[
 		if err != nil {
 			return err
 		}
-		if sg == nil {
-			klog.Warningf("Ignoring instance without security group: %s", instance.InstanceId)
+		if sg == (osc.SecurityGroupLight{}) {
+			klog.Warningf("Ignoring instance without security group: %s", instance.VmId)
 			continue
 		}
-		desiredSGIDs.Insert(sg.GroupId)
+		desiredSGIDs.Insert(sg.SecurityGroupId)
 	}
 
 	// TODO(@M00nF1sh): do we really needs to support SG without cluster tag at current version?
@@ -174,12 +179,12 @@ func (c *Cloud) updateInstanceSecurityGroupsForNLB(lbName string, instances map[
 		}
 		clientRuleAnnotation := fmt.Sprintf("%s=%s", NLBClientRuleDescription, lbName)
 		healthRuleAnnotation := fmt.Sprintf("%s=%s", NLBHealthCheckRuleDescription, lbName)
-		vpcCIDRs, err := c.getVpcCidrBlocks()
+		vpcCIDRs, err := c.getVpcCidrBlocks(ctx)
 		if err != nil {
 			return err
 		}
 		for sgID, sg := range clusterSGs {
-			sgPerms := NewIPPermissionSet(sg.IpPermissions...).Ungroup()
+			sgPerms := NewSecurityGroupRuleSet(sg.SecurityGroupRule...).Ungroup()
 			if desiredSGIDs.Has(sgID) {
 				if err := c.updateInstanceSecurityGroupForNLBTraffic(sgID, sgPerms, healthRuleAnnotation, "tcp", healthCheckPorts, vpcCIDRs); err != nil {
 					return err
@@ -195,7 +200,7 @@ func (c *Cloud) updateInstanceSecurityGroupsForNLB(lbName string, instances map[
 					return err
 				}
 			}
-			if !sgPerms.Equal(NewIPPermissionSet(sg.IpPermissions...).Ungroup()) {
+			if !sgPerms.Equal(NewSecurityGroupRuleSet(sg.SecurityGroupId...).Ungroup()) {
 				if err := c.updateInstanceSecurityGroupForNLBMTU(sgID, sgPerms); err != nil {
 					return err
 				}
@@ -214,13 +219,13 @@ func (c *Cloud) updateInstanceSecurityGroupForNLBTraffic(sgID string, sgPerms Se
 	klog.V(10).Infof("updateInstanceSecurityGroupForNLBTraffic(%v,%v,%v,%v,%v,%v)",
 		sgID, sgPerms, ruleDesc, protocol, ports, cidrs)
 
-	desiredPerms := NewIPPermissionSet()
+	desiredPerms := NewSecurityGroupRuleSet()
 	for port := range ports {
 		for _, cidr := range cidrs {
 			desiredPerms.Insert(osc.SecurityGroupRule{
 				IpProtocol: protocol,
-				FromPortRange:   port,
-				ToPortRange:     port,
+				FromPortRange:   int32(port),
+				ToPortRange:     int32(port),
 				IpRanges: []string{cidr},
 			})
 		}
@@ -228,7 +233,7 @@ func (c *Cloud) updateInstanceSecurityGroupForNLBTraffic(sgID string, sgPerms Se
 
 	permsToGrant := desiredPerms.Difference(sgPerms)
 	permsToRevoke := sgPerms.Difference(desiredPerms)
-	permsToRevoke.DeleteIf(IPPermissionNotMatch{IPPermissionMatchDesc{ruleDesc}})
+	permsToRevoke.DeleteIf(SecurityGroupRuleNotMatch{SecurityGroupRuleMatchDesc{ruleDesc}})
 	if len(permsToRevoke) > 0 {
 		permsToRevokeList := permsToRevoke.List()
 		changed, err := c.removeSecurityGroupIngress(sgID, permsToRevokeList, false)
@@ -263,17 +268,13 @@ func (c *Cloud) updateInstanceSecurityGroupForNLBMTU(sgID string, sgPerms Securi
 	desiredPerms := NewSecurityGroupRuleSet()
 	for _, perm := range sgPerms {
 		for _, ipRange := range perm.IpRanges {
-			if strings.Contains(ipRange.Description, NLBClientRuleDescription) {
+			if strings.Contains(ipRange, NLBClientRuleDescription) {
 				desiredPerms.Insert(osc.SecurityGroupRule{
 					IpProtocol: "icmp",
 					FromPortRange:   3,
 					ToPortRange:     4,
-					IpRanges: []string{
-						{
-							CidrIp:      ipRange.CidrIp,
-							Description: NLBMtuDiscoveryRuleDescription,
-						},
-					},
+					IpRanges: []string{ipRange},
+					//Description: NLBMtuDiscoveryRuleDescription,
 				})
 			}
 		}
@@ -281,7 +282,7 @@ func (c *Cloud) updateInstanceSecurityGroupForNLBMTU(sgID string, sgPerms Securi
 
 	permsToGrant := desiredPerms.Difference(sgPerms)
 	permsToRevoke := sgPerms.Difference(desiredPerms)
-	permsToRevoke.DeleteIf(IPPermissionNotMatch{IPPermissionMatchDesc{NLBMtuDiscoveryRuleDescription}})
+	permsToRevoke.DeleteIf(SecurityGroupRuleNotMatch{SecurityGroupRuleMatchDesc{NLBMtuDiscoveryRuleDescription}})
 	if len(permsToRevoke) > 0 {
 		permsToRevokeList := permsToRevoke.List()
 		changed, err := c.removeSecurityGroupIngress(sgID, permsToRevokeList, false)
@@ -310,9 +311,9 @@ func (c *Cloud) updateInstanceSecurityGroupForNLBMTU(sgID string, sgPerms Securi
 	return nil
 }
 
-func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBalancerName string,
-	listeners []osc.Listener, subnetIDs []string, securityGroupIDs []string, internalLBU,
-	proxyProtocol bool, loadBalancerAttributes *osc.LoadBalancer,
+func (c *Cloud) ensureLoadBalancer(ctx context.Context, namespacedName types.NamespacedName, loadBalancerName string,
+	listeners []osc.ListenerForCreation, subnetIDs []string, securityGroupIDs []string, internalLBU,
+	proxyProtocol bool, loadBalancerAttributes osc.LoadBalancer,
 	annotations map[string]string) (osc.LoadBalancer, error) {
 
 	debugPrintCallerFunctionName()
@@ -322,45 +323,36 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 
 	loadBalancer, err := c.describeLoadBalancer(loadBalancerName)
 	if err != nil {
-		return nil, err
+		return osc.LoadBalancer{}, err
 	}
 
 	dirty := false
 
-	if loadBalancer == nil {
-		createRequest := &osc.CreateLoadBalancerOpts{
-		    CreateLoadBalancerRequest: optional.NewInterface(
-                osc.CreateLoadBalancerRequest{
-                    LoadBalancerName:          loadBalancerName,
-                    Listeners:                 listeners,
-                }),
-		}
+	if loadBalancer.LoadBalancerName == "" {
+	    request := osc.CreateLoadBalancerRequest{
+				LoadBalancerName:          loadBalancerName,
+                Listeners:                 listeners,
+        }
+
 
 		if internalLBU {
-		    createRequest = &osc.CreateLoadBalancerOpts{
-                CreateLoadBalancerRequest: optional.NewInterface(
-                    osc.CreateLoadBalancerRequest{
-                        LoadBalancerName:          loadBalancerName,
-                        Listeners:                 listeners,
-                        LoadBalancerType:          "internal",
-                    }),
-            }
+		    request.LoadBalancerType = "internal"
 		}
 
 		// We are supposed to specify one subnet per AZ.
 		// TODO: What happens if we have more than one subnet per AZ?
 		if subnetIDs == nil {
-			createRequest.Subnets = nil
+		    request.Subnets = nil
+            request.SubregionNames = append(request.SubregionNames, c.selfOSCInstance.availabilityZone)
 
-			createRequest.AvailabilityZones = append(createRequest.AvailabilityZones, c.selfAWSInstance.availabilityZone)
 		} else {
-			createRequest.Subnets = subnetIDs
+		    request.Subnets = subnetIDs
 		}
 
 		if securityGroupIDs == nil || subnetIDs == nil {
-			createRequest.SecurityGroups = nil
+		    request.SecurityGroups = nil
 		} else {
-			createRequest.SecurityGroups = securityGroupIDs
+		    request.SecurityGroups = securityGroupIDs
 		}
 
 		// Get additional tags set by the user
@@ -371,30 +363,33 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 		tags = c.tagging.buildTags(ResourceLifecycleOwned, tags)
 
 		for k, v := range tags {
-			createRequest.Tags = append(createRequest.Tags, &osc.Tag{
+			request.Tags = append(request.Tags, osc.ResourceTag{
 				Key: k, Value: v,
 			})
 		}
 
+		createRequest := osc.CreateLoadBalancerOpts{CreateLoadBalancerRequest: optional.NewInterface(request)}
+
 		klog.Infof("Creating load balancer for %v with name: %s", namespacedName, loadBalancerName)
 		klog.Infof("c.lbu.CreateLoadBalancer(createRequest): %v", createRequest)
 
-		_, err := c.lbu.CreateLoadBalancer(ctx, createRequest)
+		_, httpRes, err := c.lbu.CreateLoadBalancer(ctx, &createRequest)
 		if err != nil {
-			return nil, err
+		    klog.Infof("c.lbu.CreateLoadBalancer(createRequest) Error : %v Http Result : %v", err, httpRes)
+			return osc.LoadBalancer{}, err
 		}
 
 		if proxyProtocol {
 			err = c.createProxyProtocolPolicy(loadBalancerName)
 			if err != nil {
-				return nil, err
+				return osc.LoadBalancer{}, err
 			}
 
 			for _, listener := range listeners {
-				klog.V(2).Infof("Adjusting OSC loadbalancer proxy protocol on node port %d. Setting to true", *listener.InstancePort)
-				err := c.setBackendPolicies(loadBalancerName, *listener.InstancePort, []*string{ProxyProtocolPolicyName})
+				klog.V(2).Infof("Adjusting OSC loadbalancer proxy protocol on node port %d. Setting to true", listener.BackendPort)
+				err := c.setBackendPolicies(loadBalancerName, listener.BackendPort, []string{ProxyProtocolPolicyName})
 				if err != nil {
-					return nil, err
+					return osc.LoadBalancer{}, err
 				}
 			}
 		}
@@ -425,7 +420,7 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 			// Sync security groups
 			expected := sets.NewString(securityGroupIDs...)
 			actual := stringSetFromPointers(loadBalancer.SecurityGroups)
-			if len(subnetIDs) == 0 || c.vpcID == "" {
+			if len(subnetIDs) == 0 || c.netID == "" {
 				actual = sets.NewString([]string{DefaultSrcSgName}...)
 			}
 
@@ -437,7 +432,7 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 			}
 		}
 		{
-			additions, removals := syncLbuListeners(loadBalancerName, listeners, loadBalancer.ListenerDescriptions)
+			additions, removals := syncLbuListeners(loadBalancerName, listeners, loadBalancer.Listeners)
 			if len(removals) != 0 {
 				request := &osc.DeleteLoadBalancerListenersOpts{
                     DeleteLoadBalancerListenersRequest: optional.NewInterface(
@@ -448,19 +443,13 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 				}
 
 				klog.V(2).Info("Deleting removed load balancer listeners")
-				if _, err := c.lbu.DeleteLoadBalancerListeners(ctx, request); err != nil {
-					return nil, fmt.Errorf("error deleting OSC loadbalancer listeners: %q", err)
+				if _, httpRes, err := c.lbu.DeleteLoadBalancerListeners(ctx, request); err != nil {
+					return osc.LoadBalancer{}, fmt.Errorf("error deleting OSC loadbalancer listeners: %q %q", err, httpRes)
 				}
 				dirty = true
 			}
 
 			if len(additions) != 0 {
-			    deletionOpts := osc.DeleteVolumeOpts{
-                    DeleteVolumeRequest: optional.NewInterface(
-                        osc.DeleteVolumeRequest{
-                            VolumeId: creation.Volume.VolumeId,
-                        }),
-                }
 				request := &osc.CreateLoadBalancerListenersOpts{
 				    CreateLoadBalancerListenersRequest: optional.NewInterface(
                         osc.CreateLoadBalancerListenersRequest {
@@ -470,8 +459,8 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 				}
 
 				klog.V(2).Info("Creating added load balancer listeners")
-				if _, err := c.lbu.CreateLoadBalancerListeners(ctx, request); err != nil {
-					return nil, fmt.Errorf("error creating OSC loadbalancer listeners: %q", err)
+				if _, httpRes, err := c.lbu.CreateLoadBalancerListeners(ctx, request); err != nil {
+					return osc.LoadBalancer{}, fmt.Errorf("error creating OSC loadbalancer listeners: %q %q", err, httpRes)
 				}
 				dirty = true
 			}
@@ -480,7 +469,7 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 		{
 			// Sync proxy protocol state for new and existing listeners
 
-			proxyPolicies := make([]*string, 0)
+			proxyPolicies := make([]string, 0)
 			if proxyProtocol {
 				// Ensure the backend policy exists
 
@@ -490,22 +479,22 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 				// request every time.
 				err := c.createProxyProtocolPolicy(loadBalancerName)
 				if err != nil {
-					return nil, err
+					return osc.LoadBalancer{}, err
 				}
 
 				proxyPolicies = append(proxyPolicies, ProxyProtocolPolicyName)
 			}
 
-			foundBackends := make(map[int64]bool)
-			proxyProtocolBackends := make(map[int64]bool)
-			for _, backendListener := range loadBalancer.BackendServerDescriptions {
-				foundBackends[*backendListener.InstancePort] = false
-				proxyProtocolBackends[*backendListener.InstancePort] = proxyProtocolEnabled(backendListener)
+			foundBackends := make(map[int32]bool)
+			proxyProtocolBackends := make(map[int32]bool)
+			for _, backendListener := range loadBalancer.Listeners {
+				foundBackends[backendListener.BackendPort] = false
+				proxyProtocolBackends[backendListener.BackendPort] = proxyProtocolEnabled(backendListener)
 			}
 
 			for _, listener := range listeners {
 				setPolicy := false
-				instancePort := *listener.InstancePort
+				instancePort := listener.BackendPort
 
 				if currentState, ok := proxyProtocolBackends[instancePort]; !ok {
 					// This is a new LBU backend so we only need to worry about
@@ -521,9 +510,9 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 
 				if setPolicy {
 					klog.V(2).Infof("Adjusting OSC loadbalancer proxy protocol on node port %d. Setting to %t", instancePort, proxyProtocol)
-					err := c.setBackendPolicies(loadBalancerName, instancePort, proxyPolicies)
+					err := c.setBackendPolicies(loadBalancerName, int32(instancePort), proxyPolicies)
 					if err != nil {
-						return nil, err
+						return osc.LoadBalancer{}, err
 					}
 					dirty = true
 				}
@@ -535,9 +524,9 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 			for instancePort, found := range foundBackends {
 				if !found {
 					klog.V(2).Infof("Adjusting OSC loadbalancer proxy protocol on node port %d. Setting to false", instancePort)
-					err := c.setBackendPolicies(loadBalancerName, instancePort, []*string{})
+					err := c.setBackendPolicies(loadBalancerName, int32(instancePort), []string{})
 					if err != nil {
-						return nil, err
+						return osc.LoadBalancer{}, err
 					}
 					dirty = true
 				}
@@ -551,7 +540,7 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 			if len(tags) > 0 {
 				err := c.addLoadBalancerTags(loadBalancerName, tags)
 				if err != nil {
-					return nil, fmt.Errorf("unable to create additional load balancer tags: %v", err)
+					return osc.LoadBalancer{}, fmt.Errorf("unable to create additional load balancer tags: %v", err)
 				}
 			}
 		}
@@ -561,22 +550,22 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 	// that cannot be specified at the time of creation and can only be modified after the fact,
 	// e.g. idle connection timeout.
 	{
-		describeAttributesRequest := &osc.ReadLoadBalancerOpts{
-		    ReadLoadBalancerRequest: optional.NewInterface(
-                osc.ReadLoadBalancerRequest{
+		describeAttributesRequest := &osc.ReadLoadBalancersOpts{
+		    ReadLoadBalancersRequest: optional.NewInterface(
+                osc.ReadLoadBalancersRequest{
                     Filters: osc.FiltersLoadBalancer{
                         LoadBalancerNames: []string{loadBalancerName},
                     },
                 }),
 		}
 
-		describeAttributesOutput, err := c.lbu.ReadLoadBalancer(ctx, describeAttributesRequest)
+		describeAttributesOutput, httpRes, err := c.lbu.ReadLoadBalancers(ctx, describeAttributesRequest)
 		if err != nil {
-			klog.Warning("Unable to retrieve load balancer attributes during attribute sync")
-			return nil, err
+			klog.Warning("Unable to retrieve load balancer attributes during attribute sync %v", httpRes)
+			return osc.LoadBalancer{}, err
 		}
 
-		foundAttributes := &describeAttributesOutput.LoadBalancerAttributes
+		foundAttributes := describeAttributesOutput.LoadBalancer[0]
 
 		// Update attributes if they're dirty
 		if !reflect.DeepEqual(loadBalancerAttributes, foundAttributes) {
@@ -593,7 +582,7 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 				loadBalancerName, loadBalancerAttributes)
 			_, err = c.lbu.UpdateLoadBalancer(ctx, modifyAttributesRequest)
 			if err != nil {
-				return nil, fmt.Errorf("Unable to update load balancer attributes during attribute sync: %q", err)
+				return osc.LoadBalancer{}, fmt.Errorf("Unable to update load balancer attributes during attribute sync: %q", err)
 			}
 			dirty = true
 		}
@@ -603,7 +592,7 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 		loadBalancer, err = c.describeLoadBalancer(loadBalancerName)
 		if err != nil {
 			klog.Warning("Unable to retrieve load balancer after creation/update")
-			return nil, err
+			return osc.LoadBalancer{}, err
 		}
 	}
 
@@ -613,12 +602,12 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 // syncLbuListeners computes a plan to reconcile the desired vs actual state of the listeners on an LBU
 // NOTE: there exists an O(nlgn) implementation for this function. However, as the default limit of
 //       listeners per lbu is 100, this implementation is reduced from O(m*n) => O(n).
-func syncLbuListeners(loadBalancerName string, listeners []osc.Listener, listenerDescriptions []osc.Listener) ([]osc.Listener, []*int64) {
+func syncLbuListeners(loadBalancerName string, listeners []osc.ListenerForCreation, listenerDescriptions []osc.Listener) ([]osc.ListenerForCreation, []int32) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("syncLbuListeners(%v,%v,%v)", loadBalancerName, listeners, listenerDescriptions)
 	foundSet := make(map[int]bool)
 	removals := []*int64{}
-	additions := []osc.Listener{}
+	additions := []osc.ListenerForCreation{}
 
 	for _, listenerDescription := range listenerDescriptions {
 		actual := listenerDescription
@@ -940,7 +929,7 @@ func (c *Cloud) createProxyProtocolPolicy(loadBalancerName string) error {
 	return nil
 }
 
-func (c *Cloud) setBackendPolicies(loadBalancerName string, instancePort int64, policies []*string) error {
+func (c *Cloud) setBackendPolicies(loadBalancerName string, instancePort int32, policies []string) error {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("setBackendPolicies(%v,%v,%v)", loadBalancerName, instancePort, policies)
 	request := &osc.SetLoadBalancerPoliciesForBackendServerInput{
@@ -963,7 +952,7 @@ func (c *Cloud) setBackendPolicies(loadBalancerName string, instancePort int64, 
 
 
 // A Verifier
-func proxyProtocolEnabled(backend string) bool {
+func proxyProtocolEnabled(backend osc.Listener) bool {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("proxyProtocolEnabled(%v)", backend)
 	for _, policy := range backend.LoadBalancerStickyCookiePolicies[0].PolicyNames {
