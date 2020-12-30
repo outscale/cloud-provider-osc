@@ -121,26 +121,16 @@ type FakeFCUImpl struct {
 func (fcui *FakeFCUImpl) ReadVms(ctx context.Context, request *osc.ReadVmsOpts) ([]osc.Vm, *_nethttp.Response, error) {
 	matches := []osc.Vm{}
 
-	readOpts := osc.ReadVmsOpts{
-		ReadVmsRequest: optional.NewInterface(
-			osc.ReadVmsRequest{
-				Filters: osc.FiltersVm{
-					VmIds: []string{VMID},
-				},
-		}),
-	}
-
-	read := fcui.osc.fcu.FCU.ReadVms
-
+    requestVm := request.ReadVmsRequest.Value().(osc.ReadVmsRequest).Filters
 	for _, instance := range fcui.osc.instances {
-		if request.VmIds != nil {
+		if requestVm.VmIds != nil {
 			if instance.VmId == "" {
 				klog.Warning("Instance with no instance id: ", instance)
 				continue
 			}
 
 			found := false
-			for _, instanceID := range request.VmIds {
+			for _, instanceID := range requestVm.VmIds {
 				if *instanceID == instance.VmId {
 					found = true
 					break
