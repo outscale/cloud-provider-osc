@@ -493,18 +493,18 @@ func isRegionValid(region string, metadata EC2Metadata) bool {
 }
 
 // newOScInstance creates a new awsInstance object
-func newOScInstance(oscService LBU, instance *osc.Vm) *oscInstance {
+func newOSCInstance(oscService FCU, instance osc.Vm) *oscInstance {
 	az := ""
 	if instance.Placement != nil {
-		az = instance.Placement.AvailabilityZone
+		az = instance.Placement.SubregionName
 	}
 	self := &oscInstance{
-		lbu:              oscService,
-		oscID:            instance.InstanceId,
+		fcu:              oscService,
+		oscID:            instance.VmId,
 		nodeName:         mapInstanceToNodeName(instance),
 		availabilityZone: az,
 		instanceType:     instance.InstanceType,
-		vpcID:            instance.VpcId,
+		netID:            instance.NetId,
 		subnetID:         instance.SubnetId,
 	}
 

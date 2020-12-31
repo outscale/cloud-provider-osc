@@ -129,7 +129,7 @@ func (t *oscTagging) init(legacyClusterID string, clusterID string) error {
 // Extracts a clusterID from the given tags, if one is present
 // If no clusterID is found, returns "", nil
 // If multiple (different) clusterIDs are found, returns an error
-func (t *oscTagging) initFromTags(tags []osc.Tag) error {
+func (t *oscTagging) initFromTags(tags []osc.ResourceTag) error {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("initFromTags(%v)", tags)
 	legacyClusterID, newClusterID, err := findClusterIDs(tags)
@@ -150,7 +150,7 @@ func (t *oscTagging) clusterTagKey() string {
 	return TagNameKubernetesClusterPrefix + t.ClusterID
 }
 
-func (t *oscTagging) hasClusterTag(tags []osc.Tag) bool {
+func (t *oscTagging) hasClusterTag(tags []osc.ResourceTag) bool {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("hasClusterTag(%v)", tags)
 	// if the clusterID is not configured -- we consider all instances.

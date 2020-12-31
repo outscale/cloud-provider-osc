@@ -122,19 +122,19 @@ func newOSCCloud(cfg CloudConfig, oscServices Services) (*Cloud, error) {
 		klog.Info("Master is configured to run on a different osc account, different cloud provider or on-premises")
 		oscCloud.selfOSCInstance = &oscInstance{
 			nodeName: "master-dummy",
-			vpcID:    cfg.Global.VPC,
+			netID:    cfg.Global.VPC,
 			subnetID: cfg.Global.SubnetID,
 		}
-		oscCloud.vpcID = cfg.Global.VPC
+		oscCloud.netID = cfg.Global.VPC
 	} else {
 		selfOSCInstance, err := oscCloud.buildSelfOSCInstance()
 		if err != nil {
 			return nil, err
 		}
 		oscCloud.selfOSCInstance = selfOSCInstance
-		oscCloud.vpcID = selfOSCInstance.vpcID
+		oscCloud.netID = selfOSCInstance.netID
 		klog.Infof("OSC CCM Instance (%v)", selfOSCInstance)
-		klog.Infof("OSC CCM vpcID (%v)", selfOSCInstance.vpcID)
+		klog.Infof("OSC CCM netID (%v)", selfOSCInstance.netID)
 
 	}
 

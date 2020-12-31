@@ -27,6 +27,8 @@ import (
 
     "github.com/outscale/osc-sdk-go/osc"
 
+    "github.com/antihax/optional"
+
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/informers"
@@ -288,13 +290,14 @@ func (c *Cloud) InstanceExistsByProviderID(ctx context.Context, providerID strin
 		ReadVmsRequest: optional.NewInterface(
 			osc.ReadVmsRequest{
 				Filters: osc.FiltersVm{
-					VmIds: []string{instanceID},
+					VmIds: []string{string(instanceID)},
 				},
 			}),
 	}
 
-	instances, err := c.fcu.ReadVms(ctx, request)
+	instances, httpRes, err := c.fcu.ReadVms(ctx, request)
 	if err != nil {
+	    fmt.Errorf("http %q", httpRes)
 		return false, err
 	}
 	if len(instances) == 0 {
@@ -326,13 +329,14 @@ func (c *Cloud) InstanceShutdownByProviderID(ctx context.Context, providerID str
 		ReadVmsRequest: optional.NewInterface(
 			osc.ReadVmsRequest{
 				Filters: osc.FiltersVm{
-					VmIds: []string{instanceID},
+					VmIds: []string{string(instanceID)},
 				},
 			}),
 	}
 
-	instances, err := c.fcu.ReadVms(ctx, request)
+	instances, httpRes, err := c.fcu.ReadVms(ctx, request)
 	if err != nil {
+	    fmt.Errorf("http %q", httpRes)
 		return false, err
 	}
 	if len(instances) == 0 {
@@ -373,7 +377,7 @@ func (c *Cloud) InstanceID(ctx context.Context, nodeName types.NodeName) (string
 		}
 		return "", fmt.Errorf("getInstanceByNodeName failed for %q with %q", nodeName, err)
 	}
-	return "/" + inst.Placement.AvailabilityZone + "/" + inst.InstanceId, nil
+	return "/" + inst.Placement.SubRegionName + "/" + inst.VmId, nil
 }
 
 // InstanceTypeByProviderID returns the cloudprovider instance type of the node with the specified unique providerID
@@ -475,18 +479,18 @@ func (c *Cloud) findVPCID() (string, error) {
 			continue
 		}
 		url := fmt.Sprintf("network/interfaces/macs/%svpc-id", macPath)
-		vpcID, err := c.metadata.GetMetadata(url)
+		netID, err := c.metadata.GetMetadata(url)
 		if err != nil {
 			continue
 		}
-		return vpcID, nil
+		return netID, nil
 	}
 	return "", fmt.Errorf("could not find VPC ID in instance metadata")
 }
 
 // ********************* CCM Cloud Resource LBU Functions  *********************
 
-func (c *Cloud) addLoadBalancerTags(loadBalancerName string, requested map[string]string) error {
+func (c *Cloud) addLoadBalancerTags(ctx context.Context, loadBalancerName string, requested map[string]string) error {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("addLoadBalancerTags(%v,%v)", loadBalancerName, requested)
 	var tags []osc.ResourceTag
@@ -514,7 +518,7 @@ func (c *Cloud) addLoadBalancerTags(loadBalancerName string, requested map[strin
 }
 
 // Gets the current load balancer state
-func (c *Cloud) describeLoadBalancer(name string) (osc.LoadBalancer, error) {
+func (c *Cloud) describeLoadBalancer(ctx context.Context, name string) (osc.LoadBalancer, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("describeLoadBalancer(%v)", name)
 
@@ -549,7 +553,7 @@ func (c *Cloud) describeLoadBalancer(name string) (osc.LoadBalancer, error) {
 }
 
 // Retrieves the specified security group from the OSC API, or returns nil if not found
-func (c *Cloud) findSecurityGroup(securityGroupID string) (osc.SecurityGroup, error) {
+func (c *Cloud) findSecurityGroup(ctx context.Context, securityGroupID string) (osc.SecurityGroup, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("findSecurityGroup(%v)", securityGroupID)
 
@@ -563,9 +567,9 @@ func (c *Cloud) findSecurityGroup(securityGroupID string) (osc.SecurityGroup, er
 	}
 	// We don't apply our tag filters because we are retrieving by ID
 
-	groups, err := c.fcu.ReadSecurityGroups(ctx, request)
+	groups, httpRes, err := c.fcu.ReadSecurityGroups(ctx, request)
 	if err != nil {
-		klog.Warningf("Error retrieving security group: %q", err)
+		klog.Warningf("Error retrieving security group: %q %q", err, httpRes)
 		return nil, err
 	}
 
@@ -583,7 +587,7 @@ func (c *Cloud) findSecurityGroup(securityGroupID string) (osc.SecurityGroup, er
 // Makes sure the security group ingress is exactly the specified permissions
 // Returns true if and only if changes were made
 // The security group must already exist
-func (c *Cloud) setSecurityGroupIngress(securityGroupID string, permissions SecurityGroupRuleSet) (bool, error) {
+func (c *Cloud) setSecurityGroupIngress(ctx context.Context, securityGroupID string, permissions SecurityGroupRuleSet) (bool, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("setSecurityGroupIngress(%v,%v)", securityGroupID, permissions)
 	// We do not want to make changes to the Global defined SG
@@ -643,9 +647,9 @@ func (c *Cloud) setSecurityGroupIngress(securityGroupID string, permissions Secu
 	}
 
 
-		_, err = c.fcu.CreateSecurityGroupRule(ctx, request)
+		_, httpRes, err = c.fcu.CreateSecurityGroupRule(ctx, request)
 		if err != nil {
-			return false, fmt.Errorf("error authorizing security group ingress: %q", err)
+			return false, fmt.Errorf("error authorizing security group ingress: %q %q", err, httpRes)
 		}
 	}
 	if remove.Len() != 0 {
@@ -659,9 +663,9 @@ func (c *Cloud) setSecurityGroupIngress(securityGroupID string, permissions Secu
                 }),
         }
 
-        _, err = c.fcu.DeleteSecurityGroupRule(request)
+        _, httpRes, err = c.fcu.DeleteSecurityGroupRule(ctx, request)
 		if err != nil {
-			return false, fmt.Errorf("error revoking security group ingress: %q", err)
+			return false, fmt.Errorf("error revoking security group ingress: %q %q", err, httpRes)
 		}
 	}
 
@@ -727,7 +731,7 @@ func (c *Cloud) addSecurityGroupIngress(securityGroupID string, addPermissions [
                 SecurityGroupAccountIdToLink: DefaultSgOwnerID,
 			}),
 	}
-	_, err = c.fcu.CreateSecurityGroupRule(ctx, request)
+	_, httpRes, err = c.fcu.CreateSecurityGroupRule(ctx, request)
 
 	if err != nil {
 		ignore := false
@@ -740,8 +744,8 @@ func (c *Cloud) addSecurityGroupIngress(securityGroupID string, addPermissions [
 			}
 		}
 		if !ignore {
-			klog.Warningf("Error authorizing security group ingress %q", err)
-			return false, fmt.Errorf("error authorizing security group ingress: %q", err)
+			klog.Warningf("Error authorizing security group ingress %q %q", err, httpRes)
+			return false, fmt.Errorf("error authorizing security group ingress: %q %q", err, httpRes)
 		}
 	}
 
@@ -808,11 +812,11 @@ func (c *Cloud) removeSecurityGroupIngress(securityGroupID string, removeRules [
 			}),
 	}
 
-	_, err = c.fcu.DeleteSecurityGroupRule(ctx, request)
+	_, httpRes, err = c.fcu.DeleteSecurityGroupRule(ctx, request)
 
 
 	if err != nil {
-		klog.Warningf("Error revoking security group ingress: %q", err)
+		klog.Warningf("Error revoking security group ingress: %q %q", err, httpRes)
 		return false, err
 	}
 
@@ -823,7 +827,7 @@ func (c *Cloud) removeSecurityGroupIngress(securityGroupID string, removeRules [
 // For multi-cluster isolation, name must be globally unique, for example derived from the service UUID.
 // Additional tags can be specified
 // Returns the security group id or error
-func (c *Cloud) ensureSecurityGroup(name string, description string, additionalTags map[string]string) (string, error) {
+func (c *Cloud) ensureSecurityGroup(ctx context.Context, name string, description string, additionalTags map[string]string) (string, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("ensureSecurityGroup (%v,%v,%v)", name, description, additionalTags)
 
@@ -842,12 +846,13 @@ func (c *Cloud) ensureSecurityGroup(name string, description string, additionalT
 			newSGFilter("group-name", name),
 		}
 
-		if c.vpcID != "" {
-			request.Filters = append(request.Filters, newNetFilter("vpc-id", c.vpcID))
+		if c.netID != "" {
+			request.Filters = append(request.Filters, newNetFilter("vpc-id", c.netID))
 		}
 
-		securityGroups, err := c.fcu.ReadSecurityGroups(request)
+		securityGroups, httpRes, err := c.fcu.ReadSecurityGroups(ctx, request)
 		if err != nil {
+		    fmt.Errorf("http %q", httpRes)
 			return "", err
 		}
 
@@ -875,7 +880,7 @@ func (c *Cloud) ensureSecurityGroup(name string, description string, additionalT
                 }),
 	    }
 
-		createResponse, err := c.fcu.CreateSecurityGroup(ctx, createRequest)
+		createResponse, httpRes, err := c.fcu.CreateSecurityGroup(ctx, createRequest)
 		if err != nil {
 			ignore := false
 			switch err := err.(type) {
@@ -886,7 +891,7 @@ func (c *Cloud) ensureSecurityGroup(name string, description string, additionalT
 				}
 			}
 			if !ignore {
-				klog.Errorf("Error creating security group: %q", err)
+				klog.Errorf("Error creating security group: %q %q", err, httpRes)
 				return "", err
 			}
 			time.Sleep(1 * time.Second)
@@ -913,7 +918,7 @@ func (c *Cloud) ensureSecurityGroup(name string, description string, additionalT
 // Finds the subnets associated with the cluster, by matching tags.
 // For maximal backwards compatibility, if no subnets are tagged, it will fall-back to the current subnet.
 // However, in future this will likely be treated as an error.
-func (c *Cloud) findSubnets() ([]osc.Subnet, error) {
+func (c *Cloud) findSubnets(ctx context.Context) ([]osc.Subnet, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("findSubnets()")
 	request := &osc.ReadSubnetsOpts{}
@@ -924,20 +929,20 @@ func (c *Cloud) findSubnets() ([]osc.Subnet, error) {
 
 
 
-	if c.vpcID != "" {
+	if c.netID != "" {
 		//request.Filters = []*ec2.Filter{newEc2Filter("vpc-id", c.vpcID)}
         request = &osc.ReadSubnetsOpts{
             ReadSubnetsRequest: optional.NewInterface(
                 osc.ReadSubnetsRequest{
                     Filters: osc.ReadSubnetsRequest{
-                    NetIds: c.vpcID,
+                    NetIds: c.netID,
                 },
             }),
         }
 
-		subnets, err := c.fcu.ReadSubnets(ctx, request)
+		subnets, httpRes, err := c.fcu.ReadSubnets(ctx, request)
 		if err != nil {
-			return nil, fmt.Errorf("error describing subnets: %q", err)
+			return nil, fmt.Errorf("error describing subnets: %q %q", err, httpRes)
 		}
 
 		var matches []osc.Subnet
@@ -965,9 +970,9 @@ func (c *Cloud) findSubnets() ([]osc.Subnet, error) {
 			    }),
 	}
 
-		subnets, err = c.fcu.ReadSubnets(request)
+		subnets, httpRes, err = c.fcu.ReadSubnets(request)
 		if err != nil {
-			return nil, fmt.Errorf("error describing subnets: %q", err)
+			return nil, fmt.Errorf("error describing subnets: %q %q", err, httpRes)
 		}
 		return subnets, nil
 
@@ -980,7 +985,7 @@ func (c *Cloud) findSubnets() ([]osc.Subnet, error) {
 // Finds the subnets to use for an LBU we are creating.
 // Normal (Internet-facing) LBUs must use public subnets, so we skip private subnets.
 // Internal LBUs can use public or private subnets, but if we have a private subnet we should prefer that.
-func (c *Cloud) findLBUSubnets(internalLBU bool) ([]string, error) {
+func (c *Cloud) findLBUSubnets(ctx context.Context, internalLBU bool) ([]string, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("findLBUSubnets(%v)", internalLBU)
 
@@ -989,7 +994,7 @@ func (c *Cloud) findLBUSubnets(internalLBU bool) ([]string, error) {
 		return nil, err
 	}
 	var rt []osc.RouteTable
-	if c.vpcID != "" {
+	if c.netID != "" {
 // 		vpcIDFilter := newEc2Filter("vpc-id", c.vpcID)
 // 		rRequest := &ec2.DescribeRouteTablesInput{}
 // 		rRequest.Filters = []*ec2.Filter{vpcIDFilter}
@@ -1004,10 +1009,10 @@ func (c *Cloud) findLBUSubnets(internalLBU bool) ([]string, error) {
                 }),
 	    }
 
-	    rt, err := c.fcu.ReadRouteTables(ctx, rRequest)
+	    rt, httpRes, err := c.fcu.ReadRouteTables(ctx, rRequest)
 
 		if err != nil {
-			return nil, fmt.Errorf("error describe route table: %q", err)
+			return nil, fmt.Errorf("error describe route table: %q %q", err, httpRes)
 		}
 	}
 
@@ -1318,7 +1323,7 @@ func (c *Cloud) EnsureLoadBalancer(ctx context.Context, clusterName string, apiS
 
 	var securityGroupIDs []string
 
-	if len(subnetIDs) == 0 || c.vpcID == "" {
+	if len(subnetIDs) == 0 || c.netID == "" {
 		securityGroupIDs = []string{DefaultSrcSgName}
 	} else {
 		securityGroupIDs, err = c.buildLBUSecurityGroupList(serviceName, loadBalancerName, annotations)
@@ -1333,7 +1338,7 @@ func (c *Cloud) EnsureLoadBalancer(ctx context.Context, clusterName string, apiS
 		return nil, fmt.Errorf("[BUG] LBU can't have empty list of Security Groups to be assigned, this is a Kubernetes bug, please report")
 	}
 
-	if len(subnetIDs) > 0 && c.vpcID != "" {
+	if len(subnetIDs) > 0 && c.netID != "" {
 		oscSourceRanges := []string{}
 		for _, sourceRange := range sourceRanges.StringSlice() {
 			oscSourceRanges = append(oscSourceRanges, sourceRange)
@@ -1480,7 +1485,7 @@ func (c *Cloud) GetLoadBalancerName(ctx context.Context, clusterName string, ser
 }
 
 // Return all the security groups that are tagged as being part of our cluster
-func (c *Cloud) getTaggedSecurityGroups() (map[string]osc.SecurityGroup, error) {
+func (c *Cloud) getTaggedSecurityGroups(ctx context.Context) (map[string]osc.SecurityGroup, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("getTaggedSecurityGroups()")
 	request := &osc.ReadSecurityGroupsOpts{}
@@ -1489,9 +1494,9 @@ func (c *Cloud) getTaggedSecurityGroups() (map[string]osc.SecurityGroup, error) 
 		newtagFilter(TagNameMainSG+c.tagging.clusterID(), "True"),
 	}
 
-	groups, err := c.fcu.ReadSecurityGroups(ctx, request)
+	groups, httpRes, err := c.fcu.ReadSecurityGroups(ctx, request)
 	if err != nil {
-		return nil, fmt.Errorf("error querying security groups: %q", err)
+		return nil, fmt.Errorf("error querying security groups: %q %q", err, httpRes)
 	}
 
 	m := make(map[string]osc.SecurityGroup)
@@ -1563,9 +1568,9 @@ func (c *Cloud) updateInstanceSecurityGroupsForLoadBalancer(lb osc.LoadBalancer,
 				newSGFilter("ip-permission.group-name", loadBalancerSecurityGroupID),
 			}
 		}
-		response, err := c.fcu.ReadSecurityGroups(describeRequest)
+		response, httpRes, err := c.fcu.ReadSecurityGroups(describeRequest)
 		if err != nil {
-			return fmt.Errorf("error querying security groups for LBU: %q", err)
+			return fmt.Errorf("error querying security groups for LBU: %q %q", err, httpRes)
 		}
 		for _, sg := range response {
 			if !c.tagging.hasClusterTag(sg.Tags) {
@@ -1599,7 +1604,7 @@ func (c *Cloud) updateInstanceSecurityGroupsForLoadBalancer(lb osc.LoadBalancer,
 		}
 
 		if securityGroup == nil {
-			klog.Warning("Ignoring instance without security group: ", instance.InstanceId)
+			klog.Warning("Ignoring instance without security group: ", instance.VmId)
 			continue
 		}
 		id := securityGroup.GroupId
@@ -1692,7 +1697,7 @@ func (c *Cloud) EnsureLoadBalancerDeleted(ctx context.Context, clusterName strin
 	}
 
 	securityGroupsItem := []string{}
-	if len(lb.SecurityGroups) == 0 && c.vpcID == "" {
+	if len(lb.SecurityGroups) == 0 && c.netID == "" {
 		securityGroupsItem = append(securityGroupsItem, DefaultSrcSgName)
 	}
 
@@ -1740,9 +1745,9 @@ func (c *Cloud) EnsureLoadBalancerDeleted(ctx context.Context, clusterName strin
 			newSGFilter("group-id", loadBalancerSGs...),
 		}
 
-		response, err := c.fcu.DescribeSecurityGroups(describeRequest)
+		response, httpRes, err := c.fcu.DescribeSecurityGroups(describeRequest)
 		if err != nil {
-			return fmt.Errorf("error querying security groups for LBU: %q", err)
+			return fmt.Errorf("error querying security groups for LBU: %q %q", err, httpRes)
 		}
 
 		// Collect the security groups to delete
@@ -1778,7 +1783,7 @@ func (c *Cloud) EnsureLoadBalancerDeleted(ctx context.Context, clusterName strin
                             SecurityGroupId: securityGroupID,
                         }),
 				}
-				_, err := c.fcu.DeleteSecurityGroup(ctx, request)
+				_, httpRes, err := c.fcu.DeleteSecurityGroup(ctx, request)
 				if err == nil {
 					delete(securityGroupIDs, securityGroupID)
 				} else {
@@ -1790,7 +1795,7 @@ func (c *Cloud) EnsureLoadBalancerDeleted(ctx context.Context, clusterName strin
 						}
 					}
 					if !ignore {
-						return fmt.Errorf("error while deleting load balancer security group (%s): %q", securityGroupID, err)
+						return fmt.Errorf("error while deleting load balancer security group (%s): %q %q", securityGroupID, err, httpRes)
 					}
 				}
 			}
@@ -1856,7 +1861,7 @@ func (c *Cloud) UpdateLoadBalancer(ctx context.Context, clusterName string, serv
 	}
 
 	securityGroupsItem := []string{}
-	if len(lb.SecurityGroups) == 0 && c.vpcID == "" {
+	if len(lb.SecurityGroups) == 0 && c.netID == "" {
 		securityGroupsItem = append(securityGroupsItem, DefaultSrcSgName)
 	}
 
@@ -1889,7 +1894,7 @@ func (c *Cloud) getInstanceByID(instanceID string) (osc.Vm, error) {
 	return instances[instanceID], nil
 }
 
-func (c *Cloud) getInstancesByIDs(instanceIDs []string) (map[string]osc.Vm, error) {
+func (c *Cloud) getInstancesByIDs(ctx context.Context, instanceIDs []string) (map[string]osc.Vm, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("getInstancesByIDs(%v)", instanceIDs)
 
@@ -1904,13 +1909,14 @@ func (c *Cloud) getInstancesByIDs(instanceIDs []string) (map[string]osc.Vm, erro
 				VmIds: instanceIDs,
 			}),
     }
-	instances, err := c.fcu.ReadVms(ctx, request)
+	instances, httpRes, err := c.fcu.ReadVms(ctx, request)
 	if err != nil {
+	    fmt.Errorf("http %q", httpRes)
 		return nil, err
 	}
 
 	for _, instance := range instances {
-		instanceID := instance.InstanceId
+		instanceID := instance.VmId
 		if instanceID == "" {
 			continue
 		}
@@ -1962,7 +1968,7 @@ func (c *Cloud) getInstancesByNodeNames(nodeNames []string, states ...string) ([
 }
 
 // TODO: Move to instanceCache
-func (c *Cloud) describeInstances(filters []osc.FiltersVm) ([]osc.Vm, error) {
+func (c *Cloud) describeInstances(ctx context.Context, filters []osc.FiltersVm) ([]osc.Vm, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("describeInstances(%v)", filters)
 
@@ -1973,8 +1979,9 @@ func (c *Cloud) describeInstances(filters []osc.FiltersVm) ([]osc.Vm, error) {
 				Filters: filters,
 			}),
     }
-	response, err := c.fcu.ReadVms(ctx, request)
+	response, httpRes, err := c.fcu.ReadVms(ctx, request)
 	if err != nil {
+	    fmt.Errorf("http %q", httpRes)
 		return nil, err
 	}
 

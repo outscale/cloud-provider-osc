@@ -38,7 +38,7 @@ type oscInstance struct {
 	availabilityZone string
 
 	// ID of VPC the instance resides in
-	vpcID string
+	netID string
 
 	// ID of subnet the instance resides in
 	subnetID string
