@@ -29,7 +29,7 @@ import (
 	cloudprovider "k8s.io/cloud-provider"
 )
 
-func (c *Cloud) findRouteTable(clusterName string) (osc.RouteTable, error) {
+func (c *Cloud) findRouteTable(ctx context.Context, clusterName string) (osc.RouteTable, error) {
 	// This should be unnecessary (we already filter on TagNameKubernetesCluster,
 	// and something is broken if cluster name doesn't match, but anyway...
 	// TODO: All clouds should be cluster-aware by default
@@ -44,17 +44,19 @@ func (c *Cloud) findRouteTable(clusterName string) (osc.RouteTable, error) {
                     },
                 }),
         }
-		response, err := c.fcu.ReadRouteTables(request)
+		response, httpRes, err := c.fcu.ReadRouteTables(ctx, request)
 		if err != nil {
-			return nil, err
+		    fmt.Errorf("http %q", httpRes)
+			return osc.RouteTable{}, err
 		}
 
 		tables = response
 	} else {
 		request := &osc.ReadRouteTablesOpts{}
-		response, err := c.fcu.ReadRouteTables(request)
+		response, httpRes, err := c.fcu.ReadRouteTables(ctx, request)
 		if err != nil {
-			return nil, err
+		    fmt.Errorf("http %q", httpRes)
+			return osc.RouteTable{}, err
 		}
 
 		for _, table := range response {
@@ -65,11 +67,11 @@ func (c *Cloud) findRouteTable(clusterName string) (osc.RouteTable, error) {
 	}
 
 	if len(tables) == 0 {
-		return nil, fmt.Errorf("unable to find route table for OSC cluster: %s", clusterName)
+		return osc.RouteTable{}, fmt.Errorf("unable to find route table for OSC cluster: %s", clusterName)
 	}
 
 	if len(tables) != 1 {
-		return nil, fmt.Errorf("found multiple matching OSC route tables for OSC cluster: %s", clusterName)
+		return osc.RouteTable{}, fmt.Errorf("found multiple matching OSC route tables for OSC cluster: %s", clusterName)
 	}
 	return tables[0], nil
 }
@@ -77,7 +79,7 @@ func (c *Cloud) findRouteTable(clusterName string) (osc.RouteTable, error) {
 // ListRoutes implements Routes.ListRoutes
 // List all routes that match the filter
 func (c *Cloud) ListRoutes(ctx context.Context, clusterName string) ([]*cloudprovider.Route, error) {
-	table, err := c.findRouteTable(clusterName)
+	table, err := c.findRouteTable(ctx, clusterName)
 	if err != nil {
 		return nil, err
 	}
@@ -86,13 +88,13 @@ func (c *Cloud) ListRoutes(ctx context.Context, clusterName string) ([]*cloudpro
 	var instanceIDs []string
 
 	for _, r := range table.Routes {
-		instanceID := r.InstanceId
+		instanceID := r.VmId
 
 		if instanceID == "" {
 			continue
 		}
 
-		instanceIDs = append(instanceIDs, &instanceID)
+		instanceIDs = append(instanceIDs, instanceID)
 	}
 
 	instances, err := c.getInstancesByIDs(instanceIDs)
@@ -101,7 +103,7 @@ func (c *Cloud) ListRoutes(ctx context.Context, clusterName string) ([]*cloudpro
 	}
 
 	for _, r := range table.Routes {
-		destinationCIDR := r.DestinationCidrBlock
+		destinationCIDR := r.DestinationIpRange
 		if destinationCIDR == "" {
 			continue
 		}
@@ -119,7 +121,7 @@ func (c *Cloud) ListRoutes(ctx context.Context, clusterName string) ([]*cloudpro
 		}
 
 		// Capture instance routes
-		instanceID := r.InstanceId
+		instanceID := r.VmId
 		if instanceID != "" {
 			instance, found := instances[instanceID]
 			if found {
@@ -135,7 +137,7 @@ func (c *Cloud) ListRoutes(ctx context.Context, clusterName string) ([]*cloudpro
 }
 
 // Sets the instance attribute "source-dest-check" to the specified value
-func (c *Cloud) configureInstanceSourceDestCheck(instanceID string, sourceDestCheck bool) error {
+func (c *Cloud) configureInstanceSourceDestCheck(ctx context.Context, instanceID string, sourceDestCheck bool) error {
 	request := &osc.UpdateVmOpts{
         UpdateVmRequest: optional.NewInterface(
 			osc.UpdateVmRequest{
@@ -144,9 +146,9 @@ func (c *Cloud) configureInstanceSourceDestCheck(instanceID string, sourceDestCh
 		}),
 	}
 
-	_, err := c.fcu.UpdateVm(request)
+	_, httpRes, err := c.fcu.UpdateVm(ctx, request)
 	if err != nil {
-		return fmt.Errorf("error configuring source-dest-check on instance %s: %q", instanceID, err)
+		return fmt.Errorf("error configuring source-dest-check on instance %s: %q %q", instanceID, err, httpRes)
 	}
 	return nil
 }
@@ -161,19 +163,19 @@ func (c *Cloud) CreateRoute(ctx context.Context, clusterName string, nameHint st
 
 	// In addition to configuring the route itself, we also need to configure the instance to accept that traffic
 	// On OSC, this requires turning source-dest checks off
-	err = c.configureInstanceSourceDestCheck(instance.InstanceId, false)
+	err = c.configureInstanceSourceDestCheck(ctx, instance.VmId, false)
 	if err != nil {
 		return err
 	}
 
-	table, err := c.findRouteTable(clusterName)
+	table, err := c.findRouteTable(ctx, clusterName)
 	if err != nil {
 		return err
 	}
 
 	var deleteRoute osc.Route
 	for _, r := range table.Routes {
-		destinationCIDR := r.DestinationCidrBlock
+		destinationCIDR := r.DestinationIpRange
 
 		if destinationCIDR != route.DestinationCIDR {
 			continue
@@ -184,36 +186,36 @@ func (c *Cloud) CreateRoute(ctx context.Context, clusterName string, nameHint st
 		}
 	}
 
-	if deleteRoute != nil {
-		klog.Infof("deleting blackholed route: %s", deleteRoute.DestinationCidrBlock)
+	if deleteRoute != (osc.Route{}) {
+		klog.Infof("deleting blackholed route: %s", deleteRoute.DestinationIpRange)
 
-		request := osc.DeleteRouteOpts{
+		request := &osc.DeleteRouteOpts{
             DeleteRouteRequest: optional.NewInterface(
                 osc.DeleteRouteRequest{
-                    DestinationIpRange: deleteRoute.DestinationCidrBlock,
+                    DestinationIpRange: deleteRoute.DestinationIpRange,
                     RouteTableId: table.RouteTableId,
                 }),
         }
 
-		_, err = c.fcu.DeleteRoute(ctx, request)
+		_, httpRes, errBlackhole := c.fcu.DeleteRoute(ctx, request)
 		if err != nil {
-			return fmt.Errorf("error deleting blackholed OSC route (%s): %q", deleteRoute.DestinationCidrBlock, err)
+			return fmt.Errorf("error deleting blackholed OSC route (%s): %q %q", deleteRoute.DestinationIpRange, errBlackhole, httpRes)
 		}
 	}
 
 	// TODO: use ClientToken for idempotency?
-	request := osc.CreateRouteOpts{
+	request := &osc.CreateRouteOpts{
             CreateRouteRequest: optional.NewInterface(
                 osc.CreateRouteRequest{
-                    VmId: instance.InstanceId,
+                    VmId: instance.VmId,
                     DestinationIpRange: route.DestinationCIDR,
                     RouteTableId: table.RouteTableId,
                 }),
         }
 
-	_, err = c.fcu.CreateRoute(ctx, request)
+	_, httpRes, errRoute := c.fcu.CreateRoute(ctx, request)
 	if err != nil {
-		return fmt.Errorf("error creating OSC route (%s): %q", route.DestinationCIDR, err)
+		return fmt.Errorf("error creating OSC route (%s): %q %q", route.DestinationCIDR, errRoute, httpRes)
 	}
 
 	return nil
@@ -222,7 +224,7 @@ func (c *Cloud) CreateRoute(ctx context.Context, clusterName string, nameHint st
 // DeleteRoute implements Routes.DeleteRoute
 // Delete the specified route
 func (c *Cloud) DeleteRoute(ctx context.Context, clusterName string, route *cloudprovider.Route) error {
-	table, err := c.findRouteTable(clusterName)
+	table, err := c.findRouteTable(ctx, clusterName)
 	if err != nil {
 		return err
 	}
@@ -235,9 +237,9 @@ func (c *Cloud) DeleteRoute(ctx context.Context, clusterName string, route *clou
                 }),
     }
 
-	_, err = c.fcu.DeleteRoute(ctx, request)
+	_, httpRes, errDelete := c.fcu.DeleteRoute(ctx, request)
 	if err != nil {
-		return fmt.Errorf("error deleting OSC route (%s): %q", route.DestinationCIDR, err)
+		return fmt.Errorf("error deleting OSC route (%s): %q %q", route.DestinationCIDR, errDelete, httpRes)
 	}
 
 	return nil

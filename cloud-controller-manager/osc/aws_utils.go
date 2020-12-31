@@ -22,11 +22,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-func stringSetToPointers(in sets.String) []*string {
+func stringSetToPointers(in sets.String) []string {
 	if in == nil {
 		return nil
 	}
-	out := make([]*string, 0, len(in))
+	out := make([]string, 0, len(in))
 	for k := range in {
 		out = append(out, k)
 	}
@@ -34,8 +34,8 @@ func stringSetToPointers(in sets.String) []*string {
 }
 
 func stringSetFromPointers(in []string) sets.String {
-	if in == "" {
-		return ""
+	if in == nil {
+		return nil
 	}
 	out := sets.NewString()
 	for i := range in {

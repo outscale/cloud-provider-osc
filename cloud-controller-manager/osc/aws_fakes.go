@@ -131,7 +131,7 @@ func (fcui *FakeFCUImpl) ReadVms(ctx context.Context, request *osc.ReadVmsOpts) 
 
 			found := false
 			for _, instanceID := range requestVm.VmIds {
-				if *instanceID == instance.VmId {
+				if instanceID == instance.VmId {
 					found = true
 					break
 				}
