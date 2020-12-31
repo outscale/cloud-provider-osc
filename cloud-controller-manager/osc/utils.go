@@ -238,15 +238,15 @@ func findSecurityGroupForInstance(instance osc.Vm, taggedSecurityGroups map[stri
 
 // buildListener creates a new listener from the given port, adding an SSL certificate
 // if indicated by the appropriate annotations.
-func buildListener(port v1.ServicePort, annotations map[string]string, sslPorts *portSets) (osc.Listener, error) {
+func buildListener(port v1.ServicePort, annotations map[string]string, sslPorts *portSets) (osc.ListenerForCreation, error) {
 	loadBalancerPort := int64(port.Port)
 	portName := strings.ToLower(port.Name)
 	instancePort := int64(port.NodePort)
 	protocol := strings.ToLower(string(port.Protocol))
 	instanceProtocol := protocol
 
-	listener := &osc.Listener{}
-	listener.InstancePort = &instancePort
+	listener := &osc.ListenerForCreation{}
+	listener.BackendPort = &instancePort
 	listener.LoadBalancerPort = &loadBalancerPort
 	certID := annotations[ServiceAnnotationLoadBalancerCertificate]
 	if certID != "" && (sslPorts == nil || sslPorts.numbers.Has(loadBalancerPort) || sslPorts.names.Has(portName)) {
@@ -260,15 +260,15 @@ func buildListener(port v1.ServicePort, annotations map[string]string, sslPorts 
 				return nil, fmt.Errorf("Invalid backend protocol %s for %s in %s", instanceProtocol, certID, ServiceAnnotationLoadBalancerBEProtocol)
 			}
 		}
-		listener.SSLCertificateId = &certID
+		listener.ServerCertificateId = &certID
 	} else if annotationProtocol := annotations[ServiceAnnotationLoadBalancerBEProtocol]; annotationProtocol == "http" {
 		instanceProtocol = annotationProtocol
 		protocol = "http"
 	}
 	protocol = strings.ToUpper(protocol)
 	instanceProtocol = strings.ToUpper(instanceProtocol)
-	listener.Protocol = &protocol
-	listener.InstanceProtocol = &instanceProtocol
+	listener.LoadBalancerProtocol = &protocol
+	listener.BackendProtocol = &instanceProtocol
 
 	return listener, nil
 }

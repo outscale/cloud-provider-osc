@@ -27,6 +27,8 @@ import (
 
 	"k8s.io/cloud-provider"
 	"k8s.io/klog"
+
+	"context"
 )
 
 // ********************* CCM Object Init *********************
@@ -58,7 +60,7 @@ func readOSCCloudConfig(config io.Reader) (*CloudConfig, error) {
 
 // newOSCCloud creates a new instance of OSCCloud.
 // OSCProvider and instanceId are primarily for tests
-func newOSCCloud(cfg CloudConfig, oscServices Services) (*Cloud, error) {
+func newOSCCloud(ctx context.Context, cfg CloudConfig, oscServices Services) (*Cloud, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("newOSCCloud(%v,%v)", cfg, oscServices)
 	// We have some state in the Cloud object - in particular the attaching map
@@ -127,7 +129,7 @@ func newOSCCloud(cfg CloudConfig, oscServices Services) (*Cloud, error) {
 		}
 		oscCloud.netID = cfg.Global.VPC
 	} else {
-		selfOSCInstance, err := oscCloud.buildSelfOSCInstance()
+		selfOSCInstance, err := oscCloud.buildSelfOSCInstance(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -178,6 +180,6 @@ func init() {
 		creds := credentials.NewChainCredentials(provider)
 
 		osc := newOSCSDKProvider(creds, cfg)
-		return newOSCCloud(*cfg, osc)
+		return newOSCCloud(ctx, *cfg, osc)
 	})
 }

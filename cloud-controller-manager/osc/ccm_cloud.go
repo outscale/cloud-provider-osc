@@ -82,7 +82,7 @@ type Cloud struct {
 // ********************* CCM Cloud Context functions *********************
 // Builds the oscInstance for the OSC instance on which we are running.
 // This is called when the OSCCloud is initialized, and should not be called otherwise (because the oscInstance for the local instance is a singleton with drive mapping state)
-func (c *Cloud) buildSelfOSCInstance() (*oscInstance, error) {
+func (c *Cloud) buildSelfOSCInstance(ctx context.Context) (*oscInstance, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("buildSelfOSCInstance()")
 	if c.selfOSCInstance != nil {
@@ -101,7 +101,7 @@ func (c *Cloud) buildSelfOSCInstance() (*oscInstance, error) {
 	// information from the instance returned by the OSC API - it is a
 	// single API call to get all the information, and it means we don't
 	// have two code paths.
-	instance, err := c.getInstanceByID(instanceID)
+	instance, err := c.getInstanceByID(ctx, instanceID)
 	if err != nil {
 		return nil, fmt.Errorf("error finding instance %s: %q", instanceID, err)
 	}
@@ -254,7 +254,7 @@ func (c *Cloud) NodeAddresses(ctx context.Context, name types.NodeName) ([]v1.No
 		return addresses, nil
 	}
 
-	instance, err := c.getInstanceByNodeName(name)
+	instance, err := c.getInstanceByNodeName(ctx, name)
 	if err != nil {
 		return nil, fmt.Errorf("getInstanceByNodeName failed for %q with %q", name, err)
 	}
@@ -373,7 +373,7 @@ func (c *Cloud) InstanceID(ctx context.Context, nodeName types.NodeName) (string
 	if c.selfOSCInstance.nodeName == nodeName {
 		return "/" + c.selfOSCInstance.availabilityZone + "/" + c.selfOSCInstance.oscID, nil
 	}
-	inst, err := c.getInstanceByNodeName(nodeName)
+	inst, err := c.getInstanceByNodeName(ctx, nodeName)
 	if err != nil {
 		if err == cloudprovider.InstanceNotFound {
 			// The Instances interface requires that we return InstanceNotFound (without wrapping)
@@ -410,7 +410,7 @@ func (c *Cloud) InstanceType(ctx context.Context, nodeName types.NodeName) (stri
 	if c.selfOSCInstance.nodeName == nodeName {
 		return c.selfOSCInstance.instanceType, nil
 	}
-	inst, err := c.getInstanceByNodeName(nodeName)
+	inst, err := c.getInstanceByNodeName(ctx, nodeName)
 	if err != nil {
 		return "", fmt.Errorf("getInstanceByNodeName failed for %q with %q", nodeName, err)
 	}
@@ -436,7 +436,7 @@ func (c *Cloud) GetZoneByProviderID(ctx context.Context, providerID string) (clo
 	if err != nil {
 		return cloudprovider.Zone{}, err
 	}
-	instance, err := c.getInstanceByID(string(instanceID))
+	instance, err := c.getInstanceByID(ctx, string(instanceID))
 	if err != nil {
 		return cloudprovider.Zone{}, err
 	}
@@ -455,7 +455,7 @@ func (c *Cloud) GetZoneByProviderID(ctx context.Context, providerID string) (clo
 func (c *Cloud) GetZoneByNodeName(ctx context.Context, nodeName types.NodeName) (cloudprovider.Zone, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("GetZoneByNodeName(%v)", nodeName)
-	instance, err := c.getInstanceByNodeName(nodeName)
+	instance, err := c.getInstanceByNodeName(ctx, nodeName)
 	if err != nil {
 		return cloudprovider.Zone{}, err
 	}
@@ -1159,7 +1159,7 @@ func (c *Cloud) EnsureLoadBalancer(ctx context.Context, clusterName string, apiS
 	}
 
 	// Figure out what mappings we want on the load balancer
-	listeners := []osc.Listener{}
+	listeners := []osc.ListenerForCreation{}
 
 	sslPorts := getPortSets(annotations[ServiceAnnotationLoadBalancerSSLPorts])
 
@@ -1183,8 +1183,8 @@ func (c *Cloud) EnsureLoadBalancer(ctx context.Context, clusterName string, apiS
 		return nil, fmt.Errorf("LoadBalancerIP cannot be specified for OSC LBU")
 	}
 
-	instances, err := c.findInstancesForLBU(nodes)
-	klog.V(10).Infof("Debug OSC: c.findInstancesForLBU(nodes) : %v", instances)
+	instances, err := c.findInstancesForLBU(ctx, nodes)
+	klog.V(10).Infof("Debug OSC: c.findInstancesForLBU(ctx, nodes) : %v", instances)
 	if err != nil {
 		return nil, err
 	}
@@ -1222,8 +1222,8 @@ func (c *Cloud) EnsureLoadBalancer(ctx context.Context, clusterName string, apiS
 // 		ConnectionSettings: &elb.ConnectionSettings{IdleTimeout: aws.Int64(60)},
 	}
 
-	if annotations[ServiceAnnotationLoadBalancerAccessLogS3BucketName] != "" &&
-		annotations[ServiceAnnotationLoadBalancerAccessLogS3BucketPrefix] != "" {
+	if annotations[ServiceAnnotationLoadBalancerAccessLogOsuBucketName] != "" &&
+		annotations[ServiceAnnotationLoadBalancerAccessLogOsuBucketPrefix] != "" {
 
 		loadBalancerAttributes.AccessLog = osc.AccessLog{IsEnabled: false}
 
@@ -1249,7 +1249,7 @@ func (c *Cloud) EnsureLoadBalancer(ctx context.Context, clusterName string, apiS
 					accessLogEmitIntervalAnnotation,
 				)
 			}
-			loadBalancerAttributes.AccessLog.PublicationInterval = accessLogEmitInterval
+			loadBalancerAttributes.AccessLog.PublicationInterval = int32(accessLogEmitInterval)
 		}
 
 		// Determine if access log Osu bucket name has been specified
@@ -1266,44 +1266,46 @@ func (c *Cloud) EnsureLoadBalancer(ctx context.Context, clusterName string, apiS
 		klog.V(10).Infof("Debug OSC:  loadBalancerAttributes.AccessLog : %v", loadBalancerAttributes.AccessLog)
 	}
 
+// A verifier
+
 	// Determine if connection draining enabled/disabled has been specified
-	connectionDrainingEnabledAnnotation := annotations[ServiceAnnotationLoadBalancerConnectionDrainingEnabled]
-	if connectionDrainingEnabledAnnotation != "" {
-		connectionDrainingEnabled, err := strconv.ParseBool(connectionDrainingEnabledAnnotation)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing service annotation: %s=%s",
-				ServiceAnnotationLoadBalancerConnectionDrainingEnabled,
-				connectionDrainingEnabledAnnotation,
-			)
-		}
-		loadBalancerAttributes.ConnectionDraining.Enabled = connectionDrainingEnabled
-	}
+// 	connectionDrainingEnabledAnnotation := annotations[ServiceAnnotationLoadBalancerConnectionDrainingEnabled]
+// 	if connectionDrainingEnabledAnnotation != "" {
+// 		connectionDrainingEnabled, err := strconv.ParseBool(connectionDrainingEnabledAnnotation)
+// 		if err != nil {
+// 			return nil, fmt.Errorf("error parsing service annotation: %s=%s",
+// 				ServiceAnnotationLoadBalancerConnectionDrainingEnabled,
+// 				connectionDrainingEnabledAnnotation,
+// 			)
+// 		}
+// 		loadBalancerAttributes.ConnectionDraining.Enabled = connectionDrainingEnabled
+// 	}
 
 	// Determine if connection draining timeout has been specified
-	connectionDrainingTimeoutAnnotation := annotations[ServiceAnnotationLoadBalancerConnectionDrainingTimeout]
-	if connectionDrainingTimeoutAnnotation != "" {
-		connectionDrainingTimeout, err := strconv.ParseInt(connectionDrainingTimeoutAnnotation, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing service annotation: %s=%s",
-				ServiceAnnotationLoadBalancerConnectionDrainingTimeout,
-				connectionDrainingTimeoutAnnotation,
-			)
-		}
-		loadBalancerAttributes.ConnectionDraining.Timeout = &connectionDrainingTimeout
-	}
+// 	connectionDrainingTimeoutAnnotation := annotations[ServiceAnnotationLoadBalancerConnectionDrainingTimeout]
+// 	if connectionDrainingTimeoutAnnotation != "" {
+// 		connectionDrainingTimeout, err := strconv.ParseInt(connectionDrainingTimeoutAnnotation, 10, 64)
+// 		if err != nil {
+// 			return nil, fmt.Errorf("error parsing service annotation: %s=%s",
+// 				ServiceAnnotationLoadBalancerConnectionDrainingTimeout,
+// 				connectionDrainingTimeoutAnnotation,
+// 			)
+// 		}
+// 		loadBalancerAttributes.ConnectionDraining.Timeout = &connectionDrainingTimeout
+// 	}
 
 	// Determine if connection idle timeout has been specified
-	connectionIdleTimeoutAnnotation := annotations[ServiceAnnotationLoadBalancerConnectionIdleTimeout]
-	if connectionIdleTimeoutAnnotation != "" {
-		connectionIdleTimeout, err := strconv.ParseInt(connectionIdleTimeoutAnnotation, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing service annotation: %s=%s",
-				ServiceAnnotationLoadBalancerConnectionIdleTimeout,
-				connectionIdleTimeoutAnnotation,
-			)
-		}
-		loadBalancerAttributes.ConnectionSettings.IdleTimeout = &connectionIdleTimeout
-	}
+// 	connectionIdleTimeoutAnnotation := annotations[ServiceAnnotationLoadBalancerConnectionIdleTimeout]
+// 	if connectionIdleTimeoutAnnotation != "" {
+// 		connectionIdleTimeout, err := strconv.ParseInt(connectionIdleTimeoutAnnotation, 10, 64)
+// 		if err != nil {
+// 			return nil, fmt.Errorf("error parsing service annotation: %s=%s",
+// 				ServiceAnnotationLoadBalancerConnectionIdleTimeout,
+// 				connectionIdleTimeoutAnnotation,
+// 			)
+// 		}
+// 		loadBalancerAttributes.ConnectionSettings.IdleTimeout = &connectionIdleTimeout
+// 	}
 
 	// Find the subnets that the LBU will live in
 	subnetIDs, err := c.findLBUSubnets(ctx, internalLBU)
@@ -1331,7 +1333,7 @@ func (c *Cloud) EnsureLoadBalancer(ctx context.Context, clusterName string, apiS
 	if len(subnetIDs) == 0 || c.netID == "" {
 		securityGroupIDs = []string{DefaultSrcSgName}
 	} else {
-		securityGroupIDs, err = c.buildLBUSecurityGroupList(serviceName, loadBalancerName, annotations)
+		securityGroupIDs, err = c.buildLBUSecurityGroupList(ctx, serviceName, loadBalancerName, annotations)
 	}
 
 	klog.V(10).Infof("Debug OSC:  ensured securityGroupIDs : %v", securityGroupIDs)
@@ -1352,30 +1354,29 @@ func (c *Cloud) EnsureLoadBalancer(ctx context.Context, clusterName string, apiS
 		permissions := NewSecurityGroupRuleSet()
 		for _, port := range apiService.Spec.Ports {
 
-			portInt64 := int64(port.Port)
 			protocol := strings.ToLower(string(port.Protocol))
 
-			permission := &osc.SecurityGroupRule{}
-			permission.FromPort = &portInt64
-			permission.ToPort = &portInt64
+			permission := osc.SecurityGroupRule{}
+			permission.FromPortRange = int32(port.Port)
+			permission.ToPortRange = int32(port.Port)
 			permission.IpRanges = oscSourceRanges
-			permission.IpProtocol = &protocol
+			permission.IpProtocol = protocol
 
 			permissions.Insert(permission)
 		}
 
 		// Allow ICMP fragmentation packets, important for MTU discovery
 		{
-			permission := &osc.SecurityGroupRule{
+			permission := osc.SecurityGroupRule{
 				IpProtocol: "icmp",
-				FromPort:   3,
-				ToPort:     4,
+				FromPortRange:   3,
+				ToPortRange:     4,
 				IpRanges:   oscSourceRanges,
 			}
 
 			permissions.Insert(permission)
 		}
-		_, err = c.setSecurityGroupIngress(securityGroupIDs[0], permissions)
+		_, err = c.setSecurityGroupIngress(ctx, securityGroupIDs[0], permissions)
 		if err != nil {
 			return nil, err
 		}
@@ -1383,6 +1384,7 @@ func (c *Cloud) EnsureLoadBalancer(ctx context.Context, clusterName string, apiS
 
 	// Build the load balancer itself
 	loadBalancer, err := c.ensureLoadBalancer(
+	    ctx,
 		serviceName,
 		loadBalancerName,
 		listeners,
@@ -1398,13 +1400,13 @@ func (c *Cloud) EnsureLoadBalancer(ctx context.Context, clusterName string, apiS
 	}
 
 	if sslPolicyName, ok := annotations[ServiceAnnotationLoadBalancerSSLNegotiationPolicy]; ok {
-		err := c.ensureSSLNegotiationPolicy(loadBalancer, sslPolicyName)
+		err := c.ensureSSLNegotiationPolicy(ctx, loadBalancer, sslPolicyName)
 		if err != nil {
 			return nil, err
 		}
 
 		for _, port := range c.getLoadBalancerTLSPorts(loadBalancer) {
-			err := c.setSSLNegotiationPolicy(loadBalancerName, sslPolicyName, port)
+			err := c.setSSLNegotiationPolicy(ctx, loadBalancerName, sslPolicyName, port)
 			if err != nil {
 				return nil, err
 			}
@@ -1413,7 +1415,7 @@ func (c *Cloud) EnsureLoadBalancer(ctx context.Context, clusterName string, apiS
 
 	if path, healthCheckNodePort := servicehelpers.GetServiceHealthCheckPathPort(apiService); path != "" {
 		klog.V(4).Infof("service %v (%v) needs health checks on :%d%s)", apiService.Name, loadBalancerName, healthCheckNodePort, path)
-		err = c.ensureLoadBalancerHealthCheck(loadBalancer, "HTTP", healthCheckNodePort, path, annotations)
+		err = c.ensureLoadBalancerHealthCheck(ctx, loadBalancer, "HTTP", healthCheckNodePort, path, annotations)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to ensure health check for localized service %v on node port %v: %q", loadBalancerName, healthCheckNodePort, err)
 		}
@@ -1422,10 +1424,10 @@ func (c *Cloud) EnsureLoadBalancer(ctx context.Context, clusterName string, apiS
 		// We only configure a TCP health-check on the first port
 		var tcpHealthCheckPort int32
 		for _, listener := range listeners {
-			if listener.InstancePort == nil {
+			if listener.BackendPort == 0 {
 				continue
 			}
-			tcpHealthCheckPort = int32(*listener.InstancePort)
+			tcpHealthCheckPort = int32(listener.BackendPort)
 			break
 		}
 		annotationProtocol := strings.ToLower(annotations[ServiceAnnotationLoadBalancerBEProtocol])
@@ -1436,25 +1438,25 @@ func (c *Cloud) EnsureLoadBalancer(ctx context.Context, clusterName string, apiS
 			hcProtocol = "TCP"
 		}
 		// there must be no path on TCP health check
-		err = c.ensureLoadBalancerHealthCheck(loadBalancer, hcProtocol, tcpHealthCheckPort, "", annotations)
+		err = c.ensureLoadBalancerHealthCheck(ctx, loadBalancer, hcProtocol, tcpHealthCheckPort, "", annotations)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	err = c.updateInstanceSecurityGroupsForLoadBalancer(loadBalancer, instances, securityGroupIDs)
+	err = c.updateInstanceSecurityGroupsForLoadBalancer(ctx, loadBalancer, instances, securityGroupIDs)
 	if err != nil {
 		klog.Warningf("Error opening ingress rules for the load balancer to the instances: %q", err)
 		return nil, err
 	}
 
-	err = c.ensureLoadBalancerInstances(loadBalancer.LoadBalancerName, loadBalancer.Instances, instances)
+	err = c.ensureLoadBalancerInstances(ctx, loadBalancer.LoadBalancerName, loadBalancer.BackendVmIds, instances)
 	if err != nil {
 		klog.Warningf("Error registering instances with the load balancer: %q", err)
 		return nil, err
 	}
 
-	klog.V(1).Infof("Loadbalancer %s (%v) has DNS name %s", loadBalancerName, serviceName, loadBalancer.DNSName)
+	klog.V(1).Infof("Loadbalancer %s (%v) has DNS name %s", loadBalancerName, serviceName, loadBalancer.DnsName)
 
 	// TODO: Wait for creation?
 
@@ -1468,12 +1470,12 @@ func (c *Cloud) GetLoadBalancer(ctx context.Context, clusterName string, service
 	klog.V(10).Infof("GetLoadBalancer(%v,%v)", clusterName, service)
 	loadBalancerName := c.GetLoadBalancerName(ctx, clusterName, service)
 
-	lb, err := c.describeLoadBalancer(loadBalancerName)
+	lb, err := c.describeLoadBalancer(ctx, loadBalancerName)
 	if err != nil {
 		return nil, false, err
 	}
 
-	if lb == (osc.LoadBalancer{}) {
+	if reflect.DeepEqual(lb, osc.LoadBalancer{}) {
 		return nil, false, nil
 	}
 
@@ -1493,12 +1495,16 @@ func (c *Cloud) GetLoadBalancerName(ctx context.Context, clusterName string, ser
 func (c *Cloud) getTaggedSecurityGroups(ctx context.Context) (map[string]osc.SecurityGroup, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("getTaggedSecurityGroups()")
-	request := &osc.ReadSecurityGroupsOpts{}
-	request.Filters = []osc.FiltersTag{
-		newTagFilter(c.tagging.clusterTagKey(), []string{ResourceLifecycleOwned, ResourceLifecycleShared}...),
-		newtagFilter(TagNameMainSG+c.tagging.clusterID(), "True"),
+	request := &osc.ReadSecurityGroupsOpts{
+	    ReadSecurityGroupsRequest: optional.NewInterface(
+	        osc.ReadSecurityGroupsRequest{
+                Filters: osc.FiltersSecurityGroup{
+// A verifier
+//                 newTagFilter(c.tagging.clusterTagKey(), []string{ResourceLifecycleOwned, ResourceLifecycleShared}...),
+//                 newtagFilter(TagNameMainSG+c.tagging.clusterID(), "True"),
+             },
+	    }),
 	}
-
 	groups, httpRes, err := c.fcu.ReadSecurityGroups(ctx, request)
 	if err != nil {
 		return nil, fmt.Errorf("error querying security groups: %q %q", err, httpRes)
@@ -1510,7 +1516,7 @@ func (c *Cloud) getTaggedSecurityGroups(ctx context.Context) (map[string]osc.Sec
 			continue
 		}
 
-		id := group.SecurityGrroupId
+		id := group.SecurityGroupId
 		if id == "" {
 			klog.Warningf("Ignoring group without id: %v", group)
 			continue
@@ -1522,7 +1528,7 @@ func (c *Cloud) getTaggedSecurityGroups(ctx context.Context) (map[string]osc.Sec
 
 // Open security group ingress rules on the instances so that the load balancer can talk to them
 // Will also remove any security groups ingress rules for the load balancer that are _not_ needed for allInstances
-func (c *Cloud) updateInstanceSecurityGroupsForLoadBalancer(lb osc.LoadBalancer,
+func (c *Cloud) updateInstanceSecurityGroupsForLoadBalancer(ctx context.Context, lb osc.LoadBalancer,
 	instances map[InstanceID]osc.Vm,
 	securityGroupIDs []string) error {
 	debugPrintCallerFunctionName()
@@ -1533,7 +1539,7 @@ func (c *Cloud) updateInstanceSecurityGroupsForLoadBalancer(lb osc.LoadBalancer,
 	}
 
 	// Determine the load balancer security group id
-	loadBalancerSecurityGroupID := []string{}
+	loadBalancerSecurityGroupID := ""
 	securityGroupsItem := []string{}
 	if len(lb.SecurityGroups) > 0 {
 		for _, securityGroup := range lb.SecurityGroups {
@@ -1544,14 +1550,14 @@ func (c *Cloud) updateInstanceSecurityGroupsForLoadBalancer(lb osc.LoadBalancer,
 	}
 
 	for _, securityGroup := range securityGroupsItem {
-		if securityGroup == "" {
+		if securityGroup == ""{
 			continue
 		}
 		if loadBalancerSecurityGroupID != "" {
 			// We create LBs with one SG
 			klog.Warningf("Multiple security groups for load balancer: %q", lb.LoadBalancerName)
 		}
-		loadBalancerSecurityGroupID = SecurityGroups
+		loadBalancerSecurityGroupID = securityGroup
 	}
 
 	if loadBalancerSecurityGroupID == "" {
@@ -1563,17 +1569,22 @@ func (c *Cloud) updateInstanceSecurityGroupsForLoadBalancer(lb osc.LoadBalancer,
 	// Get the actual list of groups that allow ingress from the load-balancer
 	var actualGroups []osc.SecurityGroup
 	{
-		describeRequest := &osc.ReadSecurityGroupsOpts{}
+
+		reqFilters := osc.FiltersSecurityGroup{}
+		// A verifier
 		if loadBalancerSecurityGroupID != DefaultSrcSgName {
-			describeRequest.Filters = []osc.FiltersSecurityGroup{
-				newSGFilter("ip-permission.group-id", loadBalancerSecurityGroupID),
-			}
+		    reqFilters.SecurityGroupIds= []string{loadBalancerSecurityGroupID}
+
 		} else {
-			describeRequest.Filters = []osc.FiltersSecurityGroup{
-				newSGFilter("ip-permission.group-name", loadBalancerSecurityGroupID),
-			}
+			reqFilters.SecurityGroupIds= []string{loadBalancerSecurityGroupID}
 		}
-		response, httpRes, err := c.fcu.ReadSecurityGroups(describeRequest)
+		describeRequest := &osc.ReadSecurityGroupsOpts{
+		    ReadSecurityGroupsRequest: optional.NewInterface(
+                osc.ReadSecurityGroupsRequest{
+                    Filters: reqFilters,
+                }),
+		}
+		response, httpRes, err := c.fcu.ReadSecurityGroups(ctx, describeRequest)
 		if err != nil {
 			return fmt.Errorf("error querying security groups for LBU: %q %q", err, httpRes)
 		}
@@ -1587,7 +1598,7 @@ func (c *Cloud) updateInstanceSecurityGroupsForLoadBalancer(lb osc.LoadBalancer,
 
 	klog.V(10).Infof("actualGroups(%v)", actualGroups)
 
-	taggedSecurityGroups, err := c.getTaggedSecurityGroups()
+	taggedSecurityGroups, err := c.getTaggedSecurityGroups(ctx)
 	if err != nil {
 		return fmt.Errorf("error querying for tagged security groups: %q", err)
 	}
@@ -1608,11 +1619,11 @@ func (c *Cloud) updateInstanceSecurityGroupsForLoadBalancer(lb osc.LoadBalancer,
 			return err
 		}
 
-		if securityGroup == (osc.SecurityGroup{}) {
+		if securityGroup == (osc.SecurityGroupLight{}) {
 			klog.Warning("Ignoring instance without security group: ", instance.VmId)
 			continue
 		}
-		id := securityGroup.SecurityGrroupId
+		id := securityGroup.SecurityGroupId
 		if id == "" {
 			klog.Warningf("found security group without id: %v", securityGroup)
 			continue
@@ -1625,7 +1636,7 @@ func (c *Cloud) updateInstanceSecurityGroupsForLoadBalancer(lb osc.LoadBalancer,
 
 	// Compare to actual groups
 	for _, actualGroup := range actualGroups {
-		actualGroupID := actualGroup.SecurityGrroupId
+		actualGroupID := actualGroup.SecurityGroupId
 		if actualGroupID == "" {
 			klog.Warning("Ignoring group without ID: ", actualGroup)
 			continue
@@ -1657,27 +1668,28 @@ func (c *Cloud) updateInstanceSecurityGroupsForLoadBalancer(lb osc.LoadBalancer,
 
 			allProtocols := "-1"
 
-			permission := &osc.SecurityGroupRule{}
-			permission.IpProtocol = &allProtocols
-			permission.SecurityGroupsMembers = []osc.SecurityGroupsMember{SecurityGroupId}
+			permission := osc.SecurityGroupRule{}
+			permission.IpProtocol = allProtocols
+			// A verifier
+			//permission.SecurityGroupsMembers = []osc.SecurityGroupsMember{sourceGroupID.SecurityGroupId}
 			permissions = []osc.SecurityGroupRule{permission}
 		}
 
 		if add {
-			changed, err := c.addSecurityGroupIngress(instanceSecurityGroupID, permissions, isPublicCloud)
+			changed, err := c.addSecurityGroupIngress(ctx, instanceSecurityGroupID, permissions, isPublicCloud)
 			if err != nil {
 				return err
 			}
 			if !changed {
-				klog.Warning("Allowing ingress was not needed; concurrent change? SecurityGrroupId=", instanceSecurityGroupID)
+				klog.Warning("Allowing ingress was not needed; concurrent change? SecurityGroupId=", instanceSecurityGroupID)
 			}
 		} else {
-			changed, err := c.removeSecurityGroupIngress(instanceSecurityGroupID, permissions, isPublicCloud)
+			changed, err := c.removeSecurityGroupIngress(ctx, instanceSecurityGroupID, permissions, isPublicCloud)
 			if err != nil {
 				return err
 			}
 			if !changed {
-				klog.Warning("Revoking ingress was not needed; concurrent change? SecurityGrroupId=", instanceSecurityGroupID)
+				klog.Warning("Revoking ingress was not needed; concurrent change? SecurityGroupId=", instanceSecurityGroupID)
 			}
 		}
 	}
@@ -1691,12 +1703,12 @@ func (c *Cloud) EnsureLoadBalancerDeleted(ctx context.Context, clusterName strin
 	klog.V(10).Infof("EnsureLoadBalancerDeleted(%v, %v)", clusterName, service)
 	loadBalancerName := c.GetLoadBalancerName(ctx, clusterName, service)
 
-	lb, err := c.describeLoadBalancer(loadBalancerName)
+	lb, err := c.describeLoadBalancer(ctx, loadBalancerName)
 	if err != nil {
 		return err
 	}
 
-	if lb == nil {
+	if reflect.DeepEqual(lb, osc.LoadBalancer{}) {
 		klog.Info("Load balancer already deleted: ", loadBalancerName)
 		return nil
 	}
@@ -1708,18 +1720,18 @@ func (c *Cloud) EnsureLoadBalancerDeleted(ctx context.Context, clusterName strin
 
 	{
 		// De-register the load balancer security group from the instances security group
-		err = c.ensureLoadBalancerInstances(lb.LoadBalancerName,
-			lb.Instances,
+		err = c.ensureLoadBalancerInstances(ctx, lb.LoadBalancerName,
+			lb.BackendVmIds,
 			map[InstanceID]osc.Vm{})
 		if err != nil {
 			klog.Errorf("ensureLoadBalancerInstances deregistering load balancer %v,%v,%v : %q",
 				lb.LoadBalancerName,
-				lb.Instances,
+				lb.BackendVmIds,
 				nil, err)
 		}
 
 		// De-authorize the load balancer security group from the instances security group
-		err = c.updateInstanceSecurityGroupsForLoadBalancer(lb, nil, securityGroupsItem)
+		err = c.updateInstanceSecurityGroupsForLoadBalancer(ctx, lb, nil, securityGroupsItem)
 		if err != nil {
 			klog.Errorf("Error deregistering load balancer from instance security groups: %q", err)
 			return err
@@ -1728,10 +1740,14 @@ func (c *Cloud) EnsureLoadBalancerDeleted(ctx context.Context, clusterName strin
 
 	{
 		// Delete the load balancer itself
-		request := &lbu.DeleteLoadBalancerInput{}
-		request.LoadBalancerName = lb.LoadBalancerName
+		request := &osc.DeleteLoadBalancerOpts{
+            DeleteLoadBalancerRequest: optional.NewInterface(
+                osc.DeleteLoadBalancerRequest{
+                    LoadBalancerName: lb.LoadBalancerName,
+                }),
+		}
 
-		_, httpRes, errDeleteLB := c.lbu.DeleteLoadBalancer(request)
+		_, httpRes, errDeleteLB := c.lbu.DeleteLoadBalancer(ctx, request)
 		if err != nil {
 			// TODO: Check if error was because load balancer was concurrently deleted
 			klog.Errorf("Error deleting load balancer: %q %q", errDeleteLB, httpRes)
@@ -1746,11 +1762,18 @@ func (c *Cloud) EnsureLoadBalancerDeleted(ctx context.Context, clusterName strin
 
 		var loadBalancerSGs = securityGroupsItem
 
-		describeRequest.Filters = []osc.FiltersSecurityGroup{
-			newSGFilter("group-id", loadBalancerSGs...),
+        reqFilters := osc.FiltersSecurityGroup{}
+		// A verifier (SecurityGroupNames)
+		reqFilters.SecurityGroupNames= loadBalancerSGs
+
+		describeRequest := &osc.ReadSecurityGroupsOpts{
+		    ReadSecurityGroupsRequest: optional.NewInterface(
+                osc.ReadSecurityGroupsRequest{
+                    Filters: reqFilters,
+                }),
 		}
 
-		response, httpRes, err := c.fcu.DescribeSecurityGroups(describeRequest)
+		response, httpRes, err := c.fcu.ReadSecurityGroups(ctx, describeRequest)
 		if err != nil {
 			return fmt.Errorf("error querying security groups for LBU: %q %q", err, httpRes)
 		}
@@ -1783,8 +1806,8 @@ func (c *Cloud) EnsureLoadBalancerDeleted(ctx context.Context, clusterName strin
 		for {
 			for securityGroupID := range securityGroupIDs {
 				request := &osc.DeleteSecurityGroupOpts{
-				    DeleteSecurityGroupRuleRequest: optional.NewInterface(
-                        osc.DeleteSecurityGroupRuleRequest{
+				    DeleteSecurityGroupRequest: optional.NewInterface(
+                        osc.DeleteSecurityGroupRequest{
                             SecurityGroupId: securityGroupID,
                         }),
 				}
@@ -1832,35 +1855,35 @@ func (c *Cloud) EnsureLoadBalancerDeleted(ctx context.Context, clusterName strin
 func (c *Cloud) UpdateLoadBalancer(ctx context.Context, clusterName string, service *v1.Service, nodes []*v1.Node) error {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("UpdateLoadBalancer(%v, %v, %s)", clusterName, service, nodes)
-	instances, err := c.findInstancesForLBU(nodes)
+	instances, err := c.findInstancesForLBU(ctx, nodes)
 	if err != nil {
 		return err
 	}
 
 	loadBalancerName := c.GetLoadBalancerName(ctx, clusterName, service)
-	lb, err := c.describeLoadBalancer(loadBalancerName)
+	lb, err := c.describeLoadBalancer(ctx, loadBalancerName)
 	if err != nil {
 		return err
 	}
 
-	if lb == (osc.LoadBalancer{}) {
+	if reflect.DeepEqual(lb, osc.LoadBalancer{}) {
 		return fmt.Errorf("Load balancer not found")
 	}
 
 	if sslPolicyName, ok := service.Annotations[ServiceAnnotationLoadBalancerSSLNegotiationPolicy]; ok {
-		err := c.ensureSSLNegotiationPolicy(lb, sslPolicyName)
+		err := c.ensureSSLNegotiationPolicy(ctx, lb, sslPolicyName)
 		if err != nil {
 			return err
 		}
 		for _, port := range c.getLoadBalancerTLSPorts(lb) {
-			err := c.setSSLNegotiationPolicy(loadBalancerName, sslPolicyName, port)
+			err := c.setSSLNegotiationPolicy(ctx, loadBalancerName, sslPolicyName, port)
 			if err != nil {
 				return err
 			}
 		}
 	}
 
-	err = c.ensureLoadBalancerInstances(lb.LoadBalancerName, lb.Instances, instances)
+	err = c.ensureLoadBalancerInstances(ctx, lb.LoadBalancerName, lb.BackendVmIds, instances)
 	if err != nil {
 		return nil
 	}
@@ -1870,7 +1893,7 @@ func (c *Cloud) UpdateLoadBalancer(ctx context.Context, clusterName string, serv
 		securityGroupsItem = append(securityGroupsItem, DefaultSrcSgName)
 	}
 
-	err = c.updateInstanceSecurityGroupsForLoadBalancer(lb, instances, securityGroupsItem)
+	err = c.updateInstanceSecurityGroupsForLoadBalancer(ctx, lb, instances, securityGroupsItem)
 	if err != nil {
 		return err
 	}
@@ -1881,19 +1904,19 @@ func (c *Cloud) UpdateLoadBalancer(ctx context.Context, clusterName string, serv
 // ********************* CCM Node Resource Functions  *********************
 
 // Returns the instance with the specified ID
-func (c *Cloud) getInstanceByID(instanceID string) (osc.Vm, error) {
+func (c *Cloud) getInstanceByID(ctx context.Context, instanceID string) (osc.Vm, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("getInstanceByID(%v)", instanceID)
-	instances, err := c.getInstancesByIDs([]string{instanceID})
+	instances, err := c.getInstancesByIDs(ctx, []string{instanceID})
 	if err != nil {
 		return osc.Vm{}, err
 	}
 
 	if len(instances) == 0 {
-		return nil, cloudprovider.InstanceNotFound
+		return osc.Vm{}, cloudprovider.InstanceNotFound
 	}
 	if len(instances) > 1 {
-		return nil, fmt.Errorf("multiple instances found for instance: %s", instanceID)
+		return osc.Vm{}, fmt.Errorf("multiple instances found for instance: %s", instanceID)
 	}
 
 	return instances[instanceID], nil
@@ -1911,7 +1934,9 @@ func (c *Cloud) getInstancesByIDs(ctx context.Context, instanceIDs []string) (ma
 	request := &osc.ReadVmsOpts{
 		ReadVmsRequest: optional.NewInterface(
 			osc.ReadVmsRequest{
-				VmIds: instanceIDs,
+			    Filters: osc.FiltersVm{
+			        VmIds: instanceIDs,
+			    },
 			}),
     }
 	instances, httpRes, err := c.fcu.ReadVms(ctx, request)
@@ -1932,7 +1957,7 @@ func (c *Cloud) getInstancesByIDs(ctx context.Context, instanceIDs []string) (ma
 	return instancesByID, nil
 }
 
-func (c *Cloud) getInstancesByNodeNames(nodeNames []string, states ...string) ([]osc.Vm, error) {
+func (c *Cloud) getInstancesByNodeNames(ctx context.Context, nodeNames []string, states ...string) ([]osc.Vm, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("getInstancesByNodeNames(%v, %v)", nodeNames, states)
 
@@ -1947,33 +1972,32 @@ func (c *Cloud) getInstancesByNodeNames(nodeNames []string, states ...string) ([
 
 		nameSlice := names[i:end]
 
-		nodeNameFilter := &osc.FiltersVm{
-			Name:   "private-dns-name",
-			Values: nameSlice,
-		}
+		nodeNameFilter := []string{}
 
-		filters := []osc.FiltersVm{nodeNameFilter}
-		if len(states) > 0 {
-			filters = append(filters, newVmFilter("instance-state-name", states...))
-		}
+        // A verifier
+		filters := osc.FiltersVm{Tags: nodeNameFilter}
 
-		instances, err := c.describeInstances(filters)
+// 		if len(states) > 0 {
+// 			filters = append(filters, newVmFilter("instance-state-name", states...))
+// 		}
+
+		instances, err := c.describeInstances(ctx, filters)
 		if err != nil {
 			klog.V(2).Infof("Failed to describe instances %v", nodeNames)
-			return osc.Vm{}, err
+			return []osc.Vm{}, err
 		}
 		oscInstances = append(oscInstances, instances...)
 	}
 
 	if len(oscInstances) == 0 {
 		klog.V(3).Infof("Failed to find any instances %v", nodeNames)
-		return osc.Vm{}, nil
+		return []osc.Vm{}, nil
 	}
 	return oscInstances, nil
 }
 
 // TODO: Move to instanceCache
-func (c *Cloud) describeInstances(ctx context.Context, filters []osc.FiltersVm) ([]osc.Vm, error) {
+func (c *Cloud) describeInstances(ctx context.Context, filters osc.FiltersVm) ([]osc.Vm, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("describeInstances(%v)", filters)
 
@@ -1987,7 +2011,7 @@ func (c *Cloud) describeInstances(ctx context.Context, filters []osc.FiltersVm) 
 	response, httpRes, err := c.fcu.ReadVms(ctx, request)
 	if err != nil {
 	    fmt.Errorf("http %q", httpRes)
-		return osc.Vm{}, err
+		return []osc.Vm{}, err
 	}
 
 	var matches []osc.Vm
@@ -2001,20 +2025,20 @@ func (c *Cloud) describeInstances(ctx context.Context, filters []osc.FiltersVm) 
 
 // Returns the instance with the specified node name
 // Returns nil if it does not exist
-func (c *Cloud) findInstanceByNodeName(nodeName types.NodeName) (osc.Vm, error) {
+func (c *Cloud) findInstanceByNodeName(ctx context.Context, nodeName types.NodeName) (osc.Vm, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("findInstanceByNodeName(%v)", nodeName)
 
 	privateDNSName := mapNodeNameToPrivateDNSName(nodeName)
-	filters := []osc.FiltersVm{
-		newVmFilter("tag:"+TagNameClusterNode, privateDNSName),
-		// exclude instances in "terminated" state
-		newVmFilter("instance-state-name", aliveFilter...),
-		newVmFilter("tag:"+c.tagging.clusterTagKey(),
-			[]string{ResourceLifecycleOwned, ResourceLifecycleShared}...),
+	filters := osc.FiltersVm{
+// 		newVmFilter("tag:"+TagNameClusterNode, privateDNSName),
+// 		// exclude instances in "terminated" state
+// 		newVmFilter("instance-state-name", aliveFilter...),
+// 		newVmFilter("tag:"+c.tagging.clusterTagKey(),
+// 			[]string{ResourceLifecycleOwned, ResourceLifecycleShared}...),
 	}
 
-	instances, err := c.describeInstances(filters)
+	instances, err := c.describeInstances(ctx, filters)
 
 	if err != nil {
 		return osc.Vm{}, err
@@ -2032,7 +2056,7 @@ func (c *Cloud) findInstanceByNodeName(nodeName types.NodeName) (osc.Vm, error) 
 
 // Returns the instance with the specified node name
 // Like findInstanceByNodeName, but returns error if node not found
-func (c *Cloud) getInstanceByNodeName(nodeName types.NodeName) (osc.Vm, error) {
+func (c *Cloud) getInstanceByNodeName(ctx context.Context, nodeName types.NodeName) (osc.Vm, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("getInstanceByNodeName(%v)", nodeName)
 
@@ -2044,26 +2068,26 @@ func (c *Cloud) getInstanceByNodeName(nodeName types.NodeName) (osc.Vm, error) {
 	oscID, err := c.nodeNameToProviderID(nodeName)
 	if err != nil {
 		klog.V(3).Infof("Unable to convert node name %q to osc instanceID, fall back to findInstanceByNodeName: %v", nodeName, err)
-		instance, err = c.findInstanceByNodeName(nodeName)
+		instance, err = c.findInstanceByNodeName(ctx, nodeName)
 		// we need to set provider id for next calls
 
 	} else {
-		instance, err = c.getInstanceByID(string(oscID))
+		instance, err = c.getInstanceByID(ctx, string(oscID))
 	}
-	if err == nil && instance == (osc.Vm{}) {
+	if err == nil && reflect.DeepEqual(instance,osc.Vm{}) {
 		return osc.Vm{}, cloudprovider.InstanceNotFound
 	}
 	return instance, err
 }
 
-func (c *Cloud) getFullInstance(nodeName types.NodeName) (*oscInstance, osc.Vm, error) {
+func (c *Cloud) getFullInstance(ctx context.Context, nodeName types.NodeName) (*oscInstance, osc.Vm, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("getFullInstance(%v)", nodeName)
 	if nodeName == "" {
-		instance, err := c.getInstanceByID(c.selfOSCInstance.oscID)
+		instance, err := c.getInstanceByID(ctx, c.selfOSCInstance.oscID)
 		return c.selfOSCInstance, instance, err
 	}
-	instance, err := c.getInstanceByNodeName(nodeName)
+	instance, err := c.getInstanceByNodeName(ctx, nodeName)
 	if err != nil {
 		return nil, osc.Vm{}, err
 	}

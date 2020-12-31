@@ -775,7 +775,7 @@ func (c *Cloud) ensureLoadBalancerHealthCheck(ctx context.Context, loadBalancer 
 
 // Makes sure that exactly the specified hosts are registered as instances with the load balancer
 func (c *Cloud) ensureLoadBalancerInstances(ctx context.Context, loadBalancerName string,
-	lbInstances []osc.Vm,
+	lbInstances []string,
 	instanceIDs map[InstanceID]osc.Vm) error {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("ensureLoadBalancerInstances(%v,%v, %v)", loadBalancerName, lbInstances, instanceIDs)
@@ -900,7 +900,7 @@ func (c *Cloud) ensureSSLNegotiationPolicy(ctx context.Context, loadBalancer osc
 	return nil
 }
 
-func (c *Cloud) setSSLNegotiationPolicy(ctx context.Context, loadBalancerName, sslPolicyName string, port int64) error {
+func (c *Cloud) setSSLNegotiationPolicy(ctx context.Context, loadBalancerName, sslPolicyName string, port int32) error {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("setSSLNegotiationPolicy(%v,%v,%v)", loadBalancerName, sslPolicyName, port)
 	policyName := fmt.Sprintf(SSLNegotiationPolicyNameFormat, sslPolicyName)
@@ -992,14 +992,14 @@ func proxyProtocolEnabled(backend osc.Listener) bool {
 // findInstancesForLBU gets the OSC instances corresponding to the Nodes, for setting up an LBU
 // We ignore Nodes (with a log message) where the instanceid cannot be determined from the provider,
 // and we ignore instances which are not found
-func (c *Cloud) findInstancesForLBU(nodes []*v1.Node) (map[InstanceID]osc.Vm, error) {
+func (c *Cloud) findInstancesForLBU(ctx context.Context, nodes []*v1.Node) (map[InstanceID]osc.Vm, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("findInstancesForLBU(%v)", nodes)
 
 	for _, node := range nodes {
 		if node.Spec.ProviderID == "" {
 			// TODO  Need to be optimize by setting providerID which is not possible actualy
-			instance, _ := c.findInstanceByNodeName(types.NodeName(node.Name))
+			instance, _ := c.findInstanceByNodeName(ctx, types.NodeName(node.Name))
 			node.Spec.ProviderID = instance.VmId
 		}
 	}
