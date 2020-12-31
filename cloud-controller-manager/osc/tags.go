@@ -169,7 +169,7 @@ func (t *oscTagging) hasClusterTag(tags []osc.ResourceTag) bool {
 // Ensure that a resource has the correct tags
 // If it has no tags, we assume that this was a problem caused by an error in between creation and tagging,
 // and we add the tags.  If it has a different cluster's tags, that is an error.
-func (t *oscTagging) readRepairClusterTags(client FCU, resourceID string, lifecycle ResourceLifecycle, additionalTags map[string]string, observedTags []osc.Tag) error {
+func (t *oscTagging) readRepairClusterTags(client FCU, resourceID string, lifecycle ResourceLifecycle, additionalTags map[string]string, observedTags []osc.ResourceTag) error {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("readRepairClusterTags(%v, %v, %v, %v, %v)",
 		client, resourceID, lifecycle, additionalTags, observedTags)

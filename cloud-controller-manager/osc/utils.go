@@ -358,7 +358,7 @@ func toStatus(lb osc.LoadBalancer) *v1.LoadBalancerStatus {
 }
 
 // Finds the value for a given tag.
-func findTag(tags []osc.Tag, key string) (string, bool) {
+func findTag(tags []osc.ResourceTag, key string) (string, bool) {
 	for _, tag := range tags {
 		if tag.Key == key {
 			return tag.Value, true

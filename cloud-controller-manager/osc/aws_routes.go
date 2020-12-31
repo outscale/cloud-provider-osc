@@ -97,7 +97,7 @@ func (c *Cloud) ListRoutes(ctx context.Context, clusterName string) ([]*cloudpro
 		instanceIDs = append(instanceIDs, instanceID)
 	}
 
-	instances, err := c.getInstancesByIDs(instanceIDs)
+	instances, err := c.getInstancesByIDs(ctx, instanceIDs)
 	if err != nil {
 		return nil, err
 	}

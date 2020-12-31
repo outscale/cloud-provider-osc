@@ -40,16 +40,16 @@ const NLBMtuDiscoveryRuleDescription = "kubernetes.io/rule/nlb/mtu"
 const ProviderName = "aws"
 
 // TagNameKubernetesService is the tag name we use to differentiate multiple
-// services. Used currently for ELBs only.
+// services. Used currently for LBUs only.
 const TagNameKubernetesService = "kubernetes.io/service-name"
 
-// TagNameSubnetInternalELB is the tag name used on a subnet to designate that
-// it should be used for internal ELBs
-const TagNameSubnetInternalELB = "kubernetes.io/role/internal-elb"
+// TagNameSubnetInternalLBU is the tag name used on a subnet to designate that
+// it should be used for internal LBUs
+const TagNameSubnetInternalLBU = "kubernetes.io/role/internal-lbu"
 
-// TagNameSubnetPublicELB is the tag name used on a subnet to designate that
-// it should be used for internet ELBs
-const TagNameSubnetPublicELB = "kubernetes.io/role/elb"
+// TagNameSubnetPublicLBU is the tag name used on a subnet to designate that
+// it should be used for internet LBUs
+const TagNameSubnetPublicLBU = "kubernetes.io/role/lbu"
 
 // ServiceAnnotationLoadBalancerType is the annotation used on the service
 // to indicate what type of Load Balancer we want. Right now, the only accepted
@@ -57,12 +57,12 @@ const TagNameSubnetPublicELB = "kubernetes.io/role/elb"
 const ServiceAnnotationLoadBalancerType = "service.beta.kubernetes.io/aws-load-balancer-type"
 
 // ServiceAnnotationLoadBalancerInternal is the annotation used on the service
-// to indicate that we want an internal ELB.
+// to indicate that we want an internal LBU.
 const ServiceAnnotationLoadBalancerInternal = "service.beta.kubernetes.io/aws-load-balancer-internal"
 
 // ServiceAnnotationLoadBalancerProxyProtocol is the annotation used on the
-// service to enable the proxy protocol on an ELB. Right now we only accept the
-// value "*" which means enable the proxy protocol on all ELB backends. In the
+// service to enable the proxy protocol on an LBU. Right now we only accept the
+// value "*" which means enable the proxy protocol on all LBU backends. In the
 // future we could adjust this to allow setting the proxy protocol only on
 // certain backends.
 const ServiceAnnotationLoadBalancerProxyProtocol = "service.beta.kubernetes.io/aws-load-balancer-proxy-protocol"
@@ -75,13 +75,13 @@ const ServiceAnnotationLoadBalancerAccessLogEmitInterval = "service.beta.kuberne
 // service to enable or disable access logs.
 const ServiceAnnotationLoadBalancerAccessLogEnabled = "service.beta.kubernetes.io/aws-load-balancer-access-log-enabled"
 
-// ServiceAnnotationLoadBalancerAccessLogS3BucketName is the annotation used to
-// specify access log s3 bucket name.
-const ServiceAnnotationLoadBalancerAccessLogS3BucketName = "service.beta.kubernetes.io/aws-load-balancer-access-log-s3-bucket-name"
+// ServiceAnnotationLoadBalancerAccessLogOSUBucketName is the annotation used to
+// specify access log osu bucket name.
+const ServiceAnnotationLoadBalancerAccessLogOsuBucketName = "service.beta.kubernetes.io/aws-load-balancer-access-log-s3-bucket-name"
 
-// ServiceAnnotationLoadBalancerAccessLogS3BucketPrefix is the annotation used
-// to specify access log s3 bucket prefix.
-const ServiceAnnotationLoadBalancerAccessLogS3BucketPrefix = "service.beta.kubernetes.io/aws-load-balancer-access-log-s3-bucket-prefix"
+// ServiceAnnotationLoadBalancerAccessLogOSUBucketPrefix is the annotation used
+// to specify access log osu bucket prefix.
+const ServiceAnnotationLoadBalancerAccessLogOsuBucketPrefix = "service.beta.kubernetes.io/aws-load-balancer-access-log-s3-bucket-prefix"
 
 // ServiceAnnotationLoadBalancerConnectionDrainingEnabled is the annnotation
 // used on the service to enable or disable connection draining.
@@ -100,12 +100,12 @@ const ServiceAnnotationLoadBalancerConnectionIdleTimeout = "service.beta.kuberne
 const ServiceAnnotationLoadBalancerCrossZoneLoadBalancingEnabled = "service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled"
 
 // ServiceAnnotationLoadBalancerExtraSecurityGroups is the annotation used
-// on the service to specify additional security groups to be added to ELB created
+// on the service to specify additional security groups to be added to LBU created
 const ServiceAnnotationLoadBalancerExtraSecurityGroups = "service.beta.kubernetes.io/aws-load-balancer-extra-security-groups"
 
 // ServiceAnnotationLoadBalancerSecurityGroups is the annotation used
-// on the service to specify the security groups to be added to ELB created. Differently from the annotation
-// "service.beta.kubernetes.io/aws-load-balancer-extra-security-groups", this replaces all other security groups previously assigned to the ELB.
+// on the service to specify the security groups to be added to LBU created. Differently from the annotation
+// "service.beta.kubernetes.io/aws-load-balancer-extra-security-groups", this replaces all other security groups previously assigned to the LBU.
 const ServiceAnnotationLoadBalancerSecurityGroups = "service.beta.kubernetes.io/aws-load-balancer-security-groups"
 
 // ServiceAnnotationLoadBalancerCertificate is the annotation used on the
@@ -135,7 +135,7 @@ const ServiceAnnotationLoadBalancerBEProtocol = "service.beta.kubernetes.io/aws-
 
 // ServiceAnnotationLoadBalancerAdditionalTags is the annotation used on the service
 // to specify a comma-separated list of key-value pairs which will be recorded as
-// additional tags in the ELB.
+// additional tags in the LBU.
 // For example: "Key1=Val1,Key2=Val2,KeyNoVal1=,KeyNoVal2"
 const ServiceAnnotationLoadBalancerAdditionalTags = "service.beta.kubernetes.io/aws-load-balancer-additional-resource-tags"
 
@@ -177,7 +177,7 @@ const (
 // The major consequence is that it is then not considered for AWS zone discovery for dynamic volume creation.
 var awsTagNameMasterRoles = sets.NewString("kubernetes.io/role/master", "k8s.io/role/master")
 
-// Maps from backend protocol to ELB protocol
+// Maps from backend protocol to LBU protocol
 var backendProtocolMapping = map[string]string{
 	"https": "https",
 	"http":  "https",
@@ -202,10 +202,10 @@ const TagNameClusterNode = "OscK8sNodeName"
 const TagNameMainSG = "OscK8sMainSG/"
 
 // DefaultSrcSgName default SG Name used when creating LB Public Cloud
-const DefaultSrcSgName = "outscale-elb-sg"
+const DefaultSrcSgName = "outscale-lbu-sg"
 
 // DefaultSgOwnerID default SG Id used when creating LB Public Cloud
-const DefaultSgOwnerID = "outscale-elb"
+const DefaultSgOwnerID = "outscale-lbu"
 
 var aliveFilter = []string{
 	"pending",

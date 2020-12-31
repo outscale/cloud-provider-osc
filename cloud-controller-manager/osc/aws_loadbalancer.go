@@ -142,7 +142,7 @@ func (c *Cloud) updateInstanceSecurityGroupsForNLB(ctx context.Context, lbName s
 		return nil
 	}
 
-	clusterSGs, err := c.getTaggedSecurityGroups()
+	clusterSGs, err := c.getTaggedSecurityGroups(ctx)
 	if err != nil {
 		return fmt.Errorf("error querying for tagged security groups: %q", err)
 	}
@@ -164,7 +164,7 @@ func (c *Cloud) updateInstanceSecurityGroupsForNLB(ctx context.Context, lbName s
 	// findSecurityGroupForInstance might return SG that are not tagged.
 	{
 		for sgID := range desiredSGIDs.Difference(sets.StringKeySet(clusterSGs)) {
-			sg, err := c.findSecurityGroup(sgID)
+			sg, err := c.findSecurityGroup(ctx, sgID)
 			if err != nil {
 				return fmt.Errorf("error finding instance group: %q", err)
 			}
@@ -188,22 +188,22 @@ func (c *Cloud) updateInstanceSecurityGroupsForNLB(ctx context.Context, lbName s
 		for sgID, sg := range clusterSGs {
 			sgPerms := NewSecurityGroupRuleSet(sg.SecurityGroupRule...).Ungroup()
 			if desiredSGIDs.Has(sgID) {
-				if err := c.updateInstanceSecurityGroupForNLBTraffic(sgID, sgPerms, healthRuleAnnotation, "tcp", healthCheckPorts, vpcCIDRs); err != nil {
+				if err := c.updateInstanceSecurityGroupForNLBTraffic(ctx, sgID, sgPerms, healthRuleAnnotation, "tcp", healthCheckPorts, vpcCIDRs); err != nil {
 					return err
 				}
-				if err := c.updateInstanceSecurityGroupForNLBTraffic(sgID, sgPerms, clientRuleAnnotation, "tcp", clientPorts, clientCIDRs); err != nil {
+				if err := c.updateInstanceSecurityGroupForNLBTraffic(ctx, sgID, sgPerms, clientRuleAnnotation, "tcp", clientPorts, clientCIDRs); err != nil {
 					return err
 				}
 			} else {
-				if err := c.updateInstanceSecurityGroupForNLBTraffic(sgID, sgPerms, healthRuleAnnotation, "tcp", nil, nil); err != nil {
+				if err := c.updateInstanceSecurityGroupForNLBTraffic(ctx, sgID, sgPerms, healthRuleAnnotation, "tcp", nil, nil); err != nil {
 					return err
 				}
-				if err := c.updateInstanceSecurityGroupForNLBTraffic(sgID, sgPerms, clientRuleAnnotation, "tcp", nil, nil); err != nil {
+				if err := c.updateInstanceSecurityGroupForNLBTraffic(ctx, sgID, sgPerms, clientRuleAnnotation, "tcp", nil, nil); err != nil {
 					return err
 				}
 			}
 			if !sgPerms.Equal(NewSecurityGroupRuleSet(sg.SecurityGroupId...).Ungroup()) {
-				if err := c.updateInstanceSecurityGroupForNLBMTU(sgID, sgPerms); err != nil {
+				if err := c.updateInstanceSecurityGroupForNLBMTU(ctx, sgID, sgPerms); err != nil {
 					return err
 				}
 			}
@@ -214,7 +214,7 @@ func (c *Cloud) updateInstanceSecurityGroupsForNLB(ctx context.Context, lbName s
 
 // updateInstanceSecurityGroupForNLBTraffic will manage permissions set(identified by ruleDesc) on securityGroup to match desired set(allow protocol traffic from ports/cidr).
 // Note: sgPerms will be updated to reflect the current permission set on SG after update.
-func (c *Cloud) updateInstanceSecurityGroupForNLBTraffic(sgID string, sgPerms SecurityGroupRuleSet,
+func (c *Cloud) updateInstanceSecurityGroupForNLBTraffic(ctx context.Context, sgID string, sgPerms SecurityGroupRuleSet,
 	ruleDesc string, protocol string, ports sets.Int64, cidrs []string) error {
 
 	debugPrintCallerFunctionName()
@@ -238,7 +238,7 @@ func (c *Cloud) updateInstanceSecurityGroupForNLBTraffic(sgID string, sgPerms Se
 	permsToRevoke.DeleteIf(SecurityGroupRuleNotMatch{SecurityGroupRuleMatchDesc{ruleDesc}})
 	if len(permsToRevoke) > 0 {
 		permsToRevokeList := permsToRevoke.List()
-		changed, err := c.removeSecurityGroupIngress(sgID, permsToRevokeList, false)
+		changed, err := c.removeSecurityGroupIngress(ctx, sgID, permsToRevokeList, false)
 		if err != nil {
 			klog.Warningf("Error remove traffic permission from security group: %q", err)
 			return err
@@ -250,7 +250,7 @@ func (c *Cloud) updateInstanceSecurityGroupForNLBTraffic(sgID string, sgPerms Se
 	}
 	if len(permsToGrant) > 0 {
 		permsToGrantList := permsToGrant.List()
-		changed, err := c.addSecurityGroupIngress(sgID, permsToGrantList, false)
+		changed, err := c.addSecurityGroupIngress(ctx, sgID, permsToGrantList, false)
 		if err != nil {
 			klog.Warningf("Error add traffic permission to security group: %q", err)
 			return err
@@ -264,7 +264,7 @@ func (c *Cloud) updateInstanceSecurityGroupForNLBTraffic(sgID string, sgPerms Se
 }
 
 // Note: sgPerms will be updated to reflect the current permission set on SG after update.
-func (c *Cloud) updateInstanceSecurityGroupForNLBMTU(sgID string, sgPerms SecurityGroupRuleSet) error {
+func (c *Cloud) updateInstanceSecurityGroupForNLBMTU(ctx context.Context, sgID string, sgPerms SecurityGroupRuleSet) error {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("updateInstanceSecurityGroupForNLBMTU(%v,%v)", sgID, sgPerms)
 	desiredPerms := NewSecurityGroupRuleSet()
@@ -287,7 +287,7 @@ func (c *Cloud) updateInstanceSecurityGroupForNLBMTU(sgID string, sgPerms Securi
 	permsToRevoke.DeleteIf(SecurityGroupRuleNotMatch{SecurityGroupRuleMatchDesc{NLBMtuDiscoveryRuleDescription}})
 	if len(permsToRevoke) > 0 {
 		permsToRevokeList := permsToRevoke.List()
-		changed, err := c.removeSecurityGroupIngress(sgID, permsToRevokeList, false)
+		changed, err := c.removeSecurityGroupIngress(ctx, sgID, permsToRevokeList, false)
 		if err != nil {
 			klog.Warningf("Error remove MTU permission from security group: %q", err)
 			return err
@@ -300,7 +300,7 @@ func (c *Cloud) updateInstanceSecurityGroupForNLBMTU(sgID string, sgPerms Securi
 	}
 	if len(permsToGrant) > 0 {
 		permsToGrantList := permsToGrant.List()
-		changed, err := c.addSecurityGroupIngress(sgID, permsToGrantList, false)
+		changed, err := c.addSecurityGroupIngress(ctx, sgID, permsToGrantList, false)
 		if err != nil {
 			klog.Warningf("Error add MTU permission to security group: %q", err)
 			return err
@@ -323,7 +323,7 @@ func (c *Cloud) ensureLoadBalancer(ctx context.Context, namespacedName types.Nam
 		namespacedName, loadBalancerName, listeners, subnetIDs, securityGroupIDs,
 		internalLBU, proxyProtocol, loadBalancerAttributes, annotations)
 
-	loadBalancer, err := c.describeLoadBalancer(loadBalancerName)
+	loadBalancer, err := c.describeLoadBalancer(ctx, loadBalancerName)
 	if err != nil {
 		return osc.LoadBalancer{}, err
 	}
@@ -540,7 +540,7 @@ func (c *Cloud) ensureLoadBalancer(ctx context.Context, namespacedName types.Nam
 			klog.V(2).Infof("Creating additional load balancer tags for %s", loadBalancerName)
 			tags := getLoadBalancerAdditionalTags(annotations)
 			if len(tags) > 0 {
-				err := c.addLoadBalancerTags(loadBalancerName, tags)
+				err := c.addLoadBalancerTags(ctx, loadBalancerName, tags)
 				if err != nil {
 					return osc.LoadBalancer{}, fmt.Errorf("unable to create additional load balancer tags: %v", err)
 				}
@@ -591,7 +591,7 @@ func (c *Cloud) ensureLoadBalancer(ctx context.Context, namespacedName types.Nam
 	}
 
 	if dirty {
-		loadBalancer, err = c.describeLoadBalancer(loadBalancerName)
+		loadBalancer, err = c.describeLoadBalancer(ctx, loadBalancerName)
 		if err != nil {
 			klog.Warning("Unable to retrieve load balancer after creation/update")
 			return osc.LoadBalancer{}, err
