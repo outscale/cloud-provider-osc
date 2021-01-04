@@ -60,7 +60,7 @@ func readOSCCloudConfig(config io.Reader) (*CloudConfig, error) {
 
 // newOSCCloud creates a new instance of OSCCloud.
 // OSCProvider and instanceId are primarily for tests
-func newOSCCloud(ctx context.Context, cfg CloudConfig, oscServices Services) (*Cloud, error) {
+func newOSCCloud(cfg CloudConfig, oscServices Services) (*Cloud, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("newOSCCloud(%v,%v)", cfg, oscServices)
 	// We have some state in the Cloud object - in particular the attaching map
@@ -129,7 +129,7 @@ func newOSCCloud(ctx context.Context, cfg CloudConfig, oscServices Services) (*C
 		}
 		oscCloud.netID = cfg.Global.VPC
 	} else {
-		selfOSCInstance, err := oscCloud.buildSelfOSCInstance(ctx)
+		selfOSCInstance, err := oscCloud.buildSelfOSCInstance()
 		if err != nil {
 			return nil, err
 		}
@@ -180,6 +180,6 @@ func init() {
 		creds := credentials.NewChainCredentials(provider)
 
 		osc := newOSCSDKProvider(creds, cfg)
-		return newOSCCloud(ctx, *cfg, osc)
+		return newOSCCloud(*cfg, osc)
 	})
 }

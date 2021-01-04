@@ -113,13 +113,25 @@ func (p *oscSDKProvider) Compute(regionName string) (FCU, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to initialize AWS session: %v", err)
 	}
-	service := osc.New(sess)
 
 	p.addHandlers(regionName, &service.Handlers)
 
+	client := &OscClient{}
+	client.config = osc.NewConfiguration()
+	client.config.BasePath, _ = client.config.ServerUrl(0, map[string]string{"region": useRegion})
+	client.api = osc.NewAPIClient(client.config)
+	client.auth = context.WithValue(context.Background(), osc.ContextAWSv4, osc.AWSv4{
+		AccessKey: os.Getenv("OSC_ACCESS_KEY"),
+		SecretKey: os.Getenv("OSC_SECRET_KEY"),
+	})
+
+
 	fcu := &oscSdkFCU{
-		fcu: service,
+		config: client.config,
+	    auth:   client.auth,
+	    api:    client.api,
 	}
+
 	return fcu, nil
 }
 

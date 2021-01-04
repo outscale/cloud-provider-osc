@@ -118,7 +118,7 @@ type FakeFCUImpl struct {
 }
 
 // ReadVms returns fake instance descriptions
-func (fcui *FakeFCUImpl) ReadVms(ctx context.Context, request *osc.ReadVmsOpts) ([]osc.Vm, *_nethttp.Response, error) {
+func (fcui *FakeFCUImpl) ReadVms(request *osc.ReadVmsOpts) ([]osc.Vm, *_nethttp.Response, error) {
 	matches := []osc.Vm{}
 
     requestVm := request.ReadVmsRequest.Value().(osc.ReadVmsRequest).Filters
@@ -160,31 +160,31 @@ func (fcui *FakeFCUImpl) ReadVms(ctx context.Context, request *osc.ReadVmsOpts) 
 
 // DescribeSecurityGroups is not implemented but is required for interface
 // conformance
-func (fcui *FakeFCUImpl) ReadSecurityGroups(ctx context.Context, request *osc.ReadSecurityGroupsOpts) ([]osc.SecurityGroup, *_nethttp.Response, error) {
+func (fcui *FakeFCUImpl) ReadSecurityGroups(request *osc.ReadSecurityGroupsOpts) ([]osc.SecurityGroup, *_nethttp.Response, error) {
 	panic("Not implemented")
 }
 
 // CreateSecurityGroup is not implemented but is required for interface
 // conformance
-func (fcui *FakeFCUImpl) CreateSecurityGroup(ctx context.Context, request *osc.CreateSecurityGroupOpts) (osc.CreateSecurityGroupResponse, *_nethttp.Response, error) {
+func (fcui *FakeFCUImpl) CreateSecurityGroup(request *osc.CreateSecurityGroupOpts) (osc.CreateSecurityGroupResponse, *_nethttp.Response, error) {
 	panic("Not implemented")
 }
 
 // DeleteSecurityGroup is not implemented but is required for interface
 // conformance
-func (fcui *FakeFCUImpl) DeleteSecurityGroup(ctx context.Context, request *osc.DeleteSecurityGroupOpts) (osc.DeleteSecurityGroupResponse, *_nethttp.Response, error) {
+func (fcui *FakeFCUImpl) DeleteSecurityGroup(request *osc.DeleteSecurityGroupOpts) (osc.DeleteSecurityGroupResponse, *_nethttp.Response, error) {
 	panic("Not implemented")
 }
 
 // AuthorizeSecurityGroupIngress is not implemented but is required for
 // interface conformance
-func (fcui *FakeFCUImpl) CreateSecurityGroupRule(ctx context.Context, request *osc.CreateSecurityGroupRuleOpts) (osc.CreateSecurityGroupRuleResponse, *_nethttp.Response, error) {
+func (fcui *FakeFCUImpl) CreateSecurityGroupRule(request *osc.CreateSecurityGroupRuleOpts) (osc.CreateSecurityGroupRuleResponse, *_nethttp.Response, error) {
 	panic("Not implemented")
 }
 
 // RevokeSecurityGroupIngress is not implemented but is required for interface
 // conformance
-func (fcui *FakeFCUImpl) DeleteSecurityGroupRule(ctx context.Context, request *osc.DeleteSecurityGroupRuleOpts) (osc.DeleteSecurityGroupRuleResponse, *_nethttp.Response, error) {
+func (fcui *FakeFCUImpl) DeleteSecurityGroupRule(request *osc.DeleteSecurityGroupRuleOpts) (osc.DeleteSecurityGroupRuleResponse, *_nethttp.Response, error) {
 	panic("Not implemented")
 }
 
@@ -198,7 +198,7 @@ func (fcui *FakeFCUImpl) CreateSubnet(request osc.Subnet) (osc.CreateSubnetRespo
 }
 
 // DescribeSubnets returns fake subnet descriptions
-func (fcui *FakeFCUImpl) ReadSubnets(ctx context.Context, request *osc.ReadSubnetsOpts) ([]osc.Subnet, *_nethttp.Response, error) {
+func (fcui *FakeFCUImpl) ReadSubnets(request *osc.ReadSubnetsOpts) ([]osc.Subnet, *_nethttp.Response, error) {
 	fcui.ReadSubnetsOpts = request
 	return fcui.Subnets, nil, nil
 }
@@ -209,12 +209,12 @@ func (fcui *FakeFCUImpl) RemoveSubnets() {
 }
 
 // CreateTags is not implemented but is required for interface conformance
-func (fcui *FakeFCUImpl) CreateTags(ctx context.Context, request *osc.CreateTagsOpts) (osc.CreateTagsResponse, *_nethttp.Response, error) {
+func (fcui *FakeFCUImpl) CreateTags(request *osc.CreateTagsOpts) (osc.CreateTagsResponse, *_nethttp.Response, error) {
 	panic("Not implemented")
 }
 
 // DescribeRouteTables returns fake route table descriptions
-func (fcui *FakeFCUImpl) ReadRouteTables(ctx context.Context, request *osc.ReadRouteTablesOpts) ([]osc.RouteTable, *_nethttp.Response, error) {
+func (fcui *FakeFCUImpl) ReadRouteTables(request *osc.ReadRouteTablesOpts) ([]osc.RouteTable, *_nethttp.Response, error) {
 	fcui.ReadRouteTablesOpts = request
 	return fcui.RouteTables, nil, nil
 }
@@ -234,23 +234,23 @@ func (fcui *FakeFCUImpl) RemoveRouteTables() {
 }
 
 // CreateRoute is not implemented but is required for interface conformance
-func (fcui *FakeFCUImpl) CreateRoute(ctx context.Context, request *osc.CreateRouteOpts) (osc.CreateRouteResponse, *_nethttp.Response, error) {
+func (fcui *FakeFCUImpl) CreateRoute(request *osc.CreateRouteOpts) (osc.CreateRouteResponse, *_nethttp.Response, error) {
 	panic("Not implemented")
 }
 
 // DeleteRoute is not implemented but is required for interface conformance
-func (fcui *FakeFCUImpl) DeleteRoute(ctx context.Context, request *osc.DeleteRouteOpts) (osc.DeleteRouteResponse, *_nethttp.Response, error) {
+func (fcui *FakeFCUImpl) DeleteRoute(request *osc.DeleteRouteOpts) (osc.DeleteRouteResponse, *_nethttp.Response, error) {
 	panic("Not implemented")
 }
 
 // ModifyInstanceAttribute is not implemented but is required for interface
 // conformance
-func (fcui *FakeFCUImpl) UpdateVm(ctx context.Context, request *osc.UpdateVmOpts) (osc.UpdateVmResponse, *_nethttp.Response, error) {
+func (fcui *FakeFCUImpl) UpdateVm(request *osc.UpdateVmOpts) (osc.UpdateVmResponse, *_nethttp.Response, error) {
 	panic("Not implemented")
 }
 
 // DescribeVpcs returns fake VPC descriptions
-func (fcui *FakeFCUImpl) ReadNets(ctx context.Context, request *osc.ReadNetsOpts) (osc.ReadNetsResponse, *_nethttp.Response, error) {
+func (fcui *FakeFCUImpl) ReadNets(request *osc.ReadNetsOpts) (osc.ReadNetsResponse, *_nethttp.Response, error) {
 	return osc.ReadNetsResponse{Nets: []osc.Net{{IpRange: "172.20.0.0/16"}}}, nil, nil
 }
 
@@ -325,114 +325,114 @@ type FakeLBU struct {
 
 // CreateLoadBalancer is not implemented but is required for interface
 // conformance
-func (lbu *FakeLBU) CreateLoadBalancer(ctx context.Context, input *osc.CreateLoadBalancerOpts) (osc.CreateLoadBalancerResponse, *_nethttp.Response, error) {
+func (lbu *FakeLBU) CreateLoadBalancer(input *osc.CreateLoadBalancerOpts) (osc.CreateLoadBalancerResponse, *_nethttp.Response, error) {
 	panic("Not implemented")
 }
 
 // DeleteLoadBalancer is not implemented but is required for interface
 // conformance
-func (lbu *FakeLBU) DeleteLoadBalancer(ctx context.Context, input *osc.DeleteLoadBalancerOpts) (osc.DeleteLoadBalancerResponse, *_nethttp.Response, error) {
+func (lbu *FakeLBU) DeleteLoadBalancer(input *osc.DeleteLoadBalancerOpts) (osc.DeleteLoadBalancerResponse, *_nethttp.Response, error) {
 	panic("Not implemented")
 }
 
 // DescribeLoadBalancers is not implemented but is required for interface
 // conformance
-func (lbu *FakeLBU) ReadLoadBalancers(ctx context.Context, input *osc.ReadLoadBalancersOpts) (osc.ReadLoadBalancersResponse, *_nethttp.Response, error) {
+func (lbu *FakeLBU) ReadLoadBalancers(input *osc.ReadLoadBalancersOpts) (osc.ReadLoadBalancersResponse, *_nethttp.Response, error) {
 	panic("Not implemented")
 }
 
 // AddTags is not implemented but is required for interface conformance
-func (lbu *FakeLBU) CreateLoadBalancerTags(ctx context.Context, input *osc.CreateLoadBalancerTagsOpts) (osc.CreateLoadBalancerTagsResponse, *_nethttp.Response, error) {
+func (lbu *FakeLBU) CreateLoadBalancerTags(input *osc.CreateLoadBalancerTagsOpts) (osc.CreateLoadBalancerTagsResponse, *_nethttp.Response, error) {
 	panic("Not implemented")
 }
 
 // RegisterInstancesWithLoadBalancer is not implemented but is required for
 // interface conformance
-func (lbu *FakeLBU) RegisterVmsInLoadBalancer(ctx context.Context, input *osc.RegisterVmsInLoadBalancerOpts) (osc.RegisterVmsInLoadBalancerResponse, *_nethttp.Response, error) {
+func (lbu *FakeLBU) RegisterVmsInLoadBalancer(input *osc.RegisterVmsInLoadBalancerOpts) (osc.RegisterVmsInLoadBalancerResponse, *_nethttp.Response, error) {
 	panic("Not implemented")
 }
 
 // DeregisterInstancesFromLoadBalancer is not implemented but is required for
 // interface conformance
-func (lbu *FakeLBU) DeregisterVmsInLoadBalancer(ctx context.Context, input *osc.DeregisterVmsInLoadBalancerOpts) (osc.DeregisterVmsInLoadBalancerResponse, *_nethttp.Response, error) {
+func (lbu *FakeLBU) DeregisterVmsInLoadBalancer(input *osc.DeregisterVmsInLoadBalancerOpts) (osc.DeregisterVmsInLoadBalancerResponse, *_nethttp.Response, error) {
 	panic("Not implemented")
 }
 
 // DetachLoadBalancerFromSubnets is not implemented but is required for
 // interface conformance
-func (lbu *FakeLBU) DetachLoadBalancerFromSubnets(ctx context.Context, input *osc.DeregisterVmsInLoadBalancerOpts) (osc.DeregisterVmsInLoadBalancerResponse, *_nethttp.Response, error) {
+func (lbu *FakeLBU) DetachLoadBalancerFromSubnets(input *osc.DeregisterVmsInLoadBalancerOpts) (osc.DeregisterVmsInLoadBalancerResponse, *_nethttp.Response, error) {
 	panic("Not implemented")
 }
 
 // AttachLoadBalancerToSubnets is not implemented but is required for interface
 // conformance
-func (lbu *FakeLBU) AttachLoadBalancerToSubnets(ctx context.Context, input *osc.RegisterVmsInLoadBalancerOpts) (osc.RegisterVmsInLoadBalancerOpts, *_nethttp.Response, error) {
+func (lbu *FakeLBU) AttachLoadBalancerToSubnets(input *osc.RegisterVmsInLoadBalancerOpts) (osc.RegisterVmsInLoadBalancerOpts, *_nethttp.Response, error) {
 	panic("Not implemented")
 }
 
 // CreateLoadBalancerListeners is not implemented but is required for interface
 // conformance
-func (lbu *FakeLBU) CreateLoadBalancerListeners(ctx context.Context, input *osc.CreateLoadBalancerListenersOpts) (osc.CreateLoadBalancerListenersResponse, *_nethttp.Response, error) {
+func (lbu *FakeLBU) CreateLoadBalancerListeners(input *osc.CreateLoadBalancerListenersOpts) (osc.CreateLoadBalancerListenersResponse, *_nethttp.Response, error) {
 	panic("Not implemented")
 }
 
 // DeleteLoadBalancerListeners is not implemented but is required for interface
 // conformance
-func (lbu *FakeLBU) DeleteLoadBalancerListeners(ctx context.Context, input *osc.DeleteLoadBalancerListenersOpts) (osc.DeleteLoadBalancerListenersResponse, *_nethttp.Response, error) {
+func (lbu *FakeLBU) DeleteLoadBalancerListeners(input *osc.DeleteLoadBalancerListenersOpts) (osc.DeleteLoadBalancerListenersResponse, *_nethttp.Response, error) {
 	panic("Not implemented")
 }
 
 // ApplySecurityGroupsToLoadBalancer is not implemented but is required for
 // interface conformance
-func (lbu *FakeLBU) ApplySecurityGroupsToLoadBalancer(ctx context.Context, input *osc.CreateLoadBalancerListenersOpts) (osc.CreateLoadBalancerListenersResponse, *_nethttp.Response, error) {
+func (lbu *FakeLBU) ApplySecurityGroupsToLoadBalancer(input *osc.CreateLoadBalancerListenersOpts) (osc.CreateLoadBalancerListenersResponse, *_nethttp.Response, error) {
 	panic("Not implemented")
 }
 
 // ConfigureHealthCheck is not implemented but is required for interface
 // conformance
-func (lbu *FakeLBU) ReadVmsHealth(ctx context.Context, input *osc.ReadVmsHealthOpts) (osc.ReadVmsHealthResponse, *_nethttp.Response, error) {
+func (lbu *FakeLBU) ReadVmsHealth(input *osc.ReadVmsHealthOpts) (osc.ReadVmsHealthResponse, *_nethttp.Response, error) {
 	panic("Not implemented")
 }
 
 // CreateLoadBalancerPolicy is not implemented but is required for interface
 // conformance
-func (lbu *FakeLBU) CreateLoadBalancerPolicy(ctx context.Context, input *osc.CreateLoadBalancerPolicyOpts) (osc.CreateLoadBalancerPolicyResponse, *_nethttp.Response, error) {
+func (lbu *FakeLBU) CreateLoadBalancerPolicy(input *osc.CreateLoadBalancerPolicyOpts) (osc.CreateLoadBalancerPolicyResponse, *_nethttp.Response, error) {
 	panic("Not implemented")
 }
 
 // SetLoadBalancerPoliciesForBackendServer is not implemented but is required
 // for interface conformance
-func (lbu *FakeLBU) SetLoadBalancerPoliciesForBackendServer(ctx context.Context, input *osc.CreateLoadBalancerPolicyOpts) (osc.CreateLoadBalancerPolicyResponse, *_nethttp.Response, error) {
+func (lbu *FakeLBU) SetLoadBalancerPoliciesForBackendServer(input *osc.CreateLoadBalancerPolicyOpts) (osc.CreateLoadBalancerPolicyResponse, *_nethttp.Response, error) {
 	panic("Not implemented")
 }
 
 // SetLoadBalancerPoliciesOfListener is not implemented but is required for
 // interface conformance
-func (lbu *FakeLBU) SetLoadBalancerPoliciesOfListener(ctx context.Context, input *osc.CreateLoadBalancerPolicyOpts) (osc.CreateLoadBalancerPolicyResponse, *_nethttp.Response, error) {
+func (lbu *FakeLBU) SetLoadBalancerPoliciesOfListener(input *osc.CreateLoadBalancerPolicyOpts) (osc.CreateLoadBalancerPolicyResponse, *_nethttp.Response, error) {
 	panic("Not implemented")
 }
 
 // DescribeLoadBalancerPolicies is not implemented but is required for
 // interface conformance
-func (lbu *FakeLBU) DescribeLoadBalancerPolicies(ctx context.Context, input *osc.ReadLoadBalancersOpts) (osc.ReadLoadBalancersResponse, *_nethttp.Response, error) {
+func (lbu *FakeLBU) DescribeLoadBalancerPolicies(input *osc.ReadLoadBalancersOpts) (osc.ReadLoadBalancersResponse, *_nethttp.Response, error) {
 	panic("Not implemented")
 }
 
 // DescribeLoadBalancerAttributes is not implemented but is required for
 // interface conformance
-func (lbu *FakeLBU) DescribeLoadBalancerAttributes(ctx context.Context, input *osc.ReadLoadBalancersOpts) (osc.ReadLoadBalancersResponse, *_nethttp.Response, error) {
+func (lbu *FakeLBU) DescribeLoadBalancerAttributes(input *osc.ReadLoadBalancersOpts) (osc.ReadLoadBalancersResponse, *_nethttp.Response, error) {
 	panic("Not implemented")
 }
 
 // UpdateLoadBalancer is not implemented but is required for
 // interface conformance
-func (lbu *FakeLBU) UpdateLoadBalancer(ctx context.Context, input *osc.UpdateLoadBalancerOpts) (osc.UpdateLoadBalancerResponse, *_nethttp.Response, error) {
+func (lbu *FakeLBU) UpdateLoadBalancer(input *osc.UpdateLoadBalancerOpts) (osc.UpdateLoadBalancerResponse, *_nethttp.Response, error) {
 	panic("Not implemented")
 }
 
 // ReadLoadBalancerTags is not implemented but is required for
 // interface conformance
-func (lbu *FakeLBU) ReadLoadBalancerTags(context.Context, *osc.ReadLoadBalancerTagsOpts) (osc.ReadLoadBalancerTagsResponse, *_nethttp.Response, error){
+func (lbu *FakeLBU) ReadLoadBalancerTags(*osc.ReadLoadBalancerTagsOpts) (osc.ReadLoadBalancerTagsResponse, *_nethttp.Response, error){
     panic("Not implemented")
 }
 

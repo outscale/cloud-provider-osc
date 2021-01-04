@@ -29,6 +29,8 @@ import (
 	"github.com/outscale/osc-sdk-go/osc"
 	"k8s.io/klog"
 
+	"github.com/antihax/optional"
+
 	"k8s.io/api/core/v1"
 )
 
@@ -134,12 +136,12 @@ func describeInstance(fcuClient FCU, instanceID InstanceID) (osc.Vm, error) {
 		ReadVmsRequest: optional.NewInterface(
 			osc.ReadVmsRequest{
 				Filters: osc.FiltersVm{
-					VmIds: []string{instanceID},
+					VmIds: []string{string(instanceID)},
 				},
 			}),
 	}
 
-	instances, err := fcuClient.DescribeInstances(request)
+	instances, err := fcuClient.ReadVms(request)
 	if err != nil {
 		return nil, err
 	}

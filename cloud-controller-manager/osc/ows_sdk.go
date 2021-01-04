@@ -36,7 +36,7 @@ type oscSdkFCU struct {
 }
 
 // Implementation of OSC.Vm
-func (s *oscSdkFCU) ReadVms(ctx context.Context, request *osc.ReadVmsOpts) ([]osc.Vm, *_nethttp.Response, error) {
+func (s *oscSdkFCU) ReadVms(request *osc.ReadVmsOpts) ([]osc.Vm, *_nethttp.Response, error) {
 	// Instances are not paged
 	results := []osc.Vm{}
 	requestTime := time.Now()
@@ -53,7 +53,7 @@ func (s *oscSdkFCU) ReadVms(ctx context.Context, request *osc.ReadVmsOpts) ([]os
 }
 
 // Implements OSC.ReadSecurityGroups
-func (s *oscSdkFCU) ReadSecurityGroups(ctx context.Context, request *osc.ReadSecurityGroupsOpts) ([]osc.SecurityGroup, *_nethttp.Response, error) {
+func (s *oscSdkFCU) ReadSecurityGroups(request *osc.ReadSecurityGroupsOpts) ([]osc.SecurityGroup, *_nethttp.Response, error) {
 	// Security groups are not paged
 	results := []osc.SecurityGroup{}
 	requestTime := time.Now()
@@ -69,7 +69,7 @@ func (s *oscSdkFCU) ReadSecurityGroups(ctx context.Context, request *osc.ReadSec
 	return results.SecurityGroups, nil
 }
 
-func (s *oscSdkFCU) ReadSubnets(ctx context.Context, request *osc.ReadSubnetsOpts) ([]osc.Subnet, *_nethttp.Response, error) {
+func (s *oscSdkFCU) ReadSubnets(request *osc.ReadSubnetsOpts) ([]osc.Subnet, *_nethttp.Response, error) {
 	// Subnets are not paged
 	response, httpRes, err := s.api.SubnetApi.DescribeSubnets(s.auth, request)
 	if err != nil {
@@ -78,23 +78,23 @@ func (s *oscSdkFCU) ReadSubnets(ctx context.Context, request *osc.ReadSubnetsOpt
 	return response.Subnets, nil
 }
 
-func (s *oscSdkFCU) CreateSecurityGroup(ctx context.Context, request *osc.CreateSecurityGroupOpts) (osc.CreateSecurityGroupResponse, *_nethttp.Response, error) {
+func (s *oscSdkFCU) CreateSecurityGroup(request *osc.CreateSecurityGroupOpts) (osc.CreateSecurityGroupResponse, *_nethttp.Response, error) {
 	return s.api.SecurityGroupApi.CreateSecurityGroup(s.auth, request)
 }
 
-func (s *oscSdkFCU) DeleteSecurityGroup(ctx context.Context, request *osc.DeleteSecurityGroupOpts) (osc.DeleteSecurityGroupResponse, *_nethttp.Response, error) {
+func (s *oscSdkFCU) DeleteSecurityGroup(request *osc.DeleteSecurityGroupOpts) (osc.DeleteSecurityGroupResponse, *_nethttp.Response, error) {
 	return s.api.SecurityGroupApi.DeleteSecurityGroup(s.auth, request)
 }
 
-func (s *oscSdkFCU) CreateSecurityGroupRule(ctx context.Context, request *osc.CreateSecurityGroupRuleOpts) (osc.CreateSecurityGroupRuleResponse, *_nethttp.Response, error) {
+func (s *oscSdkFCU) CreateSecurityGroupRule(request *osc.CreateSecurityGroupRuleOpts) (osc.CreateSecurityGroupRuleResponse, *_nethttp.Response, error) {
 	return s.api.SecurityGroupApi.CreateSecurityGroupRule(s.auth, request)
 }
 
-func (s *oscSdkFCU) DeleteSecurityGroupRuleRequest(ctx context.Context, request *osc.DeleteSecurityGroupRuleOpts) (osc.DeleteSecurityGroupRuleResponse, *_nethttp.Response, error) {
+func (s *oscSdkFCU) DeleteSecurityGroupRuleRequest(request *osc.DeleteSecurityGroupRuleOpts) (osc.DeleteSecurityGroupRuleResponse, *_nethttp.Response, error) {
 	return s.api.SecurityGroupApi.DeleteSecurityGroupRuleRequest(s.auth, request)
 }
 
-func (s *oscSdkFCU) CreateTags(ctx context.Context, request *osc.CreateTagsOpts) (osc.CreateTagsResponse, *_nethttp.Response, error) {
+func (s *oscSdkFCU) CreateTags(request *osc.CreateTagsOpts) (osc.CreateTagsResponse, *_nethttp.Response, error) {
 	debugPrintCallerFunctionName()
 	requestTime := time.Now()
 	resp, err := s.api.TagApi.CreateTags(s.auth, request)
@@ -103,7 +103,7 @@ func (s *oscSdkFCU) CreateTags(ctx context.Context, request *osc.CreateTagsOpts)
 	return resp, err
 }
 
-func (s *oscSdkFCU) ReadRouteTables(ctx context.Context, request *osc.ReadRouteTablesOpts) ([]osc.RouteTable, *_nethttp.Response, error) {
+func (s *oscSdkFCU) ReadRouteTables(request *osc.ReadRouteTablesOpts) ([]osc.RouteTable, *_nethttp.Response, error) {
 	results := []*osc.RouteTable{}
 	requestTime := time.Now()
 	for {
@@ -120,18 +120,18 @@ func (s *oscSdkFCU) ReadRouteTables(ctx context.Context, request *osc.ReadRouteT
 	return results.RouteTables, nil
 }
 
-func (s *oscSdkFCU) CreateRoute(ctx context.Context, request *osc.CreateRouteOpts) (osc.CreateRouteResponse, *_nethttp.Response, error) {
+func (s *oscSdkFCU) CreateRoute(request *osc.CreateRouteOpts) (osc.CreateRouteResponse, *_nethttp.Response, error) {
 	return s.api.RouteApi.CreateRoute(s.auth, request)
 }
 
-func (s *oscSdkFCU) DeleteRoute(ctx context.Context, request *osc.DeleteRouteOpts) (osc.DeleteRouteResponse, *_nethttp.Response, error) {
+func (s *oscSdkFCU) DeleteRoute(request *osc.DeleteRouteOpts) (osc.DeleteRouteResponse, *_nethttp.Response, error) {
 	return s.api.RouteApi.DeleteRoute(s.auth, request)
 }
 
-func (s *oscSdkFCU) UpdateVm(ctx context.Context, request *osc.UpdateVmOpts) (osc.UpdateVmResponse, *_nethttp.Response, error) {
+func (s *oscSdkFCU) UpdateVm(request *osc.UpdateVmOpts) (osc.UpdateVmResponse, *_nethttp.Response, error) {
 	return s.api.VmApi.UpdateVm(s.auth, request)
 }
 
-func (s *oscSdkFCU) ReadNets(ctx context.Context, request *osc.ReadNetsOpts) (osc.ReadNetsResponse, *_nethttp.Response, error) {
+func (s *oscSdkFCU) ReadNets(request *osc.ReadNetsOpts) (osc.ReadNetsResponse, *_nethttp.Response, error) {
 	return s.api.ReadNets(s.auth, request)
 }
