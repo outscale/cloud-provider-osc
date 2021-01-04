@@ -27,8 +27,6 @@ import (
 
 	"k8s.io/cloud-provider"
 	"k8s.io/klog"
-
-	"context"
 )
 
 // ********************* CCM Object Init *********************

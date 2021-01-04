@@ -26,8 +26,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/ec2metadata"
 
 	"k8s.io/klog"
-
-	context "context"
 	_nethttp "net/http"
 )
 

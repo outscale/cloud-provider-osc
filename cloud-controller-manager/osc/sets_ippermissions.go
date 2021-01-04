@@ -52,8 +52,8 @@ func (s SecurityGroupRuleSet) Ungroup() SecurityGroupRuleSet {
 			continue
 		}
 		for _, ipRange := range p.IpRanges {
-			c := &osc.SecurityGroupRule{}
-			*c = *p
+			c := osc.SecurityGroupRule{}
+			c = p
 			c.IpRanges = []string{ipRange}
 			l = append(l, c)
 		}
@@ -66,23 +66,23 @@ func (s SecurityGroupRuleSet) Ungroup() SecurityGroupRuleSet {
 			continue
 		}
 		for _, u := range p.SecurityGroupsMembers {
-			c := &osc.SecurityGroupRule{}
-			*c = *p
-			c.SecurityGroupsMembers = []osc.SecurityGroupsMembers{u}
+			c := osc.SecurityGroupRule{}
+			c = p
+			c.SecurityGroupsMembers = []osc.SecurityGroupsMember{u}
 			l2 = append(l, c)
 		}
 	}
 
 	l3 := []osc.SecurityGroupRule{}
 	for _, p := range l2 {
-		if len(p.PrefixListIds) <= 1 {
+		if len(p.IpRanges) <= 1 {
 			l3 = append(l3, p)
 			continue
 		}
-		for _, v := range p.PrefixListIds {
-			c := &osc.SecurityGroupRule{}
-			*c = *p
-			c.PrefixListIds = []*ec2.PrefixListId{v}
+		for _, v := range p.IpRanges {
+			c := osc.SecurityGroupRule{}
+			c = p
+			c.IpRanges = []string{v}
 			l3 = append(l3, c)
 		}
 	}
@@ -182,7 +182,7 @@ type SecurityGroupRuleMatchDesc struct {
 // Test whether specific SecurityGroupRule contains description.
 func (p SecurityGroupRuleMatchDesc) Test(perm osc.SecurityGroupRule) bool {
 	for _, v4Range := range perm.IpRanges {
-		if v4Range.Description == p.Description {
+		if v4Range == p.Description {
 			return true
 		}
 	}
@@ -193,13 +193,14 @@ func (p SecurityGroupRuleMatchDesc) Test(perm osc.SecurityGroupRule) bool {
 // 		}
 // 	}
 
-	for _, prefixListID := range perm.PrefixListIds {
-		if prefixListID.Description == p.Description {
+	for _, prefixListID := range perm.IpRanges {
+		if prefixListID == p.Description {
 			return true
 		}
 	}
 	for _, group := range perm.SecurityGroupsMembers {
-		if group.Description == p.Description {
+	    // A verififer si c'est bien SecurityGroupId
+		if group.SecurityGroupId == p.Description {
 			return true
 		}
 	}

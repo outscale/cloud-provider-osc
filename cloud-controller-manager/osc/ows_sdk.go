@@ -38,44 +38,46 @@ type oscSdkFCU struct {
 // Implementation of OSC.Vm
 func (s *oscSdkFCU) ReadVms(request *osc.ReadVmsOpts) ([]osc.Vm, *_nethttp.Response, error) {
 	// Instances are not paged
-	results := []osc.Vm{}
+	response := osc.ReadVmsResponse{}
 	requestTime := time.Now()
+	var httpRes *_nethttp.Response
 	for {
 		response, httpRes, err := s.api.VmApi.ReadVms(s.auth, request)
 		if err != nil {
 			recordOSCMetric("describe_instance", 0, err)
-			return nil, fmt.Errorf("error listing OSC instances: %q", err)
+			return nil, httpRes, fmt.Errorf("error listing OSC instances: %q", err)
 		}
 	}
 	timeTaken := time.Since(requestTime).Seconds()
 	recordOSCMetric("describe_instance", timeTaken, nil)
-	return results.Vms, nil
+	return response.Vms, httpRes, nil
 }
 
 // Implements OSC.ReadSecurityGroups
 func (s *oscSdkFCU) ReadSecurityGroups(request *osc.ReadSecurityGroupsOpts) ([]osc.SecurityGroup, *_nethttp.Response, error) {
 	// Security groups are not paged
-	results := []osc.SecurityGroup{}
+	results := osc.ReadSecurityGroupsResponse{}
 	requestTime := time.Now()
+	var httpRes *_nethttp.Response
 	for {
-		response, httpRes, err := s.api.SecurityGroupApi.ReadSecurityGroups(s.auth, request)
+		results, httpRes, err := s.api.SecurityGroupApi.ReadSecurityGroups(s.auth, request)
 		if err != nil {
 			recordOSCMetric("describe_security_groups", 0, err)
-			return nil, fmt.Errorf("error listing OSC security groups: %q", err)
+			return nil, httpRes, fmt.Errorf("error listing OSC security groups: %q", err)
 		}
 	}
 	timeTaken := time.Since(requestTime).Seconds()
 	recordOSCMetric("describe_security_groups", timeTaken, nil)
-	return results.SecurityGroups, nil
+	return results.SecurityGroups, httpRes, nil
 }
 
 func (s *oscSdkFCU) ReadSubnets(request *osc.ReadSubnetsOpts) ([]osc.Subnet, *_nethttp.Response, error) {
 	// Subnets are not paged
-	response, httpRes, err := s.api.SubnetApi.DescribeSubnets(s.auth, request)
+	response, httpRes, err := s.api.SubnetApi.ReadSubnets(s.auth, request)
 	if err != nil {
-		return nil, fmt.Errorf("error listing OSC subnets: %q", err)
+		return nil, httpRes, fmt.Errorf("error listing OSC subnets: %q", err)
 	}
-	return response.Subnets, nil
+	return response.Subnets, httpRes, nil
 }
 
 func (s *oscSdkFCU) CreateSecurityGroup(request *osc.CreateSecurityGroupOpts) (osc.CreateSecurityGroupResponse, *_nethttp.Response, error) {
@@ -87,37 +89,38 @@ func (s *oscSdkFCU) DeleteSecurityGroup(request *osc.DeleteSecurityGroupOpts) (o
 }
 
 func (s *oscSdkFCU) CreateSecurityGroupRule(request *osc.CreateSecurityGroupRuleOpts) (osc.CreateSecurityGroupRuleResponse, *_nethttp.Response, error) {
-	return s.api.SecurityGroupApi.CreateSecurityGroupRule(s.auth, request)
+	return s.api.SecurityGroupRuleApi.CreateSecurityGroupRule(s.auth, request)
 }
 
-func (s *oscSdkFCU) DeleteSecurityGroupRuleRequest(request *osc.DeleteSecurityGroupRuleOpts) (osc.DeleteSecurityGroupRuleResponse, *_nethttp.Response, error) {
-	return s.api.SecurityGroupApi.DeleteSecurityGroupRuleRequest(s.auth, request)
+func (s *oscSdkFCU) DeleteSecurityGroupRule(request *osc.DeleteSecurityGroupRuleOpts) (osc.DeleteSecurityGroupRuleResponse, *_nethttp.Response, error) {
+	return s.api.SecurityGroupRuleApi.DeleteSecurityGroupRule(s.auth, request)
 }
 
 func (s *oscSdkFCU) CreateTags(request *osc.CreateTagsOpts) (osc.CreateTagsResponse, *_nethttp.Response, error) {
 	debugPrintCallerFunctionName()
 	requestTime := time.Now()
-	resp, err := s.api.TagApi.CreateTags(s.auth, request)
+	resp, httpRes, err := s.api.TagApi.CreateTags(s.auth, request)
 	timeTaken := time.Since(requestTime).Seconds()
 	recordOSCMetric("create_tags", timeTaken, err)
-	return resp, err
+	return resp, httpRes, err
 }
 
 func (s *oscSdkFCU) ReadRouteTables(request *osc.ReadRouteTablesOpts) ([]osc.RouteTable, *_nethttp.Response, error) {
-	results := []*osc.RouteTable{}
+	results := osc.ReadRouteTablesResponse{}
 	requestTime := time.Now()
+	var httpRes *_nethttp.Response
 	for {
-		response, httpRes, err := s.api.RouteTableApi.ReadRouteTables(s.auth, request)
+		results, httpRes, err := s.api.RouteTableApi.ReadRouteTables(s.auth, request)
 		if err != nil {
 			recordOSCMetric("describe_route_tables", 0, err)
-			return nil, fmt.Errorf("error listing OSC route tables: %q", err)
+			return nil, httpRes, fmt.Errorf("error listing OSC route tables: %q", err)
 		}
-
-		results = append(results, response.RouteTables...)
+        // A verifier
+		 //results = append(results, results.RouteTables...)
 	}
 	timeTaken := time.Since(requestTime).Seconds()
 	recordOSCMetric("describe_route_tables", timeTaken, nil)
-	return results.RouteTables, nil
+	return results.RouteTables, httpRes, nil
 }
 
 func (s *oscSdkFCU) CreateRoute(request *osc.CreateRouteOpts) (osc.CreateRouteResponse, *_nethttp.Response, error) {
@@ -133,5 +136,5 @@ func (s *oscSdkFCU) UpdateVm(request *osc.UpdateVmOpts) (osc.UpdateVmResponse, *
 }
 
 func (s *oscSdkFCU) ReadNets(request *osc.ReadNetsOpts) (osc.ReadNetsResponse, *_nethttp.Response, error) {
-	return s.api.ReadNets(s.auth, request)
+	return s.api.NetApi.ReadNets(s.auth, request)
 }

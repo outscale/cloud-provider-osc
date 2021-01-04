@@ -25,6 +25,7 @@ import (
 
 	"github.com/outscale/osc-sdk-go/osc"
 
+    "github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/ec2metadata"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
@@ -114,10 +115,10 @@ func NewSession() (*session.Session, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to initialize OSC Metadata session: %v", err)
 	}
-	oscConfig := &osc.Config{
-		Region:                        metadata.GetRegion(),
+	oscConfig := &aws.Config{
+		Region:                        aws.String(metadata.GetRegion()),
 		Credentials:                   credentials.NewChainCredentials(provider),
-		CredentialsChainVerboseErrors: true,
+		CredentialsChainVerboseErrors: aws.Bool(true),
 		EndpointResolver:              endpoints.ResolverFunc(SetupServiceResolver(metadata.GetRegion())),
 	}
 
@@ -129,10 +130,11 @@ func NewSession() (*session.Session, error) {
 }
 
 
-func newSGFilter(name string, values ...string) osc.FiltersSecurityGroup {
+
+/* func newSGFilter(name string, values ...string) osc.FiltersSecurityGroup {
 	filter := osc.FiltersSecurityGroup{}
 	for _, value := range values {
-		TagValues.Values = append(filter.TagValues, value)
+		filter.Values = append(filter.Values, value)
 	}
 	return filter
 }
@@ -140,7 +142,7 @@ func newSGFilter(name string, values ...string) osc.FiltersSecurityGroup {
 func newVmFilter(name string, values ...string) osc.FiltersVm {
 	filter := osc.FiltersVm{}
 	for _, value := range values {
-		TagValues.Values = append(filter.TagValues, value)
+		filter.Values = append(filter.Values, value)
 	}
 	return filter
 }
@@ -148,26 +150,28 @@ func newVmFilter(name string, values ...string) osc.FiltersVm {
 func newNetFilter(name string, values ...string) osc.FiltersNet {
 	filter := osc.FiltersNet{}
 	for _, value := range values {
-		TagValues.Values = append(filter.TagValues, value)
+		filter.Values = append(filter.Values, value)
 	}
 	return filter
-}
+} */
 
 func newTagFilter(name string, values ...string) osc.FiltersTag {
 	filter := osc.FiltersTag{}
 	for _, value := range values {
-		Values.Values = append(filter.Values, value)
+		filter.Values = append(filter.Values, value)
 	}
 	return filter
 }
 
+/*
 func newRouteFilter(name string, values ...string) osc.FiltersRouteTable {
 	filter := osc.FiltersRouteTable{}
 	for _, value := range values {
-		TagValues.Values = append(filter.TagValues, value)
+		filter.Values = append(filter.Values, value)
 	}
 	return filter
 }
+ */
 
 
 
@@ -189,16 +193,16 @@ func mapInstanceToNodeName(i osc.Vm) types.NodeName {
 // However, if there are multiple security groups, we will choose the one tagged with our cluster filter.
 // Otherwise we will return an error.
 func findSecurityGroupForInstance(instance osc.Vm, taggedSecurityGroups map[string]osc.SecurityGroup) (osc.SecurityGroupLight, error) {
-	instanceID := instance.InstanceId
+	instanceID := instance.VmId
 
-	klog.Infof("findSecurityGroupForInstance instance.InstanceId : %v", instance.InstanceId)
+	klog.Infof("findSecurityGroupForInstance instance.VmId : %v", instance.VmId)
 	klog.Infof("findSecurityGroupForInstance instance.SecurityGroups : %v", instance.SecurityGroups)
 	klog.Infof("findSecurityGroupForInstance taggedSecurityGroups : %v", taggedSecurityGroups)
 
 	var tagged []osc.SecurityGroupLight
 	var untagged []osc.SecurityGroupLight
 	for _, group := range instance.SecurityGroups {
-		groupID := group.GroupId
+		groupID := group.SecurityGroupId
 		if groupID == "" {
 			klog.Warningf("Ignoring security group without id for instance %q: %v", instanceID, group)
 			continue
@@ -217,9 +221,9 @@ func findSecurityGroupForInstance(instance osc.Vm, taggedSecurityGroups map[stri
 		if len(tagged) != 1 {
 			taggedGroups := ""
 			for _, v := range tagged {
-				taggedGroups += fmt.Sprintf("%s(%s) ", *v.GroupId, *v.GroupName)
+				taggedGroups += fmt.Sprintf("%s(%s) ", v.SecurityGroupId, v.SecurityGroupName)
 			}
-			return nil, fmt.Errorf("Multiple tagged security groups found for instance %s; ensure only the k8s security group is tagged; the tagged groups were %v", instanceID, taggedGroups)
+			return osc.SecurityGroupLight{}, fmt.Errorf("Multiple tagged security groups found for instance %s; ensure only the k8s security group is tagged; the tagged groups were %v", instanceID, taggedGroups)
 		}
 		return tagged[0], nil
 	}
@@ -227,13 +231,13 @@ func findSecurityGroupForInstance(instance osc.Vm, taggedSecurityGroups map[stri
 	if len(untagged) > 0 {
 		// For back-compat, we will allow a single untagged SG
 		if len(untagged) != 1 {
-			return nil, fmt.Errorf("Multiple untagged security groups found for instance %s; ensure the k8s security group is tagged", instanceID)
+			return osc.SecurityGroupLight{}, fmt.Errorf("Multiple untagged security groups found for instance %s; ensure the k8s security group is tagged", instanceID)
 		}
 		return untagged[0], nil
 	}
 
 	klog.Warningf("No security group found for instance %q", instanceID)
-	return nil, nil
+	return osc.SecurityGroupLight{}, nil
 }
 
 // buildListener creates a new listener from the given port, adding an SSL certificate
@@ -245,9 +249,9 @@ func buildListener(port v1.ServicePort, annotations map[string]string, sslPorts 
 	protocol := strings.ToLower(string(port.Protocol))
 	instanceProtocol := protocol
 
-	listener := &osc.ListenerForCreation{}
-	listener.BackendPort = &instancePort
-	listener.LoadBalancerPort = &loadBalancerPort
+	listener := osc.ListenerForCreation{}
+	listener.BackendPort = int32(instancePort)
+	listener.LoadBalancerPort = int32(loadBalancerPort)
 	certID := annotations[ServiceAnnotationLoadBalancerCertificate]
 	if certID != "" && (sslPorts == nil || sslPorts.numbers.Has(loadBalancerPort) || sslPorts.names.Has(portName)) {
 		instanceProtocol = annotations[ServiceAnnotationLoadBalancerBEProtocol]
@@ -257,18 +261,18 @@ func buildListener(port v1.ServicePort, annotations map[string]string, sslPorts 
 		} else {
 			protocol = backendProtocolMapping[instanceProtocol]
 			if protocol == "" {
-				return nil, fmt.Errorf("Invalid backend protocol %s for %s in %s", instanceProtocol, certID, ServiceAnnotationLoadBalancerBEProtocol)
+				return osc.ListenerForCreation{}, fmt.Errorf("Invalid backend protocol %s for %s in %s", instanceProtocol, certID, ServiceAnnotationLoadBalancerBEProtocol)
 			}
 		}
-		listener.ServerCertificateId = &certID
+		listener.ServerCertificateId = certID
 	} else if annotationProtocol := annotations[ServiceAnnotationLoadBalancerBEProtocol]; annotationProtocol == "http" {
 		instanceProtocol = annotationProtocol
 		protocol = "http"
 	}
 	protocol = strings.ToUpper(protocol)
 	instanceProtocol = strings.ToUpper(instanceProtocol)
-	listener.LoadBalancerProtocol = &protocol
-	listener.BackendProtocol = &instanceProtocol
+	listener.LoadBalancerProtocol = protocol
+	listener.BackendProtocol = instanceProtocol
 
 	return listener, nil
 }
@@ -284,7 +288,7 @@ func isSubnetPublic(rt []osc.RouteTable, subnetID string) (bool, error) {
 		}
 	}
 
-	if subnetTable == nil {
+	if reflect.DeepEqual(subnetTable, osc.RouteTable) {
 		// If there is no explicit association, the subnet will be implicitly
 		// associated with the VPC's main routing table.
 		for _, table := range rt {
@@ -434,8 +438,8 @@ func securityGroupRuleExists(newPermission, existing osc.SecurityGroupRule, comp
 }
 
 func isEqualUserGroupPair(l, r osc.SecurityGroupsMember, compareGroupUserIDs bool) bool {
-	klog.V(2).Infof("Comparing %v to %v", *l.GroupId, *r.GroupId)
-	if isEqualStringPointer(l.GroupId, r.GroupId) {
+	klog.V(2).Infof("Comparing %v to %v", *l.SecurityGroupId, *r.SecurityGroupId)
+	if isEqualStringPointer(l.SecurityGroupId, r.SecurityGroupId) {
 		if compareGroupUserIDs {
 			if isEqualStringPointer(l.UserId, r.UserId) {
 				return true

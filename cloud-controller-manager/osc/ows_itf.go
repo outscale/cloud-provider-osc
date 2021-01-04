@@ -19,7 +19,6 @@ package osc
 import (
 	"github.com/aws/aws-sdk-go/aws/ec2metadata"
 
-    "context"
     _nethttp "net/http"
 
 	"github.com/outscale/osc-sdk-go/osc"

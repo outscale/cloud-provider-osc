@@ -27,10 +27,14 @@ import (
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/aws"
 
 
 	"k8s.io/client-go/pkg/version"
 	"k8s.io/klog"
+
+	"context"
+	"os"
 )
 
 // ********************* CCM awsSDKProvider Def & functions *********************
@@ -109,16 +113,17 @@ func (p *oscSDKProvider) getCrossRequestRetryDelay(regionName string) *CrossRequ
 func (p *oscSDKProvider) Compute(regionName string) (FCU, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("Compute(%v)", regionName)
-	sess, err := NewSession()
-	if err != nil {
-		return nil, fmt.Errorf("unable to initialize AWS session: %v", err)
-	}
 
-	p.addHandlers(regionName, &service.Handlers)
+// 	sess, err := NewSession()
+// 	if err != nil {
+// 		return nil, fmt.Errorf("unable to initialize AWS session: %v", err)
+// 	}
 
-	client := &OscClient{}
+	//p.addHandlers(regionName, &service.Handlers)
+
+	client := &oscSdkFCU{}
 	client.config = osc.NewConfiguration()
-	client.config.BasePath, _ = client.config.ServerUrl(0, map[string]string{"region": useRegion})
+	client.config.BasePath, _ = client.config.ServerUrl(0, map[string]string{"region": regionName})
 	client.api = osc.NewAPIClient(client.config)
 	client.auth = context.WithValue(context.Background(), osc.ContextAWSv4, osc.AWSv4{
 		AccessKey: os.Getenv("OSC_ACCESS_KEY"),
@@ -138,14 +143,31 @@ func (p *oscSDKProvider) Compute(regionName string) (FCU, error) {
 func (p *oscSDKProvider) LoadBalancing(regionName string) (LBU, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("LoadBalancing(%v)", regionName)
-	sess, err := NewSession()
-	if err != nil {
-		return nil, fmt.Errorf("unable to initialize AWS session: %v", err)
-	}
-	lbuClient := lbu.New(sess)
-	p.addHandlers(regionName, &lbuClient.Handlers)
+// 	sess, err := NewSession()
+// 	if err != nil {
+// 		return nil, fmt.Errorf("unable to initialize AWS session: %v", err)
+// 	}
+// 	lbuClient := lbu.New(sess)
+// 	p.addHandlers(regionName, &lbuClient.Handlers)
 
-	return elbClient, nil
+
+	client := &oscSdkFCU{}
+	client.config = osc.NewConfiguration()
+	client.config.BasePath, _ = client.config.ServerUrl(0, map[string]string{"region": regionName})
+	client.api = osc.NewAPIClient(client.config)
+	client.auth = context.WithValue(context.Background(), osc.ContextAWSv4, osc.AWSv4{
+		AccessKey: os.Getenv("OSC_ACCESS_KEY"),
+		SecretKey: os.Getenv("OSC_SECRET_KEY"),
+	})
+
+
+	lbu := &oscSdkFCU{
+		config: client.config,
+	    auth:   client.auth,
+	    api:    client.api,
+	}
+
+	return lbu, nil
 }
 
 func (p *oscSDKProvider) Metadata() (EC2Metadata, error) {

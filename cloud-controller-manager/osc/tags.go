@@ -27,6 +27,8 @@ import (
 	"k8s.io/klog"
 
 	"k8s.io/apimachinery/pkg/util/wait"
+
+	"github.com/antihax/optional"
 )
 
 // TagNameKubernetesClusterPrefix is the tag name we use to differentiate multiple
@@ -76,7 +78,7 @@ func tagNameKubernetesCluster() string {
 
 // Extracts the legacy & new cluster ids from the given tags, if they are present
 // If duplicate tags are found, returns an error
-func findClusterIDs(tags []osc.Tag) (string, string, error) {
+func findClusterIDs(tags []osc.ResourceTag) (string, string, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("findClusterIDs(%v)", tags)
 	legacyClusterID := ""
@@ -220,7 +222,7 @@ func (t *oscTagging) createTags(client FCU, resourceID string, lifecycle Resourc
 
 	var oscTags []osc.ResourceTag
 	for k, v := range tags {
-		tag := &osc.ResourceTag{
+		tag := osc.ResourceTag{
 			Key:   k,
 			Value: v,
 		}
@@ -235,14 +237,14 @@ func (t *oscTagging) createTags(client FCU, resourceID string, lifecycle Resourc
 	request := &osc.CreateTagsOpts{
 	    CreateTagsRequest: optional.NewInterface(
 			osc.CreateTagsRequest{
-                ResourceIds: []string{&resourceID},
+                ResourceIds: []string{resourceID},
                 Tags: oscTags,
 			}),
 	}
 
 	var lastErr error
 	err := wait.ExponentialBackoff(backoff, func() (bool, error) {
-		_, err := client.CreateTags(request)
+		_, httpRes, err := client.CreateTags(request)
 		if err == nil {
 			return true, nil
 		}
@@ -251,6 +253,9 @@ func (t *oscTagging) createTags(client FCU, resourceID string, lifecycle Resourc
 		// SecurityGroup: InvalidGroup.NotFound
 		klog.V(2).Infof("Failed to create tags; will retry.  Error was %q", err)
 		lastErr = err
+		if httpRes != nil {
+			fmt.Errorf("http ", httpRes.Status)
+		}
 		return false, nil
 	})
 	if err == wait.ErrWaitTimeout {

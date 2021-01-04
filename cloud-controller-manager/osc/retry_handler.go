@@ -23,7 +23,7 @@ import (
 	"sync"
 	"time"
 
-
+    "github.com/aws/aws-sdk-go/aws/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"k8s.io/klog"
@@ -53,6 +53,7 @@ func NewCrossRequestRetryDelay() *CrossRequestRetryDelay {
 func (c *CrossRequestRetryDelay) BeforeSign(r *request.Request) {
 	now := time.Now()
 	delay := c.backoff.ComputeDelayForRequest(now)
+
 	if delay > 0 {
 		klog.Warningf("Inserting delay before AWS request (%s) to avoid RequestLimitExceeded: %s",
 			describeRequest(r), delay.String())
@@ -60,9 +61,11 @@ func (c *CrossRequestRetryDelay) BeforeSign(r *request.Request) {
 		if sleepFn := r.Config.SleepDelay; sleepFn != nil {
 			// Support SleepDelay for backwards compatibility
 			sleepFn(delay)
+		// A verifier sleep
+
 		} else if err := aws.SleepWithContext(r.Context(), delay); err != nil {
 			r.Error = awserr.New(request.CanceledErrorCode, "request context canceled", err)
-			r.Retryable = false
+			r.Retryable = aws.Bool(false)
 			return
 		}
 

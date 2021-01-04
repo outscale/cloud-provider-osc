@@ -141,15 +141,16 @@ func describeInstance(fcuClient FCU, instanceID InstanceID) (osc.Vm, error) {
 			}),
 	}
 
-	instances, err := fcuClient.ReadVms(request)
+	instances, httpRes, err := fcuClient.ReadVms(request)
 	if err != nil {
-		return nil, err
+	    fmt.Errorf("http %s", httpRes)
+		return osc.Vm{}, err
 	}
 	if len(instances) == 0 {
-		return nil, fmt.Errorf("no instances found for instance: %s", instanceID)
+		return osc.Vm{}, fmt.Errorf("no instances found for instance: %s", instanceID)
 	}
 	if len(instances) > 1 {
-		return nil, fmt.Errorf("multiple instances found for instance: %s", instanceID)
+		return osc.Vm{}, fmt.Errorf("multiple instances found for instance: %s", instanceID)
 	}
 	return instances[0], nil
 }
@@ -169,7 +170,7 @@ func (c *instanceCache) describeAllInstancesUncached() (*allInstancesSnapshot, e
 
 	klog.V(4).Infof("OSC DescribeInstances - fetching all instances")
 
-	var filters []osc.FiltersVm
+	var filters osc.FiltersVm
 	instances, err := c.cloud.describeInstances(filters)
 	if err != nil {
 		return nil, err
@@ -177,7 +178,7 @@ func (c *instanceCache) describeAllInstancesUncached() (*allInstancesSnapshot, e
 
 	m := make(map[InstanceID]osc.Vm)
 	for _, i := range instances {
-		id := InstanceID(i.InstanceId)
+		id := InstanceID(i.VmId)
 		m[id] = i
 	}
 
@@ -254,7 +255,7 @@ func (s *allInstancesSnapshot) MeetsCriteria(criteria cacheCriteria) bool {
 
 	if len(criteria.HasInstances) != 0 {
 		for _, id := range criteria.HasInstances {
-			if nil == s.instances[id] {
+			if "" == s.instances[id].VmId {
 				klog.V(6).Infof("instanceCache snapshot cannot be used as does not contain instance %s", id)
 				return false
 			}
@@ -276,7 +277,7 @@ func (s *allInstancesSnapshot) FindInstances(ids []InstanceID) map[InstanceID]os
 	m := make(map[InstanceID]osc.Vm)
 	for _, id := range ids {
 		instance := s.instances[id]
-		if instance != nil {
+		if instance.VmId != "" {
 			m[id] = instance
 		}
 	}
