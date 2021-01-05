@@ -280,7 +280,7 @@ func buildListener(port v1.ServicePort, annotations map[string]string, sslPorts 
 func isSubnetPublic(rt []osc.RouteTable, subnetID string) (bool, error) {
 	var subnetTable osc.RouteTable
 	for _, table := range rt {
-		for _, assoc := range table.Associations {
+		for _, assoc := range table.LinkRouteTables {
 			if assoc.SubnetId == subnetID {
 				subnetTable = table
 				break
@@ -288,11 +288,11 @@ func isSubnetPublic(rt []osc.RouteTable, subnetID string) (bool, error) {
 		}
 	}
 
-	if reflect.DeepEqual(subnetTable, osc.RouteTable) {
+	if subnetTable.RouteTableId == "" {
 		// If there is no explicit association, the subnet will be implicitly
 		// associated with the VPC's main routing table.
 		for _, table := range rt {
-			for _, assoc := range table.Associations {
+			for _, assoc := range table.LinkRouteTables {
 				if assoc.Main == true {
 					klog.V(4).Infof("Assuming implicit use of main routing table %s for %s",
 						table.RouteTableId, subnetID)
@@ -303,7 +303,7 @@ func isSubnetPublic(rt []osc.RouteTable, subnetID string) (bool, error) {
 		}
 	}
 
-	if subnetTable == nil {
+	if subnetTable.RouteTableId == "" {
 		return false, fmt.Errorf("could not locate routing table for subnet %s", subnetID)
 	}
 
@@ -352,9 +352,9 @@ func getPortSets(annotation string) (ports *portSets) {
 func toStatus(lb osc.LoadBalancer) *v1.LoadBalancerStatus {
 	status := &v1.LoadBalancerStatus{}
 
-	if lb.DNSName != "" {
+	if lb.DnsName != "" {
 		var ingress v1.LoadBalancerIngress
-		ingress.Hostname = lb.DNSName
+		ingress.Hostname = lb.DnsName
 		status.Ingress = []v1.LoadBalancerIngress{ingress}
 	}
 
@@ -392,13 +392,13 @@ func isEqualStringPointer(l, r *string) bool {
 }
 
 func securityGroupRuleExists(newPermission, existing osc.SecurityGroupRule, compareGroupUserIDs bool) bool {
-	if !isEqualIntPointer(newPermission.FromPort, existing.FromPort) {
+	if newPermission.FromPortRange != existing.FromPortRange {
 		return false
 	}
-	if !isEqualIntPointer(newPermission.ToPort, existing.ToPort) {
+	if newPermission.ToPortRange != existing.ToPortRange {
 		return false
 	}
-	if !isEqualStringPointer(newPermission.IpProtocol, existing.IpProtocol) {
+	if newPermission.IpProtocol != existing.IpProtocol {
 		return false
 	}
 	// Check only if newPermission is a subset of existing. Usually it has zero or one elements.
@@ -411,7 +411,7 @@ func securityGroupRuleExists(newPermission, existing osc.SecurityGroupRule, comp
 	for j := range newPermission.IpRanges {
 		found := false
 		for k := range existing.IpRanges {
-			if isEqualStringPointer(newPermission.IpRanges[j].CidrIp, existing.IpRanges[k].CidrIp) {
+			if newPermission.IpRanges[j] == existing.IpRanges[k] {
 				found = true
 				break
 			}
@@ -421,9 +421,9 @@ func securityGroupRuleExists(newPermission, existing osc.SecurityGroupRule, comp
 		}
 	}
 
-	for _, leftPair := range newPermission.SecurityGroupsMember {
+	for _, leftPair := range newPermission.SecurityGroupsMembers {
 		found := false
-		for _, rightPair := range existing.SecurityGroupsMember {
+		for _, rightPair := range existing.SecurityGroupsMembers {
 			if isEqualUserGroupPair(leftPair, rightPair, compareGroupUserIDs) {
 				found = true
 				break
@@ -438,10 +438,10 @@ func securityGroupRuleExists(newPermission, existing osc.SecurityGroupRule, comp
 }
 
 func isEqualUserGroupPair(l, r osc.SecurityGroupsMember, compareGroupUserIDs bool) bool {
-	klog.V(2).Infof("Comparing %v to %v", *l.SecurityGroupId, *r.SecurityGroupId)
-	if isEqualStringPointer(l.SecurityGroupId, r.SecurityGroupId) {
+	klog.V(2).Infof("Comparing %v to %v", l.SecurityGroupId, r.SecurityGroupId)
+	if l.SecurityGroupId == r.SecurityGroupId {
 		if compareGroupUserIDs {
-			if isEqualStringPointer(l.UserId, r.UserId) {
+			if l.AccountId == r.AccountId {
 				return true
 			}
 		} else {
@@ -499,7 +499,7 @@ func isRegionValid(region string, metadata EC2Metadata) bool {
 // newOScInstance creates a new awsInstance object
 func newOSCInstance(oscService FCU, instance osc.Vm) *oscInstance {
 	az := ""
-	if instance.Placement != nil {
+	if instance.Placement != (osc.Placement{}) {
 		az = instance.Placement.SubregionName
 	}
 	self := &oscInstance{
@@ -507,7 +507,7 @@ func newOSCInstance(oscService FCU, instance osc.Vm) *oscInstance {
 		oscID:            instance.VmId,
 		nodeName:         mapInstanceToNodeName(instance),
 		availabilityZone: az,
-		instanceType:     instance.InstanceType,
+		instanceType:     instance.VmType,
 		netID:            instance.NetId,
 		subnetID:         instance.SubnetId,
 	}
@@ -519,14 +519,14 @@ func newOSCInstance(oscService FCU, instance osc.Vm) *oscInstance {
 func extractNodeAddresses(instance osc.Vm) ([]v1.NodeAddress, error) {
 	// Not clear if the order matters here, but we might as well indicate a sensible preference order
 
-	if instance == nil {
+	if instance.VmId == "" {
 		return nil, fmt.Errorf("nil instance passed to extractNodeAddresses")
 	}
 
 	addresses := []v1.NodeAddress{}
 
 	// handle internal network interfaces
-	if len(instance.NetworkInterfaces) > 0 {
+	if len(instance.Nics) > 0 {
 		for _, networkInterface := range instance.Nics {
 			// skip network interfaces that are not currently in use
 			if networkInterface.State != "in-use" {
@@ -534,7 +534,7 @@ func extractNodeAddresses(instance osc.Vm) ([]v1.NodeAddress, error) {
 			}
 
 			for _, internalIP := range networkInterface.PrivateIps {
-				if ipAddress := internalIP.PrivateIps; ipAddress != "" {
+				if ipAddress := internalIP.PrivateIp; ipAddress != "" {
 					ip := net.ParseIP(ipAddress)
 					if ip == nil {
 						return nil, fmt.Errorf("OSC instance had invalid private address: %s (%q)", instance.VmId, ipAddress)

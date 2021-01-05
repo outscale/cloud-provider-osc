@@ -150,23 +150,6 @@ func (p *oscSDKProvider) LoadBalancing(regionName string) (LBU, error) {
 // 	lbuClient := lbu.New(sess)
 // 	p.addHandlers(regionName, &lbuClient.Handlers)
 
-
-	client := &oscSdkFCU{}
-	client.config = osc.NewConfiguration()
-	client.config.BasePath, _ = client.config.ServerUrl(0, map[string]string{"region": regionName})
-	client.api = osc.NewAPIClient(client.config)
-	client.auth = context.WithValue(context.Background(), osc.ContextAWSv4, osc.AWSv4{
-		AccessKey: os.Getenv("OSC_ACCESS_KEY"),
-		SecretKey: os.Getenv("OSC_SECRET_KEY"),
-	})
-
-
-	lbu := &oscSdkFCU{
-		config: client.config,
-	    auth:   client.auth,
-	    api:    client.api,
-	}
-
 	return lbu, nil
 }
 

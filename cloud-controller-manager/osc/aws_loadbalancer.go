@@ -35,8 +35,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/antihax/optional"
-
-	context "context"
 )
 
 const (
@@ -128,7 +126,7 @@ func (c *Cloud) getVpcCidrBlocks() ([]string, error) {
     //A verifier
 	cidrBlocks := make([]string, 0, len(vpcs.Nets[0].IpRange))
 	for _, cidr := range vpcs.Nets[0].IpRange {
-		cidrBlocks = append(cidrBlocks, cidr)
+		cidrBlocks = append(cidrBlocks, string(cidr))
 	}
 	return cidrBlocks, nil
 }
@@ -786,7 +784,7 @@ func (c *Cloud) ensureLoadBalancerInstances(loadBalancerName string,
 
 	actual := sets.NewString()
 	for _, lbInstance := range lbInstances {
-		actual.Insert(lbInstance.VmId)
+		actual.Insert(lbInstance)
 	}
 
 	additions := expected.Difference(actual)
@@ -967,9 +965,9 @@ func (c *Cloud) setBackendPolicies(loadBalancerName string, instancePort int32, 
 	} else {
 		klog.V(2).Infof("Removing OSC loadbalancer backend policies on node port %d", instancePort)
 	}
-	_, err := c.lbu.SetLoadBalancerPoliciesForBackendServer(request)
+	_, httpRes, err := c.lbu.CreateLoadBalancerPolicy(request)
 	if err != nil {
-		return fmt.Errorf("error adjusting OSC loadbalancer backend policies: %q", err)
+		return fmt.Errorf("error adjusting OSC loadbalancer backend policies: %q %q", err, httpRes)
 	}
 
 	return nil
@@ -980,7 +978,7 @@ func (c *Cloud) setBackendPolicies(loadBalancerName string, instancePort int32, 
 func proxyProtocolEnabled(backend osc.Listener) bool {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("proxyProtocolEnabled(%v)", backend)
-	for _, policy := range backend.LoadBalancerStickyCookiePolicies[0].PolicyNames {
+	for _, policy := range backend.PolicyNames {
 		if policy == ProxyProtocolPolicyName {
 			return true
 		}

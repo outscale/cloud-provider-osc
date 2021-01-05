@@ -44,12 +44,12 @@ import (
 const TestClusterID = "clusterid.test"
 const TestClusterName = "testCluster"
 
-type MockedFakeEC2 struct {
-	*FakeEC2Impl
+type MockedFakeFCU struct {
+	*FakeFCUImpl
 	mock.Mock
 }
 
-func (m *MockedFakeEC2) expectDescribeSecurityGroups(clusterID, groupName string) {
+func (m *MockedFakeFCU) expectDescribeSecurityGroups(clusterID, groupName string) {
 	tags := []*ec2.Tag{
 		{
 			Key:   aws.String(fmt.Sprintf("%s%s", TagNameKubernetesClusterPrefix, clusterID)),
@@ -67,33 +67,33 @@ func (m *MockedFakeEC2) expectDescribeSecurityGroups(clusterID, groupName string
 	}}).Return([]*ec2.SecurityGroup{{Tags: tags, GroupId: aws.String("sg-12345")}})
 }
 
-func (m *MockedFakeEC2) DescribeSecurityGroups(request *ec2.DescribeSecurityGroupsInput) ([]*ec2.SecurityGroup, error) {
+func (m *MockedFakeFCU) DescribeSecurityGroups(request *ec2.DescribeSecurityGroupsInput) ([]*ec2.SecurityGroup, error) {
 	args := m.Called(request)
 	return args.Get(0).([]*ec2.SecurityGroup), nil
 }
 
-type MockedFakeELB struct {
-	*FakeELB
+type MockedFakeLBU struct {
+	*FakeLBU
 	mock.Mock
 }
 
-func (m *MockedFakeELB) DescribeLoadBalancers(input *elb.DescribeLoadBalancersInput) (*elb.DescribeLoadBalancersOutput, error) {
+func (m *MockedFakeLBU) DescribeLoadBalancers(input *elb.DescribeLoadBalancersInput) (*elb.DescribeLoadBalancersOutput, error) {
 	args := m.Called(input)
 	return args.Get(0).(*elb.DescribeLoadBalancersOutput), nil
 }
 
-func (m *MockedFakeELB) expectDescribeLoadBalancers(loadBalancerName string) {
+func (m *MockedFakeLBU) expectDescribeLoadBalancers(loadBalancerName string) {
 	m.On("DescribeLoadBalancers", &elb.DescribeLoadBalancersInput{LoadBalancerNames: []*string{aws.String(loadBalancerName)}}).Return(&elb.DescribeLoadBalancersOutput{
 		LoadBalancerDescriptions: []*elb.LoadBalancerDescription{{}},
 	})
 }
 
-func (m *MockedFakeELB) AddTags(input *elb.AddTagsInput) (*elb.AddTagsOutput, error) {
+func (m *MockedFakeLBU) AddTags(input *elb.AddTagsInput) (*elb.AddTagsOutput, error) {
 	args := m.Called(input)
 	return args.Get(0).(*elb.AddTagsOutput), nil
 }
 
-func (m *MockedFakeELB) ConfigureHealthCheck(input *elb.ConfigureHealthCheckInput) (*elb.ConfigureHealthCheckOutput, error) {
+func (m *MockedFakeLBU) ConfigureHealthCheck(input *elb.ConfigureHealthCheckInput) (*elb.ConfigureHealthCheckOutput, error) {
 	args := m.Called(input)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -101,7 +101,7 @@ func (m *MockedFakeELB) ConfigureHealthCheck(input *elb.ConfigureHealthCheckInpu
 	return args.Get(0).(*elb.ConfigureHealthCheckOutput), args.Error(1)
 }
 
-func (m *MockedFakeELB) expectConfigureHealthCheck(loadBalancerName *string, expectedHC *elb.HealthCheck, returnErr error) {
+func (m *MockedFakeLBU) expectConfigureHealthCheck(loadBalancerName *string, expectedHC *elb.HealthCheck, returnErr error) {
 	expected := &elb.ConfigureHealthCheckInput{HealthCheck: expectedHC, LoadBalancerName: loadBalancerName}
 	call := m.On("ConfigureHealthCheck", expected)
 	if returnErr != nil {
@@ -864,7 +864,7 @@ func TestSubnetIDsinVPC(t *testing.T) {
 	subnetsRes, err := c.findSubnets()
 	t.Logf("subnetsRes, err----: %v", subnetsRes)
 
-	result, err := c.findELBSubnets(false)
+	result, err := c.findLBUSubnets(false)
 	if err != nil {
 		t.Errorf("Error listing subnets: %v", err)
 		return
@@ -894,7 +894,7 @@ func TestSubnetIDsinVPC(t *testing.T) {
 		awsServices.ec2.CreateRouteTable(rt)
 	}
 
-	result, err = c.findELBSubnets(false)
+	result, err = c.findLBUSubnets(false)
 	if err != nil {
 		t.Errorf("Error listing subnets: %v", err)
 		return
@@ -940,7 +940,7 @@ func TestSubnetIDsinVPC(t *testing.T) {
 		awsServices.ec2.CreateRouteTable(rt)
 	}
 
-	result, err = c.findELBSubnets(false)
+	result, err = c.findLBUSubnets(false)
 	if err != nil {
 		t.Errorf("Error listing subnets: %v", err)
 		return
@@ -987,7 +987,7 @@ func TestSubnetIDsinVPC(t *testing.T) {
 	for _, rt := range constructedRouteTables {
 		awsServices.ec2.CreateRouteTable(rt)
 	}
-	result, err = c.findELBSubnets(false)
+	result, err = c.findLBUSubnets(false)
 	if err != nil {
 		t.Errorf("Error listing subnets: %v", err)
 		return
@@ -1233,7 +1233,7 @@ func TestDescribeLoadBalancerOnDelete(t *testing.T) {
 	awsServices := newMockedFakeAWSServices(TestClusterID)
 	c, _ := newAWSCloud(CloudConfig{}, awsServices)
 	c.vpcID = "vpc-123456"
-	awsServices.elb.(*MockedFakeELB).expectDescribeLoadBalancers("aid")
+	awsServices.elb.(*MockedFakeLBU).expectDescribeLoadBalancers("aid")
 
 	c.EnsureLoadBalancerDeleted(context.TODO(), TestClusterName, &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "myservice", UID: "id"}})
 }
@@ -1242,7 +1242,7 @@ func TestDescribeLoadBalancerOnUpdate(t *testing.T) {
 	awsServices := newMockedFakeAWSServices(TestClusterID)
 	c, _ := newAWSCloud(CloudConfig{}, awsServices)
 	c.vpcID = "vpc-123456"
-	awsServices.elb.(*MockedFakeELB).expectDescribeLoadBalancers("aid")
+	awsServices.elb.(*MockedFakeLBU).expectDescribeLoadBalancers("aid")
 
 	c.UpdateLoadBalancer(context.TODO(), TestClusterName, &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "myservice", UID: "id"}}, []*v1.Node{})
 }
@@ -1250,7 +1250,7 @@ func TestDescribeLoadBalancerOnUpdate(t *testing.T) {
 func TestDescribeLoadBalancerOnGet(t *testing.T) {
 	awsServices := newMockedFakeAWSServices(TestClusterID)
 	c, _ := newAWSCloud(CloudConfig{}, awsServices)
-	awsServices.elb.(*MockedFakeELB).expectDescribeLoadBalancers("aid")
+	awsServices.elb.(*MockedFakeLBU).expectDescribeLoadBalancers("aid")
 
 	c.GetLoadBalancer(context.TODO(), TestClusterName, &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "myservice", UID: "id"}})
 }
@@ -1258,7 +1258,7 @@ func TestDescribeLoadBalancerOnGet(t *testing.T) {
 func TestDescribeLoadBalancerOnEnsure(t *testing.T) {
 	awsServices := newMockedFakeAWSServices(TestClusterID)
 	c, _ := newAWSCloud(CloudConfig{}, awsServices)
-	awsServices.elb.(*MockedFakeELB).expectDescribeLoadBalancers("aid")
+	awsServices.elb.(*MockedFakeLBU).expectDescribeLoadBalancers("aid")
 
 	c.EnsureLoadBalancer(context.TODO(), TestClusterName, &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "myservice", UID: "id"}}, []*v1.Node{})
 }
@@ -1508,14 +1508,14 @@ func TestLBExtraSecurityGroupsAnnotation(t *testing.T) {
 		{"Multiple SGs specified", sg3, []string{sg1[ServiceAnnotationLoadBalancerExtraSecurityGroups], sg2[ServiceAnnotationLoadBalancerExtraSecurityGroups]}},
 	}
 
-	awsServices.ec2.(*MockedFakeEC2).expectDescribeSecurityGroups(TestClusterID, "k8s-elb-aid")
+	awsServices.ec2.(*MockedFakeFCU).expectDescribeSecurityGroups(TestClusterID, "k8s-elb-aid")
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			serviceName := types.NamespacedName{Namespace: "default", Name: "myservice"}
 
-			sgList, err := c.buildELBSecurityGroupList(serviceName, "aid", test.annotations)
-			assert.NoError(t, err, "buildELBSecurityGroupList failed")
+			sgList, err := c.buildLBUSecurityGroupList(serviceName, "aid", test.annotations)
+			assert.NoError(t, err, "buildLBUSecurityGroupList failed")
 			extraSGs := sgList[1:]
 			assert.True(t, sets.NewString(test.expectedSGs...).Equal(sets.NewString(extraSGs...)),
 				"Security Groups expected=%q , returned=%q", test.expectedSGs, extraSGs)
@@ -1542,14 +1542,14 @@ func TestLBSecurityGroupsAnnotation(t *testing.T) {
 		{"Multiple SGs specified", sg3, []string{sg1[ServiceAnnotationLoadBalancerSecurityGroups], sg2[ServiceAnnotationLoadBalancerSecurityGroups]}},
 	}
 
-	awsServices.ec2.(*MockedFakeEC2).expectDescribeSecurityGroups(TestClusterID, "k8s-elb-aid")
+	awsServices.ec2.(*MockedFakeFCU).expectDescribeSecurityGroups(TestClusterID, "k8s-elb-aid")
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			serviceName := types.NamespacedName{Namespace: "default", Name: "myservice"}
 
-			sgList, err := c.buildELBSecurityGroupList(serviceName, "aid", test.annotations)
-			assert.NoError(t, err, "buildELBSecurityGroupList failed")
+			sgList, err := c.buildLBUSecurityGroupList(serviceName, "aid", test.annotations)
+			assert.NoError(t, err, "buildLBUSecurityGroupList failed")
 			assert.True(t, sets.NewString(test.expectedSGs...).Equal(sets.NewString(sgList...)),
 				"Security Groups expected=%q , returned=%q", test.expectedSGs, sgList)
 		})
@@ -1574,11 +1574,11 @@ func TestAddLoadBalancerTags(t *testing.T) {
 			},
 		},
 	}
-	awsServices.elb.(*MockedFakeELB).On("AddTags", expectedAddTagsRequest).Return(&elb.AddTagsOutput{})
+	awsServices.elb.(*MockedFakeLBU).On("AddTags", expectedAddTagsRequest).Return(&elb.AddTagsOutput{})
 
 	err := c.addLoadBalancerTags(loadBalancerName, want)
 	assert.Nil(t, err, "Error adding load balancer tags: %v", err)
-	awsServices.elb.(*MockedFakeELB).AssertExpectations(t)
+	awsServices.elb.(*MockedFakeLBU).AssertExpectations(t)
 }
 
 func TestEnsureLoadBalancerHealthCheck(t *testing.T) {
@@ -1623,12 +1623,12 @@ func TestEnsureLoadBalancerHealthCheck(t *testing.T) {
 				value := reflect.ValueOf(&test.overriddenValue)
 				reflect.ValueOf(&expectedHC).Elem().FieldByName(test.overriddenFieldName).Set(value)
 			}
-			awsServices.elb.(*MockedFakeELB).expectConfigureHealthCheck(&lbName, &expectedHC, nil)
+			awsServices.elb.(*MockedFakeLBU).expectConfigureHealthCheck(&lbName, &expectedHC, nil)
 
 			err = c.ensureLoadBalancerHealthCheck(elbDesc, protocol, port, path, test.annotations)
 
 			require.Nil(t, err)
-			awsServices.elb.(*MockedFakeELB).AssertExpectations(t)
+			awsServices.elb.(*MockedFakeLBU).AssertExpectations(t)
 		})
 	}
 
@@ -1643,7 +1643,7 @@ func TestEnsureLoadBalancerHealthCheck(t *testing.T) {
 		var currentHC elb.HealthCheck
 		currentHC = expectedHC
 
-		// NOTE no call expectations are set on the ELB mock
+		// NOTE no call expectations are set on the LBU mock
 		// test default HC
 		elbDesc := &elb.LoadBalancerDescription{LoadBalancerName: &lbName, HealthCheck: defaultHC}
 		err = c.ensureLoadBalancerHealthCheck(elbDesc, protocol, port, path, map[string]string{})
@@ -1664,7 +1664,7 @@ func TestEnsureLoadBalancerHealthCheck(t *testing.T) {
 		require.Error(t, expectedHC.Validate()) // confirm test precondition
 		annotations := map[string]string{ServiceAnnotationLoadBalancerHCTimeout: "1"}
 
-		// NOTE no call expectations are set on the ELB mock
+		// NOTE no call expectations are set on the LBU mock
 		err = c.ensureLoadBalancerHealthCheck(elbDesc, protocol, port, path, annotations)
 
 		require.Error(t, err)
@@ -1676,7 +1676,7 @@ func TestEnsureLoadBalancerHealthCheck(t *testing.T) {
 		assert.Nil(t, err, "Error building aws cloud: %v", err)
 		annotations := map[string]string{ServiceAnnotationLoadBalancerHCTimeout: "3.3"}
 
-		// NOTE no call expectations are set on the ELB mock
+		// NOTE no call expectations are set on the LBU mock
 		err = c.ensureLoadBalancerHealthCheck(elbDesc, protocol, port, path, annotations)
 
 		require.Error(t, err)
@@ -1687,12 +1687,12 @@ func TestEnsureLoadBalancerHealthCheck(t *testing.T) {
 		c, err := newAWSCloud(CloudConfig{}, awsServices)
 		assert.Nil(t, err, "Error building aws cloud: %v", err)
 		returnErr := fmt.Errorf("throttling error")
-		awsServices.elb.(*MockedFakeELB).expectConfigureHealthCheck(&lbName, defaultHC, returnErr)
+		awsServices.elb.(*MockedFakeLBU).expectConfigureHealthCheck(&lbName, defaultHC, returnErr)
 
 		err = c.ensureLoadBalancerHealthCheck(elbDesc, protocol, port, path, map[string]string{})
 
 		require.Error(t, err)
-		awsServices.elb.(*MockedFakeELB).AssertExpectations(t)
+		awsServices.elb.(*MockedFakeLBU).AssertExpectations(t)
 	})
 }
 
@@ -1809,7 +1809,7 @@ func informerNotSynced() bool {
 
 func newMockedFakeAWSServices(id string) *FakeAWSServices {
 	s := NewFakeAWSServices(id)
-	s.ec2 = &MockedFakeEC2{FakeEC2Impl: s.ec2.(*FakeEC2Impl)}
-	s.elb = &MockedFakeELB{FakeELB: s.elb.(*FakeELB)}
+	s.ec2 = &MockedFakeFCU{FakeOSCImpl: s.ec2.(*FakeOSCImpl)}
+	s.elb = &MockedFakeLBU{FakeLBU: s.elb.(*FakeLBU)}
 	return s
 }
