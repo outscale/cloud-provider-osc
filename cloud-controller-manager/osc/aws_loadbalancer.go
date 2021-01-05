@@ -184,7 +184,7 @@ func (c *Cloud) updateInstanceSecurityGroupsForNLB(lbName string, instances map[
 			return err
 		}
 		for sgID, sg := range clusterSGs {
-			sgPerms := NewSecurityGroupRuleSet(sg.SecurityGroupRule...).Ungroup()
+			sgPerms := NewSecurityGroupRuleSet(sg.InboundRules...).Ungroup()
 			if desiredSGIDs.Has(sgID) {
 				if err := c.updateInstanceSecurityGroupForNLBTraffic(sgID, sgPerms, healthRuleAnnotation, "tcp", healthCheckPorts, vpcCIDRs); err != nil {
 					return err
@@ -200,7 +200,7 @@ func (c *Cloud) updateInstanceSecurityGroupsForNLB(lbName string, instances map[
 					return err
 				}
 			}
-			if !sgPerms.Equal(NewSecurityGroupRuleSet(sg.SecurityGroupId...).Ungroup()) {
+			if !sgPerms.Equal(NewSecurityGroupRuleSet(sg.InboundRules...).Ungroup()) {
 				if err := c.updateInstanceSecurityGroupForNLBMTU(sgID, sgPerms); err != nil {
 					return err
 				}
