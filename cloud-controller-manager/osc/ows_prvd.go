@@ -121,7 +121,7 @@ func (p *oscSDKProvider) Compute(regionName string) (FCU, error) {
 
 	//p.addHandlers(regionName, &service.Handlers)
 
-	client := &oscSdkFCU{}
+	client := &oscSdk{}
 	client.config = osc.NewConfiguration()
 	client.config.BasePath, _ = client.config.ServerUrl(0, map[string]string{"region": regionName})
 	client.api = osc.NewAPIClient(client.config)
@@ -131,7 +131,7 @@ func (p *oscSDKProvider) Compute(regionName string) (FCU, error) {
 	})
 
 
-	fcu := &oscSdkFCU{
+	fcu := &oscSdk{
 		config: client.config,
 	    auth:   client.auth,
 	    api:    client.api,
@@ -143,12 +143,22 @@ func (p *oscSDKProvider) Compute(regionName string) (FCU, error) {
 func (p *oscSDKProvider) LoadBalancing(regionName string) (LBU, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("LoadBalancing(%v)", regionName)
-// 	sess, err := NewSession()
-// 	if err != nil {
-// 		return nil, fmt.Errorf("unable to initialize AWS session: %v", err)
-// 	}
-// 	lbuClient := lbu.New(sess)
-// 	p.addHandlers(regionName, &lbuClient.Handlers)
+
+    client := &oscSdk{}
+	client.config = osc.NewConfiguration()
+	client.config.BasePath, _ = client.config.ServerUrl(0, map[string]string{"region": regionName})
+	client.api = osc.NewAPIClient(client.config)
+	client.auth = context.WithValue(context.Background(), osc.ContextAWSv4, osc.AWSv4{
+		AccessKey: os.Getenv("OSC_ACCESS_KEY"),
+		SecretKey: os.Getenv("OSC_SECRET_KEY"),
+	})
+
+
+	lbu := &oscSdk{
+		config: client.config,
+	    auth:   client.auth,
+	    api:    client.api,
+	}
 
 	return lbu, nil
 }

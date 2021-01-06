@@ -27,6 +27,8 @@ import (
 
 	"reflect"
 
+	_nethttp "net/http"
+
     "github.com/outscale/osc-sdk-go/osc"
 
     "github.com/antihax/optional"
@@ -998,6 +1000,7 @@ func (c *Cloud) findLBUSubnets(internalLBU bool) ([]string, error) {
 		return nil, err
 	}
 	var rt []osc.RouteTable
+	var httpRes *_nethttp.Response
 	if c.netID != "" {
 // 		vpcIDFilter := newEc2Filter("vpc-id", c.vpcID)
 // 		rRequest := &ec2.DescribeRouteTablesInput{}
@@ -1013,7 +1016,7 @@ func (c *Cloud) findLBUSubnets(internalLBU bool) ([]string, error) {
                 }),
 	    }
 
-	    rt, httpRes, err := c.fcu.ReadRouteTables(rRequest)
+	    rt, httpRes, err = c.fcu.ReadRouteTables(rRequest)
 
 		if err != nil {
 			return nil, fmt.Errorf("error describe route table: %q %q", err, httpRes)
@@ -1497,7 +1500,21 @@ func (c *Cloud) getTaggedSecurityGroups() (map[string]osc.SecurityGroup, error) 
 	request := &osc.ReadSecurityGroupsOpts{
 	    ReadSecurityGroupsRequest: optional.NewInterface(
 	        osc.ReadSecurityGroupsRequest{
-                Filters: osc.FiltersSecurityGroup{
+                Filters: []osc.FiltersSecurityGroup{
+                    {
+                        Tags: []string{
+                            {
+                                c.tagging.clusterTagKey(): ResourceLifecycleOwned,
+                            },
+                            {
+                                c.tagging.clusterTagKey(): ResourceLifecycleShared,
+                            },
+                    },
+                    {
+                        TagKeys: []string{TagNameMainSG+c.tagging.clusterID()},
+                        TagValues: []string{"True"},
+                    },
+
 // A verifier
 //                 newTagFilter(c.tagging.clusterTagKey(), []string{ResourceLifecycleOwned, ResourceLifecycleShared}...),
 //                 newtagFilter(TagNameMainSG+c.tagging.clusterID(), "True"),
@@ -1575,7 +1592,7 @@ func (c *Cloud) updateInstanceSecurityGroupsForLoadBalancer(lb osc.LoadBalancer,
 		    reqFilters.SecurityGroupIds= []string{loadBalancerSecurityGroupID}
 
 		} else {
-			reqFilters.SecurityGroupIds= []string{loadBalancerSecurityGroupID}
+			reqFilters.SecurityGroupNames= []string{loadBalancerSecurityGroupID}
 		}
 		describeRequest := &osc.ReadSecurityGroupsOpts{
 		    ReadSecurityGroupsRequest: optional.NewInterface(
@@ -1761,14 +1778,12 @@ func (c *Cloud) EnsureLoadBalancerDeleted(ctx context.Context, clusterName strin
 
 		var loadBalancerSGs = securityGroupsItem
 
-        reqFilters := osc.FiltersSecurityGroup{}
-		// A verifier (SecurityGroupNames)
-		reqFilters.SecurityGroupNames= loadBalancerSGs
-
-		describeRequest := &osc.ReadSecurityGroupsOpts{
+ 		describeRequest := &osc.ReadSecurityGroupsOpts{
 		    ReadSecurityGroupsRequest: optional.NewInterface(
                 osc.ReadSecurityGroupsRequest{
-                    Filters: reqFilters,
+                    Filters: osc.FiltersSecurityGroup{
+					    SecurityGroupNames = loadBalancerSGs,
+				    },
                 }),
 		}
 
@@ -1971,10 +1986,10 @@ func (c *Cloud) getInstancesByNodeNames(nodeNames []string, states ...string) ([
 
 		nameSlice := names[i:end]
 
-		nodeNameFilter := []string{}
-
         // A verifier
-		filters := osc.FiltersVm{Tags: nodeNameFilter}
+		filters := osc.FiltersVm{
+		    Tags: nameSlice
+		 }
 
 // 		if len(states) > 0 {
 // 			filters = append(filters, newVmFilter("instance-state-name", states...))
@@ -2030,6 +2045,8 @@ func (c *Cloud) findInstanceByNodeName(nodeName types.NodeName) (osc.Vm, error) 
 
 	privateDNSName := mapNodeNameToPrivateDNSName(nodeName)
 	filters := osc.FiltersVm{
+        //VmIds:
+
 // 		newVmFilter("tag:"+TagNameClusterNode, privateDNSName),
 // 		// exclude instances in "terminated" state
 // 		newVmFilter("instance-state-name", aliveFilter...),
