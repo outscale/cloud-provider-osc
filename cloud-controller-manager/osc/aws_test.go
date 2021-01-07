@@ -26,9 +26,13 @@ import (
 	"strings"
 	"testing"
 
+    _nethttp "net/http"
+
+    "github.com/outscale/osc-sdk-go/osc"
+
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/aws/aws-sdk-go/service/elb"
+	//"github.com/aws/aws-sdk-go/service/ec2"
+	//"github.com/aws/aws-sdk-go/service/elb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -72,7 +76,7 @@ func (m *MockedFakeFCU) expectReadSecurityGroups(clusterID, groupName string) {
 	}).Return([]osc.SecurityGroup{{Tags: tags, SecurityGroupId: "sg-12345"}})
 }
 
-func (m *MockedFakeFCU) DescribeSecurityGroups(request *osc.ReadSecurityGroupsOpts) ([]osc.SecurityGroup, error) {
+func (m *MockedFakeFCU) DescribeSecurityGroups(request *osc.ReadSecurityGroupsOpts) ([]osc.SecurityGroup, *_nethttp.Response, error) {
 	args := m.Called(request)
 	return args.Get(0).([]osc.SecurityGroup), nil
 }
@@ -82,7 +86,7 @@ type MockedFakeLBU struct {
 	mock.Mock
 }
 
-func (m *MockedFakeLBU) ReadLoadBalancers(input *osc.ReadLoadBalancersOpts) (osc.ReadLoadBalancersResponse, error) {
+func (m *MockedFakeLBU) ReadLoadBalancers(input *osc.ReadLoadBalancersOpts) (osc.ReadLoadBalancersResponse, *_nethttp.Response, error) {
 	args := m.Called(input)
 	return args.Get(0).(osc.ReadLoadBalancersResponse), nil
 }
@@ -93,28 +97,28 @@ func (m *MockedFakeLBU) expectReadLoadBalancers(loadBalancerName string) {
 	})
 }
 
-func (m *MockedFakeLBU) CreateTags(input *osc.CreateTagOpts) (osc.CreateTagResponse, error) {
+func (m *MockedFakeLBU) CreateTags(input *osc.CreateTagsOpts) (osc.CreateTagsResponse, *_nethttp.Response, error) {
 	args := m.Called(input)
-	return args.Get(0).(osc.CreateTagResponse), nil
+	return args.Get(0).(osc.CreateTagsResponse), nil
 }
 
-func (m *MockedFakeLBU) ConfigureHealthCheck(input *elb.ConfigureHealthCheckInput) (*elb.ConfigureHealthCheckOutput, error) {
-	args := m.Called(input)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*elb.ConfigureHealthCheckOutput), args.Error(1)
-}
-
-func (m *MockedFakeLBU) expectConfigureHealthCheck(loadBalancerName *string, expectedHC *elb.HealthCheck, returnErr error) {
-	expected := &elb.ConfigureHealthCheckInput{HealthCheck: expectedHC, LoadBalancerName: loadBalancerName}
-	call := m.On("ConfigureHealthCheck", expected)
-	if returnErr != nil {
-		call.Return(nil, returnErr)
-	} else {
-		call.Return(&elb.ConfigureHealthCheckOutput{}, nil)
-	}
-}
+// func (m *MockedFakeLBU) ConfigureHealthCheck(input *elb.ConfigureHealthCheckInput) (*elb.ConfigureHealthCheckOutput, error) {
+// 	args := m.Called(input)
+// 	if args.Get(0) == nil {
+// 		return nil, args.Error(1)
+// 	}
+// 	return args.Get(0).(*elb.ConfigureHealthCheckOutput), args.Error(1)
+// }
+//
+// func (m *MockedFakeLBU) expectConfigureHealthCheck(loadBalancerName *string, expectedHC *elb.HealthCheck, returnErr error) {
+// 	expected := &elb.ConfigureHealthCheckInput{HealthCheck: expectedHC, LoadBalancerName: loadBalancerName}
+// 	call := m.On("ConfigureHealthCheck", expected)
+// 	if returnErr != nil {
+// 		call.Return(nil, returnErr)
+// 	} else {
+// 		call.Return(&elb.ConfigureHealthCheckOutput{}, nil)
+// 	}
+// }
 
 func TestReadOSCCloudConfig(t *testing.T) {
 	tests := []struct {
@@ -591,8 +595,8 @@ func TestNodeAddresses(t *testing.T) {
 	instance0.InstanceType = "c3.large"
 	instance0.Placement = osc.Placement{SubregionName: "eu-west-2a"}
 	instance0.Tags = tags
-	state0 := ec2.InstanceState{
-		Name: "running",
+	state0 := osc.VmStates{
+		VmState: "running",
 	}
 	instance0.State = &state0
 
@@ -603,8 +607,8 @@ func TestNodeAddresses(t *testing.T) {
 	instance1.InstanceType = "c3.large"
 	instance1.Placement = osc.Placement{SubregionName: "eu-west-2a"}
 	instance1.Tags = tags
-	state1 := ec2.InstanceState{
-		Name: "running",
+	state1 := osc.VmStates{
+		VmState: "running",
 	}
 	instance1.State = &state1
 
@@ -616,8 +620,8 @@ func TestNodeAddresses(t *testing.T) {
 	instance2.InstanceType = "c3.large"
 	instance2.Placement = osc.Placement{SubregionName: "eu-west-2a"}
 	instance2.Tags = tags
-	state2 := ec2.InstanceState{
-		Name: "running",
+	state2 := osc.VmStates{
+		VmState: "running",
 	}
 	instance2.State = &state2
 
@@ -671,8 +675,8 @@ func TestNodeAddressesWithMetadata(t *testing.T) {
 	instance.InstanceType = "c3.large"
 	instance.Placement = osc.Placement{SubregionName: "eu-west-2a"}
 	instance.Tags = tags
-	state := ec2.InstanceState{
-		Name: "running",
+	state := osc.VmStates{
+		VmState: "running",
 	}
 	instance.State = &state
 
@@ -787,11 +791,11 @@ func constructSubnet(id string, az string) osc.Subnet {
 
 }
 
-func constructRouteTables(routeTablesIn map[string]bool) (routeTablesOut []*ec2.RouteTable) {
+func constructRouteTables(routeTablesIn map[string]bool) (routeTablesOut []osc.RouteTable) {
 	routeTablesOut = append(routeTablesOut,
-		&ec2.RouteTable{
-			Associations: []*ec2.RouteTableAssociation{{Main: aws.Bool(true)}},
-			Routes: []*ec2.Route{{
+		osc.RouteTable{
+			Associations: []osc.RouteTableAssociation{{Main: aws.Bool(true)}},
+			Routes: []osc.Route{{
 				DestinationCidrBlock: "0.0.0.0/0",
 				GatewayId:            "igw-main",
 			}},
@@ -809,16 +813,16 @@ func constructRouteTables(routeTablesIn map[string]bool) (routeTablesOut []*ec2.
 	return
 }
 
-func constructRouteTable(subnetID string, public bool) *ec2.RouteTable {
+func constructRouteTable(subnetID string, public bool) osc.RouteTable {
 	var gatewayID string
 	if public {
 		gatewayID = "igw-" + subnetID[len(subnetID)-8:8]
 	} else {
 		gatewayID = "vgw-" + subnetID[len(subnetID)-8:8]
 	}
-	return &ec2.RouteTable{
-		Associations: []*ec2.RouteTableAssociation{{SubnetId: subnetID}},
-		Routes: []*ec2.Route{{
+	return osc.RouteTable{
+		Associations: []osc.RouteTableAssociation{{SubnetId: subnetID}},
+		Routes: []osc.Route{{
 			DestinationCidrBlock: "0.0.0.0/0",
 			GatewayId:            gatewayID,
 		}},
@@ -846,9 +850,9 @@ func TestSubnetIDsinVPC(t *testing.T) {
 	subnets[2]["id"] = "subnet-c0000001"
 	subnets[2]["az"] = "af-south-1c"
 	constructedSubnets := constructSubnets(subnets)
-	oscServices.ec2.RemoveSubnets()
+	oscServices.fcu.RemoveSubnets()
 	for _, subnet := range constructedSubnets {
-		oscServices.ec2.CreateSubnet(subnet)
+		oscServices.fcu.CreateSubnet(subnet)
 	}
 
 	routeTables := map[string]bool{
@@ -857,17 +861,17 @@ func TestSubnetIDsinVPC(t *testing.T) {
 		"subnet-c0000001": true,
 	}
 	constructedRouteTables := constructRouteTables(routeTables)
-	oscServices.ec2.RemoveRouteTables()
+	oscServices.fcu.RemoveRouteTables()
 	for _, rt := range constructedRouteTables {
-		oscServices.ec2.CreateRouteTable(rt)
+		oscServices.fcu.CreateRouteTable(rt)
 	}
-	request1111 := &ec2.DescribeSubnetsInput{}
-	res, _ := oscServices.ec2.DescribeSubnets(request1111)
-	t.Logf("oscServices.ec2.DescribeSubnets----: %v", res)
+	request1111 := &osc.DescribeSubnetsInput{}
+	res, _ := oscServices.fcu.DescribeSubnets(request1111)
+	t.Logf("oscServices.fcu.DescribeSubnets----: %v", res)
 
-	request2222 := &ec2.DescribeRouteTablesInput{}
-	rt, err := oscServices.ec2.DescribeRouteTables(request2222)
-	t.Logf("oscServices.ec2.DescribeRouteTables----: %v", rt)
+	request2222 := &osc.DescribeRouteTablesInput{}
+	rt, err := oscServices.fcu.DescribeRouteTables(request2222)
+	t.Logf("oscServices.fcu.DescribeRouteTables----: %v", rt)
 
 	subnetsRes, err := c.findSubnets()
 	t.Logf("subnetsRes, err----: %v", subnetsRes)
@@ -897,9 +901,9 @@ func TestSubnetIDsinVPC(t *testing.T) {
 
 	// test implicit routing table - when subnets are not explicitly linked to a table they should use main
 	constructedRouteTables = constructRouteTables(map[string]bool{})
-	oscServices.ec2.RemoveRouteTables()
+	oscServices.fcu.RemoveRouteTables()
 	for _, rt := range constructedRouteTables {
-		oscServices.ec2.CreateRouteTable(rt)
+		oscServices.fcu.CreateRouteTable(rt)
 	}
 
 	result, err = c.findLBUSubnets(false)
@@ -936,16 +940,16 @@ func TestSubnetIDsinVPC(t *testing.T) {
 	subnets[4]["id"] = "subnet-c0000002"
 	subnets[4]["az"] = "af-south-1c"
 	constructedSubnets = constructSubnets(subnets)
-	oscServices.ec2.RemoveSubnets()
+	oscServices.fcu.RemoveSubnets()
 	for _, subnet := range constructedSubnets {
-		oscServices.ec2.CreateSubnet(subnet)
+		oscServices.fcu.CreateSubnet(subnet)
 	}
 	routeTables["subnet-c0000000"] = true
 	routeTables["subnet-c0000002"] = true
 	constructedRouteTables = constructRouteTables(routeTables)
-	oscServices.ec2.RemoveRouteTables()
+	oscServices.fcu.RemoveRouteTables()
 	for _, rt := range constructedRouteTables {
-		oscServices.ec2.CreateRouteTable(rt)
+		oscServices.fcu.CreateRouteTable(rt)
 	}
 
 	result, err = c.findLBUSubnets(false)
@@ -979,9 +983,9 @@ func TestSubnetIDsinVPC(t *testing.T) {
 	subnets[5]["az"] = "af-south-1b"
 
 	constructedSubnets = constructSubnets(subnets)
-	oscServices.ec2.RemoveSubnets()
+	oscServices.fcu.RemoveSubnets()
 	for _, subnet := range constructedSubnets {
-		oscServices.ec2.CreateSubnet(subnet)
+		oscServices.fcu.CreateSubnet(subnet)
 	}
 
 	routeTables["subnet-a0000001"] = false
@@ -991,9 +995,9 @@ func TestSubnetIDsinVPC(t *testing.T) {
 	routeTables["subnet-d0000001"] = true
 	routeTables["subnet-d0000002"] = true
 	constructedRouteTables = constructRouteTables(routeTables)
-	oscServices.ec2.RemoveRouteTables()
+	oscServices.fcu.RemoveRouteTables()
 	for _, rt := range constructedRouteTables {
-		oscServices.ec2.CreateRouteTable(rt)
+		oscServices.fcu.CreateRouteTable(rt)
 	}
 	result, err = c.findLBUSubnets(false)
 	if err != nil {
@@ -1016,22 +1020,22 @@ func TestSubnetIDsinVPC(t *testing.T) {
 }
 
 func TestIpPermissionExistsHandlesMultipleGroupIds(t *testing.T) {
-	oldIPPermission := ec2.IpPermission{
-		UserIdGroupPairs: []*ec2.UserIdGroupPair{
+	oldIPPermission := osc.IpPermission{
+		UserIdGroupPairs: []osc.UserIdGroupPair{
 			{GroupId: "firstGroupId"},
 			{GroupId: "secondGroupId"},
 			{GroupId: "thirdGroupId"},
 		},
 	}
 
-	existingIPPermission := ec2.IpPermission{
-		UserIdGroupPairs: []*ec2.UserIdGroupPair{
+	existingIPPermission := osc.IpPermission{
+		UserIdGroupPairs: []osc.UserIdGroupPair{
 			{GroupId: "secondGroupId"},
 		},
 	}
 
-	newIPPermission := ec2.IpPermission{
-		UserIdGroupPairs: []*ec2.UserIdGroupPair{
+	newIPPermission := osc.IpPermission{
+		UserIdGroupPairs: []osc.UserIdGroupPair{
 			{GroupId: "fourthGroupId"},
 		},
 	}
@@ -1047,8 +1051,8 @@ func TestIpPermissionExistsHandlesMultipleGroupIds(t *testing.T) {
 	}
 
 	// The first pair matches, but the second does not
-	newIPPermission2 := ec2.IpPermission{
-		UserIdGroupPairs: []*ec2.UserIdGroupPair{
+	newIPPermission2 := osc.IpPermission{
+		UserIdGroupPairs: []osc.UserIdGroupPair{
 			{GroupId: "firstGroupId"},
 			{GroupId: "fourthGroupId"},
 		},
@@ -1061,29 +1065,29 @@ func TestIpPermissionExistsHandlesMultipleGroupIds(t *testing.T) {
 
 func TestIpPermissionExistsHandlesRangeSubsets(t *testing.T) {
 	// Two existing scenarios we'll test against
-	emptyIPPermission := ec2.IpPermission{}
+	emptyIPPermission := osc.IpPermission{}
 
-	oldIPPermission := ec2.IpPermission{
-		IpRanges: []*ec2.IpRange{
+	oldIPPermission := osc.IpPermission{
+		IpRanges: []osc.IpRange{
 			{CidrIp: "10.0.0.0/8"},
 			{CidrIp: "192.168.1.0/24"},
 		},
 	}
 
 	// Two already existing ranges and a new one
-	existingIPPermission := ec2.IpPermission{
-		IpRanges: []*ec2.IpRange{
+	existingIPPermission := osc.IpPermission{
+		IpRanges: []osc.IpRange{
 			{CidrIp: "10.0.0.0/8"},
 		},
 	}
-	existingIPPermission2 := ec2.IpPermission{
-		IpRanges: []*ec2.IpRange{
+	existingIPPermission2 := osc.IpPermission{
+		IpRanges: []osc.IpRange{
 			{CidrIp: "192.168.1.0/24"},
 		},
 	}
 
-	newIPPermission := ec2.IpPermission{
-		IpRanges: []*ec2.IpRange{
+	newIPPermission := osc.IpPermission{
+		IpRanges: []osc.IpRange{
 			{CidrIp: "172.16.0.0/16"},
 		},
 	}
@@ -1117,22 +1121,22 @@ func TestIpPermissionExistsHandlesRangeSubsets(t *testing.T) {
 }
 
 func TestIpPermissionExistsHandlesMultipleGroupIdsWithUserIds(t *testing.T) {
-	oldIPPermission := ec2.IpPermission{
-		UserIdGroupPairs: []*ec2.UserIdGroupPair{
+	oldIPPermission := osc.IpPermission{
+		UserIdGroupPairs: []osc.UserIdGroupPair{
 			{GroupId: "firstGroupId", UserId: "firstUserId"},
 			{GroupId: "secondGroupId", UserId: "secondUserId"},
 			{GroupId: "thirdGroupId", UserId: "thirdUserId"},
 		},
 	}
 
-	existingIPPermission := ec2.IpPermission{
-		UserIdGroupPairs: []*ec2.UserIdGroupPair{
+	existingIPPermission := osc.IpPermission{
+		UserIdGroupPairs: []osc.UserIdGroupPair{
 			{GroupId: "secondGroupId", UserId: "secondUserId"},
 		},
 	}
 
-	newIPPermission := ec2.IpPermission{
-		UserIdGroupPairs: []*ec2.UserIdGroupPair{
+	newIPPermission := osc.IpPermission{
+		UserIdGroupPairs: []osc.UserIdGroupPair{
 			{GroupId: "secondGroupId", UserId: "anotherUserId"},
 		},
 	}
@@ -1154,12 +1158,12 @@ func TestFindInstanceByNodeNameExcludesTerminatedInstances(t *testing.T) {
 		state    string
 		expected bool
 	}{
-		{0, ec2.InstanceStateNamePending, true},
-		{16, ec2.InstanceStateNameRunning, true},
-		{32, ec2.InstanceStateNameShuttingDown, true},
-		{48, ec2.InstanceStateNameTerminated, false},
-		{64, ec2.InstanceStateNameStopping, true},
-		{80, ec2.InstanceStateNameStopped, true},
+		{0, "pending", true},
+		{16, "running", true},
+		{32, "shutting-down", true},
+		{48, "terminated", false},
+		{64, "stopping", true},
+		{80, "stopped", true},
 	}
 	oscServices := newMockedFakeOSCServices(TestClusterID)
 
@@ -1179,7 +1183,7 @@ func TestFindInstanceByNodeNameExcludesTerminatedInstances(t *testing.T) {
 	for _, oscState := range oscStates {
 		id := "i-" + oscState.state
 		testInstance.InstanceId = id
-		testInstance.State = &ec2.InstanceState{Code: aws.Int64(oscState.id), Name: oscState.state}
+		testInstance.State = osc.InstanceState{Code: aws.Int64(oscState.id), Name: oscState.state}
 
 		oscServices.instances = append(oscDefaultInstances, &testInstance)
 
@@ -1216,8 +1220,8 @@ func TestGetInstanceByNodeNameBatching(t *testing.T) {
 
 	tags := []osc.ResourceTag{
 	    {
-	        Key = TagNameKubernetesClusterPrefix + TestClusterID,
-	        tag.Value = "",
+	        Key: TagNameKubernetesClusterPrefix + TestClusterID,
+	        Value: "",
 	    },
 	}
 
@@ -1417,8 +1421,8 @@ func TestProxyProtocolEnabled(t *testing.T) {
 	assert.True(t, result, "expected to find %s in %s", ProxyProtocolPolicyName, policies)
 
 	policies = sets.NewString("FooBarFoo")
-	fakeBackend = &elb.BackendServerDescription{
-		InstancePort: aws.Int64(80),
+	fakeBackend = osc.Listener{
+		BackendPort: 80,
 		PolicyNames: []*string{
 			"FooBarFoo",
 		},
@@ -1427,8 +1431,8 @@ func TestProxyProtocolEnabled(t *testing.T) {
 	assert.False(t, result, "did not expect to find %s in %s", ProxyProtocolPolicyName, policies)
 
 	policies = sets.NewString()
-	fakeBackend = &elb.BackendServerDescription{
-		InstancePort: aws.Int64(80),
+	fakeBackend = osc.Listener{
+		BackendPort: 80,
 	}
 	result = proxyProtocolEnabled(fakeBackend)
 	assert.False(t, result, "did not expect to find %s in %s", ProxyProtocolPolicyName, policies)
@@ -1520,7 +1524,7 @@ func TestLBExtraSecurityGroupsAnnotation(t *testing.T) {
 		{"Multiple SGs specified", sg3, []string{sg1[ServiceAnnotationLoadBalancerExtraSecurityGroups], sg2[ServiceAnnotationLoadBalancerExtraSecurityGroups]}},
 	}
 
-	oscServices.ec2.(*MockedFakeFCU).expectReadSecurityGroups(TestClusterID, "k8s-lbu-aid")
+	oscServices.fcu.(*MockedFakeFCU).expectReadSecurityGroups(TestClusterID, "k8s-lbu-aid")
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -1554,7 +1558,7 @@ func TestLBSecurityGroupsAnnotation(t *testing.T) {
 		{"Multiple SGs specified", sg3, []string{sg1[ServiceAnnotationLoadBalancerSecurityGroups], sg2[ServiceAnnotationLoadBalancerSecurityGroups]}},
 	}
 
-	oscServices.ec2.(*MockedFakeFCU).expectDescribeSecurityGroups(TestClusterID, "k8s-lbu-aid")
+	oscServices.fcu.(*MockedFakeFCU).expectDescribeSecurityGroups(TestClusterID, "k8s-lbu-aid")
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -1577,7 +1581,7 @@ func TestAddLoadBalancerTags(t *testing.T) {
 	want := make(map[string]string)
 	want["tag1"] = "val1"
 
-	expectedAddTagsRequest := osc.CreateTagOpts{
+	expectedAddTagsRequest := osc.CreateTagsOpts{
 		LoadBalancerNames: []string{loadBalancerName},
 		Tags: []osc.ResourceTag{
 			{
@@ -1586,7 +1590,7 @@ func TestAddLoadBalancerTags(t *testing.T) {
 			},
 		},
 	}
-	oscServices.lbu.(*MockedFakeLBU).On("AddTags", expectedAddTagsRequest).Return(osc.CreateTagResponse{})
+	oscServices.lbu.(*MockedFakeLBU).On("AddTags", expectedAddTagsRequest).Return(osc.CreateTagsResponse{})
 
 	err := c.addLoadBalancerTags(loadBalancerName, want)
 	assert.Nil(t, err, "Error adding load balancer tags: %v", err)
@@ -1610,20 +1614,20 @@ func TestEnsureLoadBalancerHealthCheck(t *testing.T) {
 	lbName := "myLB"
 	// this HC will always differ from the expected HC and thus it is expected an
 	// API call will be made to update it
-	currentHC := &elb.HealthCheck{}
-	elbDesc := &elb.LoadBalancerDescription{LoadBalancerName: &lbName, HealthCheck: currentHC}
-	defaultHealthyThreshold := int64(2)
-	defaultUnhealthyThreshold := int64(6)
-	defaultTimeout := int64(5)
-	defaultInterval := int64(10)
+	currentHC := osc.HealthCheck{}
+	lbuDesc := osc.LoadBalancer{LoadBalancerName: lbName, HealthCheck: currentHC}
+	defaultHealthyThreshold := int32(2)
+	defaultUnhealthyThreshold := int32(6)
+	defaultTimeout := int32(5)
+	defaultInterval := int32(10)
 	protocol, path, port := "tcp", "", int32(8080)
 	target := "tcp:8080"
-	defaultHC := &elb.HealthCheck{
-		HealthyThreshold:   &defaultHealthyThreshold,
-		UnhealthyThreshold: &defaultUnhealthyThreshold,
-		Timeout:            &defaultTimeout,
-		Interval:           &defaultInterval,
-		Target:             &target,
+	defaultHC := osc.HealthCheck{
+		HealthyThreshold:   defaultHealthyThreshold,
+		UnhealthyThreshold: defaultUnhealthyThreshold,
+		Timeout:            defaultTimeout,
+		CheckInterval:           defaultInterval,
+		Path:             target,
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -1635,9 +1639,9 @@ func TestEnsureLoadBalancerHealthCheck(t *testing.T) {
 				value := reflect.ValueOf(&test.overriddenValue)
 				reflect.ValueOf(&expectedHC).Elem().FieldByName(test.overriddenFieldName).Set(value)
 			}
-			oscServices.lbu.(*MockedFakeLBU).expectConfigureHealthCheck(&lbName, &expectedHC, nil)
+			oscServices.lbu.(*MockedFakeLBU).expectConfigureHealthCheck(lbName, expectedHC, nil)
 
-			err = c.ensureLoadBalancerHealthCheck(elbDesc, protocol, port, path, test.annotations)
+			err = c.ensureLoadBalancerHealthCheck(lbuDesc, protocol, port, path, test.annotations)
 
 			require.Nil(t, err)
 			oscServices.lbu.(*MockedFakeLBU).AssertExpectations(t)
@@ -1652,17 +1656,17 @@ func TestEnsureLoadBalancerHealthCheck(t *testing.T) {
 		timeout := int64(3)
 		expectedHC.Timeout = &timeout
 		annotations := map[string]string{ServiceAnnotationLoadBalancerHCTimeout: "3"}
-		var currentHC elb.HealthCheck
+		var currentHC osc.HealthCheck
 		currentHC = expectedHC
 
 		// NOTE no call expectations are set on the LBU mock
 		// test default HC
-		elbDesc := &elb.LoadBalancerDescription{LoadBalancerName: &lbName, HealthCheck: defaultHC}
-		err = c.ensureLoadBalancerHealthCheck(elbDesc, protocol, port, path, map[string]string{})
+		lbuDesc := osc.LoadBalancer{LoadBalancerName: lbName, HealthCheck: defaultHC}
+		err = c.ensureLoadBalancerHealthCheck(lbuDesc, protocol, port, path, map[string]string{})
 		assert.Nil(t, err)
 		// test HC with override
-		elbDesc = &elb.LoadBalancerDescription{LoadBalancerName: &lbName, HealthCheck: &currentHC}
-		err = c.ensureLoadBalancerHealthCheck(elbDesc, protocol, port, path, annotations)
+		lbuDesc = osc.LoadBalancer{LoadBalancerName: lbName, HealthCheck: currentHC}
+		err = c.ensureLoadBalancerHealthCheck(lbuDesc, protocol, port, path, annotations)
 		assert.Nil(t, err)
 	})
 
@@ -1677,7 +1681,7 @@ func TestEnsureLoadBalancerHealthCheck(t *testing.T) {
 		annotations := map[string]string{ServiceAnnotationLoadBalancerHCTimeout: "1"}
 
 		// NOTE no call expectations are set on the LBU mock
-		err = c.ensureLoadBalancerHealthCheck(elbDesc, protocol, port, path, annotations)
+		err = c.ensureLoadBalancerHealthCheck(lbuDesc, protocol, port, path, annotations)
 
 		require.Error(t, err)
 	})
@@ -1689,7 +1693,7 @@ func TestEnsureLoadBalancerHealthCheck(t *testing.T) {
 		annotations := map[string]string{ServiceAnnotationLoadBalancerHCTimeout: "3.3"}
 
 		// NOTE no call expectations are set on the LBU mock
-		err = c.ensureLoadBalancerHealthCheck(elbDesc, protocol, port, path, annotations)
+		err = c.ensureLoadBalancerHealthCheck(lbuDesc, protocol, port, path, annotations)
 
 		require.Error(t, err)
 	})
@@ -1699,9 +1703,9 @@ func TestEnsureLoadBalancerHealthCheck(t *testing.T) {
 		c, err := newOSCCloud(CloudConfig{}, oscServices)
 		assert.Nil(t, err, "Error building osc cloud: %v", err)
 		returnErr := fmt.Errorf("throttling error")
-		oscServices.lbu.(*MockedFakeLBU).expectConfigureHealthCheck(&lbName, defaultHC, returnErr)
+		//oscServices.lbu.(*MockedFakeLBU).expectConfigureHealthCheck(lbName, defaultHC, returnErr)
 
-		err = c.ensureLoadBalancerHealthCheck(elbDesc, protocol, port, path, map[string]string{})
+		err = c.ensureLoadBalancerHealthCheck(lbuDesc, protocol, port, path, map[string]string{})
 
 		require.Error(t, err)
 		oscServices.lbu.(*MockedFakeLBU).AssertExpectations(t)
@@ -1710,7 +1714,7 @@ func TestEnsureLoadBalancerHealthCheck(t *testing.T) {
 
 func TestFindSecurityGroupForInstance(t *testing.T) {
 	groups := map[string]osc.SecurityGroup{"sg123": {GroupId: "sg123"}}
-	id, err := findSecurityGroupForInstance(osc.Vm{SecurityGroups: []*ec2.GroupIdentifier{{GroupId: "sg123", GroupName: "my_group"}}}, groups)
+	id, err := findSecurityGroupForInstance(osc.Vm{SecurityGroups: []osc.GroupIdentifier{{GroupId: "sg123", GroupName: "my_group"}}}, groups)
 	if err != nil {
 		t.Error()
 	}
@@ -1721,7 +1725,7 @@ func TestFindSecurityGroupForInstance(t *testing.T) {
 func TestFindSecurityGroupForInstanceMultipleTagged(t *testing.T) {
 	groups := map[string]osc.SecurityGroup{"sg123": {GroupId: "sg123"}}
 	_, err := findSecurityGroupForInstance(osc.Vm{
-		SecurityGroups: []*ec2.GroupIdentifier{
+		SecurityGroups: []osc.GroupIdentifier{
 			{GroupId: "sg123", GroupName: "my_group"},
 			{GroupId: "sg123", GroupName: "another_group"},
 		},

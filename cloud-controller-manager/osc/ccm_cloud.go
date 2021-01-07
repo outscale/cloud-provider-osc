@@ -1500,22 +1500,9 @@ func (c *Cloud) getTaggedSecurityGroups() (map[string]osc.SecurityGroup, error) 
 	request := &osc.ReadSecurityGroupsOpts{
 	    ReadSecurityGroupsRequest: optional.NewInterface(
 	        osc.ReadSecurityGroupsRequest{
-                Filters: []osc.FiltersSecurityGroup{
-                    {
-                        Tags: []string{
-                            {
-                                c.tagging.clusterTagKey(): ResourceLifecycleOwned,
-                            },
-                            {
-                                c.tagging.clusterTagKey(): ResourceLifecycleShared,
-                            },
-                    },
-                    {
-                        TagKeys: []string{TagNameMainSG+c.tagging.clusterID()},
-                        TagValues: []string{"True"},
-                    },
-
-// A verifier
+                Filters: osc.FiltersSecurityGroup{
+                    Tags: []string{["c.tagging.clusterTagKey()=[ResourceLifecycleOwned, ResourceLifecycleShared]"], ["TagNameMainSG+c.tagging.clusterID()=\"True\""],},
+                    // A verifier
 //                 newTagFilter(c.tagging.clusterTagKey(), []string{ResourceLifecycleOwned, ResourceLifecycleShared}...),
 //                 newtagFilter(TagNameMainSG+c.tagging.clusterID(), "True"),
              },
@@ -1782,7 +1769,7 @@ func (c *Cloud) EnsureLoadBalancerDeleted(ctx context.Context, clusterName strin
 		    ReadSecurityGroupsRequest: optional.NewInterface(
                 osc.ReadSecurityGroupsRequest{
                     Filters: osc.FiltersSecurityGroup{
-					    SecurityGroupNames = loadBalancerSGs,
+					    SecurityGroupNames: loadBalancerSGs,
 				    },
                 }),
 		}
@@ -1988,7 +1975,7 @@ func (c *Cloud) getInstancesByNodeNames(nodeNames []string, states ...string) ([
 
         // A verifier
 		filters := osc.FiltersVm{
-		    Tags: nameSlice
+		    Tags: nameSlice,
 		 }
 
 // 		if len(states) > 0 {
@@ -2044,8 +2031,20 @@ func (c *Cloud) findInstanceByNodeName(nodeName types.NodeName) (osc.Vm, error) 
 	klog.V(10).Infof("findInstanceByNodeName(%v)", nodeName)
 
 	privateDNSName := mapNodeNameToPrivateDNSName(nodeName)
+
 	filters := osc.FiltersVm{
-        //VmIds:
+	        Tags: []string{TagNameClusterNode:privateDNSName, c.tagging.clusterTagKey():[ResourceLifecycleOwned, ResourceLifecycleShared]},
+//             Tags: []string{
+//                 {
+//                     c.tagging.clusterTagKey(): ResourceLifecycleOwned,
+//                 },
+//                 {
+//                     c.tagging.clusterTagKey(): ResourceLifecycleShared,
+//                 },
+//                 {
+//                     [TagNameClusterNode: privateDNSName],
+//                 },
+//             },
 
 // 		newVmFilter("tag:"+TagNameClusterNode, privateDNSName),
 // 		// exclude instances in "terminated" state
