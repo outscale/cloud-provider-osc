@@ -138,7 +138,7 @@ func TestSyncLbuListeners(t *testing.T) {
 	tests := []struct {
 		name                 string
 		loadBalancerName     string
-		listeners            []osc.Listener
+		listeners            []osc.ListenerForCreation
 		listenerDescriptions []osc.Listener
 		toCreate             []osc.ListenerForCreation
 		toDelete             []int32
@@ -146,7 +146,7 @@ func TestSyncLbuListeners(t *testing.T) {
 		{
 			name:             "no edge cases",
 			loadBalancerName: "lb_one",
-			listeners: []osc.Listener{
+			listeners: []osc.ListenerForCreation{
 				{BackendPort: 443, BackendProtocol: "HTTP", LoadBalancerPort: 443, LoadBalancerProtocol: "HTTP", ServerCertificateId: "abc-123"},
 				{BackendPort: 80, BackendProtocol: "TCP", LoadBalancerPort: 80, LoadBalancerProtocol: "TCP", ServerCertificateId: "def-456"},
 				{BackendPort: 8443, BackendProtocol: "TCP", LoadBalancerPort: 8443, LoadBalancerProtocol: "TCP", ServerCertificateId: "def-456"},
@@ -166,7 +166,7 @@ func TestSyncLbuListeners(t *testing.T) {
 		{
 			name:             "no listeners to delete",
 			loadBalancerName: "lb_two",
-			listeners: []osc.Listener{
+			listeners: []osc.ListenerForCreation{
 				{BackendPort: 443, BackendProtocol: "HTTP", LoadBalancerPort: 443, LoadBalancerProtocol: "HTTP", ServerCertificateId: "abc-123"},
 				{BackendPort: 80, BackendProtocol: "TCP", LoadBalancerPort: 80, LoadBalancerProtocol: "TCP", ServerCertificateId: "def-456"},
 			},
@@ -181,7 +181,7 @@ func TestSyncLbuListeners(t *testing.T) {
 		{
 			name:             "no listeners to create",
 			loadBalancerName: "lb_three",
-			listeners: []osc.Listener{
+			listeners: []osc.ListenerForCreation{
 				{BackendPort: 443, BackendProtocol: "HTTP", LoadBalancerPort: 443, LoadBalancerProtocol: "HTTP", ServerCertificateId: "abc-123"},
 			},
 			listenerDescriptions: []osc.Listener{
@@ -196,7 +196,7 @@ func TestSyncLbuListeners(t *testing.T) {
 		{
 			name:             "nil actual listener",
 			loadBalancerName: "lb_four",
-			listeners: []osc.Listener{
+			listeners: []osc.ListenerForCreation{
 				{BackendPort: 443, BackendProtocol: "HTTP", LoadBalancerPort: 443, LoadBalancerProtocol: "HTTP"},
 			},
 			listenerDescriptions: []osc.Listener{
@@ -224,37 +224,38 @@ func TestSyncLbuListeners(t *testing.T) {
 func TestLbuListenersAreEqual(t *testing.T) {
 	tests := []struct {
 		name             string
-		expected, actual osc.Listener
+		actual osc.ListenerForCreation
+		expected osc.Listener
 		equal            bool
 	}{
 		{
 			name:     "should be equal",
 			expected: osc.Listener{BackendPort: 80, BackendProtocol: "TCP", LoadBalancerPort: 80, LoadBalancerProtocol: "TCP"},
-			actual:   osc.Listener{BackendPort: 80, BackendProtocol: "TCP", LoadBalancerPort: 80, LoadBalancerProtocol: "TCP"},
+			actual:   osc.ListenerForCreation{BackendPort: 80, BackendProtocol: "TCP", LoadBalancerPort: 80, LoadBalancerProtocol: "TCP"},
 			equal:    true,
 		},
 		{
 			name:     "instance port should be different",
 			expected: osc.Listener{BackendPort: 443, BackendProtocol: "TCP", LoadBalancerPort: 80, LoadBalancerProtocol: "TCP"},
-			actual:   osc.Listener{BackendPort: 80, BackendProtocol: "TCP", LoadBalancerPort: 80, LoadBalancerProtocol: "TCP"},
+			actual:   osc.ListenerForCreation{BackendPort: 80, BackendProtocol: "TCP", LoadBalancerPort: 80, LoadBalancerProtocol: "TCP"},
 			equal:    false,
 		},
 		{
 			name:     "instance loadBalancerProtocol should be different",
 			expected: osc.Listener{BackendPort: 80, BackendProtocol: "HTTP", LoadBalancerPort: 80, LoadBalancerProtocol: "TCP"},
-			actual:   osc.Listener{BackendPort: 80, BackendProtocol: "TCP", LoadBalancerPort: 80, LoadBalancerProtocol: "TCP"},
+			actual:   osc.ListenerForCreation{BackendPort: 80, BackendProtocol: "TCP", LoadBalancerPort: 80, LoadBalancerProtocol: "TCP"},
 			equal:    false,
 		},
 		{
 			name:     "load balancer port should be different",
 			expected: osc.Listener{BackendPort: 443, BackendProtocol: "TCP", LoadBalancerPort: 443, LoadBalancerProtocol: "TCP"},
-			actual:   osc.Listener{BackendPort: 443, BackendProtocol: "TCP", LoadBalancerPort: 80, LoadBalancerProtocol: "TCP"},
+			actual:   osc.ListenerForCreation{BackendPort: 443, BackendProtocol: "TCP", LoadBalancerPort: 80, LoadBalancerProtocol: "TCP"},
 			equal:    false,
 		},
 		{
 			name:     "loadBalancerProtocol should be different",
 			expected: osc.Listener{BackendPort: 443, BackendProtocol: "TCP", LoadBalancerPort: 80, LoadBalancerProtocol: "TCP"},
-			actual:   osc.Listener{BackendPort: 443, BackendProtocol: "TCP", LoadBalancerPort: 80, LoadBalancerProtocol: "HTTP"},
+			actual:   osc.ListenerForCreation{BackendPort: 443, BackendProtocol: "TCP", LoadBalancerPort: 80, LoadBalancerProtocol: "HTTP"},
 			equal:    false,
 		},
 	}

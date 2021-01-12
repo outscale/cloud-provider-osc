@@ -22,42 +22,44 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/ec2"
+// 	"github.com/aws/aws-sdk-go/aws"
+// 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/stretchr/testify/assert"
+
+    "github.com/outscale/osc-sdk-go/osc"
 
 	"k8s.io/api/core/v1"
 )
 
-func TestMapToAWSInstanceIDs(t *testing.T) {
+func TestMapToOSCInstanceIDs(t *testing.T) {
 	tests := []struct {
 		Kubernetes  KubernetesInstanceID
-		Aws         InstanceID
+		Osc         InstanceID
 		ExpectError bool
 	}{
 		{
 			Kubernetes: "aws:///us-east-1a/i-12345678",
-			Aws:        "i-12345678",
+			Osc:        "i-12345678",
 		},
 		{
 			Kubernetes: "aws:////i-12345678",
-			Aws:        "i-12345678",
+			Osc:        "i-12345678",
 		},
 		{
 			Kubernetes: "i-12345678",
-			Aws:        "i-12345678",
+			Osc:        "i-12345678",
 		},
 		{
 			Kubernetes: "aws:///us-east-1a/i-12345678abcdef01",
-			Aws:        "i-12345678abcdef01",
+			Osc:        "i-12345678abcdef01",
 		},
 		{
 			Kubernetes: "aws:////i-12345678abcdef01",
-			Aws:        "i-12345678abcdef01",
+			Osc:        "i-12345678abcdef01",
 		},
 		{
 			Kubernetes: "i-12345678abcdef01",
-			Aws:        "i-12345678abcdef01",
+			Osc:        "i-12345678abcdef01",
 		},
 		{
 			Kubernetes:  "vol-123456789",
@@ -82,7 +84,7 @@ func TestMapToAWSInstanceIDs(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		awsID, err := test.Kubernetes.MapToAWSInstanceID()
+		oscID, err := test.Kubernetes.MapToOSCInstanceID()
 		if err != nil {
 			if !test.ExpectError {
 				t.Errorf("unexpected error parsing %s: %v", test.Kubernetes, err)
@@ -90,8 +92,8 @@ func TestMapToAWSInstanceIDs(t *testing.T) {
 		} else {
 			if test.ExpectError {
 				t.Errorf("expected error parsing %s", test.Kubernetes)
-			} else if test.Aws != awsID {
-				t.Errorf("unexpected value parsing %s, got %s", test.Kubernetes, awsID)
+			} else if test.Osc != oscID {
+				t.Errorf("unexpected value parsing %s, got %s", test.Kubernetes, oscID)
 			}
 		}
 	}
@@ -100,7 +102,7 @@ func TestMapToAWSInstanceIDs(t *testing.T) {
 		node := &v1.Node{}
 		node.Spec.ProviderID = string(test.Kubernetes)
 
-		awsInstanceIds, err := mapToAWSInstanceIDs([]*v1.Node{node})
+		oscInstanceIds, err := mapToOSCInstanceIDs([]*v1.Node{node})
 		if err != nil {
 			if !test.ExpectError {
 				t.Errorf("unexpected error parsing %s: %v", test.Kubernetes, err)
@@ -108,23 +110,23 @@ func TestMapToAWSInstanceIDs(t *testing.T) {
 		} else {
 			if test.ExpectError {
 				t.Errorf("expected error parsing %s", test.Kubernetes)
-			} else if len(awsInstanceIds) != 1 {
-				t.Errorf("unexpected value parsing %s, got %s", test.Kubernetes, awsInstanceIds)
-			} else if awsInstanceIds[0] != test.Aws {
-				t.Errorf("unexpected value parsing %s, got %s", test.Kubernetes, awsInstanceIds)
+			} else if len(oscInstanceIds) != 1 {
+				t.Errorf("unexpected value parsing %s, got %s", test.Kubernetes, oscInstanceIds)
+			} else if oscInstanceIds[0] != test.Osc {
+				t.Errorf("unexpected value parsing %s, got %s", test.Kubernetes, oscInstanceIds)
 			}
 		}
 
-		awsInstanceIds = mapToAWSInstanceIDsTolerant([]*v1.Node{node})
+		oscInstanceIds = mapToOSCInstanceIDsTolerant([]*v1.Node{node})
 		if test.ExpectError {
-			if len(awsInstanceIds) != 0 {
-				t.Errorf("unexpected results parsing %s: %s", test.Kubernetes, awsInstanceIds)
+			if len(oscInstanceIds) != 0 {
+				t.Errorf("unexpected results parsing %s: %s", test.Kubernetes, oscInstanceIds)
 			}
 		} else {
-			if len(awsInstanceIds) != 1 {
-				t.Errorf("unexpected value parsing %s, got %s", test.Kubernetes, awsInstanceIds)
-			} else if awsInstanceIds[0] != test.Aws {
-				t.Errorf("unexpected value parsing %s, got %s", test.Kubernetes, awsInstanceIds)
+			if len(oscInstanceIds) != 1 {
+				t.Errorf("unexpected value parsing %s, got %s", test.Kubernetes, oscInstanceIds)
+			} else if oscInstanceIds[0] != test.Osc {
+				t.Errorf("unexpected value parsing %s, got %s", test.Kubernetes, oscInstanceIds)
 			}
 		}
 	}
@@ -145,8 +147,8 @@ func TestSnapshotMeetsCriteria(t *testing.T) {
 		t.Errorf("Snapshot did not honor HasInstances with missing instances")
 	}
 
-	snapshot.instances = make(map[InstanceID]*ec2.Instance)
-	snapshot.instances[InstanceID("i-12345678")] = &ec2.Instance{}
+	snapshot.instances = make(map[InstanceID]osc.Vm)
+	snapshot.instances[InstanceID("i-12345678")] = osc.Vm{}
 
 	if !snapshot.MeetsCriteria(cacheCriteria{HasInstances: []InstanceID{InstanceID("i-12345678")}}) {
 		t.Errorf("Snapshot did not honor HasInstances with matching instances")
@@ -172,14 +174,14 @@ func TestOlderThan(t *testing.T) {
 func TestSnapshotFindInstances(t *testing.T) {
 	snapshot := &allInstancesSnapshot{}
 
-	snapshot.instances = make(map[InstanceID]*ec2.Instance)
+	snapshot.instances = make(map[InstanceID]osc.Vm)
 	{
 		id := InstanceID("i-12345678")
-		snapshot.instances[id] = &ec2.Instance{InstanceId: id.awsString()}
+		snapshot.instances[id] = osc.Vm{VmId: id.oscString()}
 	}
 	{
 		id := InstanceID("i-23456789")
-		snapshot.instances[id] = &ec2.Instance{InstanceId: id.awsString()}
+		snapshot.instances[id] = osc.Vm{VmId: id.oscString()}
 	}
 
 	instances := snapshot.FindInstances([]InstanceID{InstanceID("i-12345678"), InstanceID("i-23456789"), InstanceID("i-00000000")})
@@ -189,14 +191,14 @@ func TestSnapshotFindInstances(t *testing.T) {
 
 	for _, id := range []InstanceID{InstanceID("i-12345678"), InstanceID("i-23456789")} {
 		i := instances[id]
-		if i == nil {
+		if i.VmId == "" {
 			t.Errorf("findInstances did not return %s", id)
 			continue
 		}
-		if aws.StringValue(i.InstanceId) != string(id) {
+		if i.VmId != string(id) {
 			t.Errorf("findInstances did not return expected instanceId for %s", id)
 		}
-		if i != snapshot.instances[id] {
+		if i.VmId != snapshot.instances[id].VmId {
 			t.Errorf("findInstances did not return expected instance (reference equality) for %s", id)
 		}
 	}

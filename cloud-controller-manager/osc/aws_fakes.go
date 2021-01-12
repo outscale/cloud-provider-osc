@@ -480,10 +480,10 @@ func (lbu *FakeLBU) expectDescribeLoadBalancers(loadBalancerName string) {
 // 	panic("Unknown filter name: " + name)
 // }
 
-func contains(haystack []*string, needle string) bool {
+func contains(haystack []string, needle string) bool {
 	for _, s := range haystack {
 		// (deliberately panic if s == nil)
-		if needle == *s {
+		if needle == s {
 			return true
 		}
 	}
