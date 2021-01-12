@@ -254,7 +254,7 @@ func (t *oscTagging) createTags(client FCU, resourceID string, lifecycle Resourc
 		klog.V(2).Infof("Failed to create tags; will retry.  Error was %q", err)
 		lastErr = err
 		if httpRes != nil {
-			fmt.Errorf("http ", httpRes.Status)
+			return false, fmt.Errorf("http %q", httpRes.Status)
 		}
 		return false, nil
 	})

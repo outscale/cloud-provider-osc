@@ -143,7 +143,9 @@ func describeInstance(fcuClient FCU, instanceID InstanceID) (osc.Vm, error) {
 
 	instances, httpRes, err := fcuClient.ReadVms(request)
 	if err != nil {
-	    fmt.Errorf("http %s", httpRes)
+	    if httpRes != nil {
+			return osc.Vm{}, fmt.Errorf(httpRes.Status)
+		}
 		return osc.Vm{}, err
 	}
 	if len(instances) == 0 {

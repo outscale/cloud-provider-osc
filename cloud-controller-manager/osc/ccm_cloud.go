@@ -303,7 +303,9 @@ func (c *Cloud) InstanceExistsByProviderID(ctx context.Context, providerID strin
 
 	instances, httpRes, err := c.fcu.ReadVms(request)
 	if err != nil {
-	    fmt.Errorf("http %q", httpRes)
+	    if httpRes != nil {
+			return false, fmt.Errorf(httpRes.Status)
+		}
 		return false, err
 	}
 	if len(instances) == 0 {
@@ -342,7 +344,9 @@ func (c *Cloud) InstanceShutdownByProviderID(ctx context.Context, providerID str
 
 	instances, httpRes, err := c.fcu.ReadVms(request)
 	if err != nil {
-	    fmt.Errorf("http %q", httpRes)
+	    if httpRes != nil {
+			return false, fmt.Errorf(httpRes.Status)
+		}
 		return false, err
 	}
 	if len(instances) == 0 {
@@ -518,7 +522,10 @@ func (c *Cloud) addLoadBalancerTags(loadBalancerName string, requested map[strin
 
 	_, httpRes, err := c.lbu.CreateLoadBalancerTags(request)
 	if err != nil {
-		return fmt.Errorf("error adding tags to load balancer: %v %q", err, httpRes)
+	    if httpRes != nil {
+			return fmt.Errorf(httpRes.Status)
+		}
+		return fmt.Errorf("error adding tags to load balancer: %v", err)
 	}
 	return nil
 }
@@ -539,7 +546,9 @@ func (c *Cloud) describeLoadBalancer(name string) (osc.LoadBalancer, error) {
 
 	response, httpRes, err := c.lbu.ReadLoadBalancers(request)
 	if err != nil {
-	    fmt.Errorf("http %q", httpRes)
+	    if httpRes != nil {
+			return osc.LoadBalancer{},  fmt.Errorf(httpRes.Status)
+		}
 		if awsError, ok := err.(awserr.Error); ok {
 			if awsError.Code() == "LoadBalancerNotFound" {
 				return osc.LoadBalancer{}, nil
@@ -576,7 +585,10 @@ func (c *Cloud) findSecurityGroup(securityGroupID string) (osc.SecurityGroup, er
 
 	groups, httpRes, err := c.fcu.ReadSecurityGroups(request)
 	if err != nil {
-		klog.Warningf("Error retrieving security group: %q %q", err, httpRes)
+	    if httpRes != nil {
+			return osc.SecurityGroup{}, fmt.Errorf(httpRes.Status)
+		}
+		klog.Warningf("Error retrieving security group: %q", err)
 		return osc.SecurityGroup{}, err
 	}
 
@@ -656,7 +668,10 @@ func (c *Cloud) setSecurityGroupIngress(securityGroupID string, permissions Secu
 
 		_, httpRes, errSGRule := c.fcu.CreateSecurityGroupRule(request)
 		if err != nil {
-			return false, fmt.Errorf("error authorizing security group ingress: %q %q", errSGRule, httpRes)
+		    if httpRes != nil {
+			    return false, fmt.Errorf(httpRes.Status)
+		    }
+			return false, fmt.Errorf("error authorizing security group ingress: %q", errSGRule)
 		}
 	}
 	if remove.Len() != 0 {
@@ -672,7 +687,10 @@ func (c *Cloud) setSecurityGroupIngress(securityGroupID string, permissions Secu
 
         _, httpRes, errDeleteSGRule := c.fcu.DeleteSecurityGroupRule(request)
 		if err != nil {
-			return false, fmt.Errorf("error revoking security group ingress: %q %q", errDeleteSGRule, httpRes)
+		    if httpRes != nil {
+                return false, fmt.Errorf(httpRes.Status)
+            }
+			return false, fmt.Errorf("error revoking security group ingress: %q", errDeleteSGRule)
 		}
 	}
 
@@ -751,8 +769,8 @@ func (c *Cloud) addSecurityGroupIngress(securityGroupID string, addRules []osc.S
 			}
 		}
 		if !ignore {
-			klog.Warningf("Error authorizing security group ingress %q %q", errCreateSGRule, httpRes)
-			return false, fmt.Errorf("error authorizing security group ingress: %q %q", errCreateSGRule, httpRes)
+			klog.Warningf("Error authorizing security group ingress %q %q", errCreateSGRule, httpRes.Status)
+			return false, fmt.Errorf("error authorizing security group ingress: %q %q", errCreateSGRule, httpRes.Status)
 		}
 	}
 
@@ -823,7 +841,10 @@ func (c *Cloud) removeSecurityGroupIngress(securityGroupID string, removeRules [
 
 
 	if err != nil {
-		klog.Warningf("Error revoking security group ingress: %q %q", errDeleteSGRule, httpRes)
+	    if httpRes != nil {
+			return false, fmt.Errorf(httpRes.Status)
+		}
+		klog.Warningf("Error revoking security group ingress: %q", errDeleteSGRule)
 		return false, err
 	}
 
@@ -859,7 +880,9 @@ func (c *Cloud) ensureSecurityGroup(name string, description string, additionalT
         requestOpts := &osc.ReadSecurityGroupsOpts{ReadSecurityGroupsRequest: optional.NewInterface(request)}
 		securityGroups, httpRes, err := c.fcu.ReadSecurityGroups(requestOpts)
 		if err != nil {
-		    fmt.Errorf("http %q", httpRes)
+		    if httpRes != nil {
+                return "", fmt.Errorf(httpRes.Status)
+            }
 			return "", err
 		}
 
@@ -897,7 +920,7 @@ func (c *Cloud) ensureSecurityGroup(name string, description string, additionalT
 				}
 			}
 			if !ignore {
-				klog.Errorf("Error creating security group: %q %q", err, httpRes)
+				klog.Errorf("Error creating security group: %q %q", err, httpRes.Status)
 				return "", err
 			}
 			time.Sleep(1 * time.Second)
@@ -948,7 +971,10 @@ func (c *Cloud) findSubnets() ([]osc.Subnet, error) {
 
 		subnets, httpRes, err := c.fcu.ReadSubnets(request)
 		if err != nil {
-			return []osc.Subnet{}, fmt.Errorf("error describing subnets: %q %q", err, httpRes)
+		    if httpRes != nil {
+                return []osc.Subnet{}, fmt.Errorf(httpRes.Status)
+            }
+			return []osc.Subnet{}, fmt.Errorf("error describing subnets: %q", err)
 		}
 
 		var matches []osc.Subnet
@@ -978,7 +1004,10 @@ func (c *Cloud) findSubnets() ([]osc.Subnet, error) {
 
 		subnets, httpRes, errRead := c.fcu.ReadSubnets(request)
 		if err != nil {
-			return nil, fmt.Errorf("error describing subnets: %q %q", errRead, httpRes)
+		    if httpRes != nil {
+                return nil, fmt.Errorf(httpRes.Status)
+            }
+			return nil, fmt.Errorf("error describing subnets: %q", errRead)
 		}
 		return subnets, nil
 
@@ -1019,7 +1048,10 @@ func (c *Cloud) findLBUSubnets(internalLBU bool) ([]string, error) {
 	    rt, httpRes, err = c.fcu.ReadRouteTables(rRequest)
 
 		if err != nil {
-			return nil, fmt.Errorf("error describe route table: %q %q", err, httpRes)
+		    if httpRes != nil {
+		    	return nil, fmt.Errorf(httpRes.Status)
+		    }
+			return nil, fmt.Errorf("error describe route table: %q", err)
 		}
 	}
 
@@ -1501,16 +1533,23 @@ func (c *Cloud) getTaggedSecurityGroups() (map[string]osc.SecurityGroup, error) 
 	    ReadSecurityGroupsRequest: optional.NewInterface(
 	        osc.ReadSecurityGroupsRequest{
                 Filters: osc.FiltersSecurityGroup{
-                    Tags: []string{["c.tagging.clusterTagKey()=[ResourceLifecycleOwned, ResourceLifecycleShared]"], ["TagNameMainSG+c.tagging.clusterID()=\"True\""],},
+                    Tags: []string{
+//                         {c.tagging.clusterTagKey(): ResourceLifecycleOwned},
+//                         {c.tagging.clusterTagKey(): ResourceLifecycleShared},
+//                         {TagNameMainSG+c.tagging.clusterID(): True},
                     // A verifier
 //                 newTagFilter(c.tagging.clusterTagKey(), []string{ResourceLifecycleOwned, ResourceLifecycleShared}...),
 //                 newtagFilter(TagNameMainSG+c.tagging.clusterID(), "True"),
-             },
+                    },
+                },
 	    }),
 	}
 	groups, httpRes, err := c.fcu.ReadSecurityGroups(request)
 	if err != nil {
-		return nil, fmt.Errorf("error querying security groups: %q %q", err, httpRes)
+	    if httpRes != nil {
+			return nil, fmt.Errorf(httpRes.Status)
+		}
+		return nil, fmt.Errorf("error querying security groups: %q", err)
 	}
 
 	m := make(map[string]osc.SecurityGroup)
@@ -1589,7 +1628,10 @@ func (c *Cloud) updateInstanceSecurityGroupsForLoadBalancer(lb osc.LoadBalancer,
 		}
 		response, httpRes, err := c.fcu.ReadSecurityGroups(describeRequest)
 		if err != nil {
-			return fmt.Errorf("error querying security groups for LBU: %q %q", err, httpRes)
+		    if httpRes != nil {
+                return fmt.Errorf(httpRes.Status)
+            }
+			return fmt.Errorf("error querying security groups for LBU: %q", err)
 		}
 		for _, sg := range response {
 			if !c.tagging.hasClusterTag(sg.Tags) {
@@ -1752,8 +1794,11 @@ func (c *Cloud) EnsureLoadBalancerDeleted(ctx context.Context, clusterName strin
 
 		_, httpRes, errDeleteLB := c.lbu.DeleteLoadBalancer(request)
 		if err != nil {
+		    if httpRes != nil {
+                return fmt.Errorf(httpRes.Status)
+            }
 			// TODO: Check if error was because load balancer was concurrently deleted
-			klog.Errorf("Error deleting load balancer: %q %q", errDeleteLB, httpRes)
+			klog.Errorf("Error deleting load balancer: %q", errDeleteLB)
 			return err
 		}
 	}
@@ -1776,7 +1821,10 @@ func (c *Cloud) EnsureLoadBalancerDeleted(ctx context.Context, clusterName strin
 
 		response, httpRes, err := c.fcu.ReadSecurityGroups(describeRequest)
 		if err != nil {
-			return fmt.Errorf("error querying security groups for LBU: %q %q", err, httpRes)
+		    if httpRes != nil {
+		    	return fmt.Errorf(httpRes.Status)
+		    }
+			return fmt.Errorf("error querying security groups for LBU: %q", err)
 		}
 
 		// Collect the security groups to delete
@@ -1824,7 +1872,7 @@ func (c *Cloud) EnsureLoadBalancerDeleted(ctx context.Context, clusterName strin
 						}
 					}
 					if !ignore {
-						return fmt.Errorf("error while deleting load balancer security group (%s): %q %q", securityGroupID, err, httpRes)
+						return fmt.Errorf("error while deleting load balancer security group (%s): %q %q", securityGroupID, err, httpRes.Status)
 					}
 				}
 			}
@@ -1942,7 +1990,9 @@ func (c *Cloud) getInstancesByIDs(instanceIDs []string) (map[string]osc.Vm, erro
     }
 	instances, httpRes, err := c.fcu.ReadVms(request)
 	if err != nil {
-	    fmt.Errorf("http %q", httpRes)
+	    if httpRes != nil {
+			return nil, fmt.Errorf(httpRes.Status)
+		}
 		return nil, err
 	}
 
@@ -2011,7 +2061,9 @@ func (c *Cloud) describeInstances(filters osc.FiltersVm) ([]osc.Vm, error) {
     }
 	response, httpRes, err := c.fcu.ReadVms(request)
 	if err != nil {
-	    fmt.Errorf("http %q", httpRes)
+	    if httpRes != nil {
+			return []osc.Vm{}, fmt.Errorf(httpRes.Status)
+		}
 		return []osc.Vm{}, err
 	}
 
@@ -2030,10 +2082,14 @@ func (c *Cloud) findInstanceByNodeName(nodeName types.NodeName) (osc.Vm, error) 
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("findInstanceByNodeName(%v)", nodeName)
 
-	privateDNSName := mapNodeNameToPrivateDNSName(nodeName)
+	//privateDnsName := mapNodeNameToPrivateDNSName(nodeName)
 
 	filters := osc.FiltersVm{
-	        Tags: []string{TagNameClusterNode:privateDNSName, c.tagging.clusterTagKey():[ResourceLifecycleOwned, ResourceLifecycleShared]},
+	        Tags: []string{
+//                 {TagNameClusterNode: privateDNSName},
+//                 {c.tagging.clusterTagKey(): ResourceLifecycleOwned},
+//                 {c.tagging.clusterTagKey(): ResourceLifecycleShared},
+            },
 //             Tags: []string{
 //                 {
 //                     c.tagging.clusterTagKey(): ResourceLifecycleOwned,

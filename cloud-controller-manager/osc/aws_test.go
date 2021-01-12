@@ -753,12 +753,11 @@ func TestGetRegion(t *testing.T) {
 	}
 }
 
-func TestfindVPCID(t *testing.T) {
+func TestFindVPCID(t *testing.T) {
 	oscServices := newMockedFakeOSCServices(TestClusterID)
 	c, err := newOSCCloud(CloudConfig{}, oscServices)
 	if err != nil {
 		t.Errorf("Error building osc cloud: %v", err)
-		return
 	}
 	vpcID, err := c.findVPCID()
 	if err != nil {

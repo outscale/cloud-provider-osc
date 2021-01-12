@@ -117,7 +117,10 @@ func (c *Cloud) getVpcCidrBlocks() ([]string, error) {
 			}),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("error querying VPC for LBU: %q httpRes :%q", err, httpRes.Status)
+	    if httpRes != nil {
+			return nil, fmt.Errorf(httpRes.Status)
+		}
+		return nil, fmt.Errorf("error querying VPC for LBU: %q", err)
 	}
 	if len(vpcs.Nets) != 1 {
 		return nil, fmt.Errorf("error querying VPC for LBU, got %d vpcs for %s", len(vpcs.Nets), c.netID)
@@ -375,7 +378,10 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 
 		_, httpRes, err := c.lbu.CreateLoadBalancer(&createRequest)
 		if err != nil {
-		    klog.Infof("c.lbu.CreateLoadBalancer(createRequest) Error : %v Http Result : %v", err, httpRes)
+		    if httpRes != nil {
+			    return osc.LoadBalancer{}, fmt.Errorf(httpRes.Status)
+		    }
+		    klog.Infof("c.lbu.CreateLoadBalancer(createRequest) Error : %v", err)
 			return osc.LoadBalancer{}, err
 		}
 
@@ -444,7 +450,8 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 
 				klog.V(2).Info("Deleting removed load balancer listeners")
 				if _, httpRes, err := c.lbu.DeleteLoadBalancerListeners(request); err != nil {
-					return osc.LoadBalancer{}, fmt.Errorf("error deleting OSC loadbalancer listeners: %q %q", err, httpRes)
+
+					return osc.LoadBalancer{}, fmt.Errorf("error deleting OSC loadbalancer listeners: %q %q", err, httpRes.Status)
 				}
 				dirty = true
 			}
@@ -460,7 +467,7 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 
 				klog.V(2).Info("Creating added load balancer listeners")
 				if _, httpRes, err := c.lbu.CreateLoadBalancerListeners(request); err != nil {
-					return osc.LoadBalancer{}, fmt.Errorf("error creating OSC loadbalancer listeners: %q %q", err, httpRes)
+					return osc.LoadBalancer{}, fmt.Errorf("error creating OSC loadbalancer listeners: %q %q", err, httpRes.Status)
 				}
 				dirty = true
 			}
@@ -561,7 +568,10 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 
 		describeAttributesOutput, httpRes, err := c.lbu.ReadLoadBalancers(describeAttributesRequest)
 		if err != nil {
-			klog.Warning("Unable to retrieve load balancer attributes during attribute sync %v", httpRes)
+		    if httpRes != nil {
+                return osc.LoadBalancer{}, fmt.Errorf(httpRes.Status)
+            }
+			klog.Warning("Unable to retrieve load balancer attributes during attribute sync")
 			return osc.LoadBalancer{}, err
 		}
 
@@ -582,7 +592,7 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 				loadBalancerName, loadBalancerAttributes)
 			_, httpRes, err = c.lbu.UpdateLoadBalancer(modifyAttributesRequest)
 			if err != nil {
-				return osc.LoadBalancer{}, fmt.Errorf("Unable to update load balancer attributes during attribute sync: %q httpRes: %q", err, httpRes)
+				return osc.LoadBalancer{}, fmt.Errorf("Unable to update load balancer attributes during attribute sync: %q httpRes: %q", err, httpRes.Status)
 			}
 			dirty = true
 		}
@@ -765,7 +775,10 @@ func (c *Cloud) ensureLoadBalancerHealthCheck(loadBalancer osc.LoadBalancer,
 
 	_, httpRes, errUpdate := c.lbu.UpdateLoadBalancer(request)
 	if err != nil {
-		return fmt.Errorf("error configuring load balancer health check for %q: %q http %q", name, errUpdate, httpRes)
+	    if httpRes != nil {
+			return fmt.Errorf(httpRes.Status)
+		}
+		return fmt.Errorf("error configuring load balancer health check for %q: %q", name, errUpdate)
 	}
 
 	return nil
@@ -814,7 +827,9 @@ func (c *Cloud) ensureLoadBalancerInstances(loadBalancerName string,
 
 		_, httpRes, err := c.lbu.RegisterVmsInLoadBalancer(registerRequest)
 		if err != nil {
-		    fmt.Errorf("Http result %q", httpRes)
+		    if httpRes != nil {
+                return fmt.Errorf(httpRes.Status)
+            }
 			return err
 		}
 		klog.V(1).Infof("Instances added to load-balancer %s", loadBalancerName)
@@ -829,7 +844,9 @@ func (c *Cloud) ensureLoadBalancerInstances(loadBalancerName string,
 
 		_, httpRes, err := c.lbu.DeregisterVmsInLoadBalancer(deregisterRequest)
 		if err != nil {
-		    fmt.Errorf("Http %q", httpRes)
+		    if httpRes != nil {
+                return fmt.Errorf(httpRes.Status)
+            }
 			return err
 		}
 		klog.V(1).Infof("Instances removed from load-balancer %s", loadBalancerName)
@@ -871,7 +888,7 @@ func (c *Cloud) ensureSSLNegotiationPolicy(loadBalancer osc.LoadBalancer, policy
 			switch aerr.Code() {
 			//case osc.ErrCodePolicyNotFoundException:
 			default:
-				return fmt.Errorf("error describing security policies on load balancer: %q %q", err, httpRes)
+				return fmt.Errorf("error describing security policies on load balancer: %q %q", err, httpRes.Status)
 			}
 		}
 	}
@@ -893,7 +910,10 @@ func (c *Cloud) ensureSSLNegotiationPolicy(loadBalancer osc.LoadBalancer, policy
 	    			}),
 	    })
 	if err != nil {
-		return fmt.Errorf("error creating security policy on load balancer: %q %q", err, httpRes)
+	    if httpRes != nil {
+			return fmt.Errorf(httpRes.Status)
+		}
+		return fmt.Errorf("error creating security policy on load balancer: %q", err)
 	}
 	return nil
 }
@@ -914,7 +934,7 @@ func (c *Cloud) setSSLNegotiationPolicy(loadBalancerName, sslPolicyName string, 
 	klog.V(2).Infof("Setting SSL negotiation policy '%s' on load balancer", policyName)
 	_, httpRes, err := c.lbu.CreateLoadBalancerListeners(request)
 	if err != nil {
-		return fmt.Errorf("error setting SSL negotiation policy '%s' on load balancer: %q %q", policyName, err, httpRes)
+		return fmt.Errorf("error setting SSL negotiation policy '%s' on load balancer: %q %q", policyName, err, httpRes.Status)
 	}
 	return nil
 }
@@ -934,7 +954,10 @@ func (c *Cloud) createProxyProtocolPolicy(loadBalancerName string) error {
 	klog.V(2).Info("Creating proxy protocol policy on load balancer")
 	_, httpRes, err := c.lbu.CreateLoadBalancerPolicy(request)
 	if err != nil {
-		return fmt.Errorf("error creating proxy protocol policy on load balancer: %q %q", err, httpRes)
+	    if httpRes != nil {
+			return fmt.Errorf(httpRes.Status)
+		}
+		return fmt.Errorf("error creating proxy protocol policy on load balancer: %q", err)
 	}
 
 	return nil
@@ -967,7 +990,10 @@ func (c *Cloud) setBackendPolicies(loadBalancerName string, instancePort int32, 
 	}
 	_, httpRes, err := c.lbu.CreateLoadBalancerPolicy(request)
 	if err != nil {
-		return fmt.Errorf("error adjusting OSC loadbalancer backend policies: %q %q", err, httpRes)
+	    if httpRes != nil {
+			return fmt.Errorf(httpRes.Status)
+		}
+		return fmt.Errorf("error adjusting OSC loadbalancer backend policies: %q", err)
 	}
 
 	return nil

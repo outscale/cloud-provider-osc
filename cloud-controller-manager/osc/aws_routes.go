@@ -46,7 +46,9 @@ func (c *Cloud) findRouteTable(clusterName string) (osc.RouteTable, error) {
         }
 		response, httpRes, err := c.fcu.ReadRouteTables(request)
 		if err != nil {
-		    fmt.Errorf("http %q", httpRes)
+		    if httpRes != nil {
+                return osc.RouteTable{}, fmt.Errorf(httpRes.Status)
+            }
 			return osc.RouteTable{}, err
 		}
 
@@ -55,7 +57,9 @@ func (c *Cloud) findRouteTable(clusterName string) (osc.RouteTable, error) {
 		request := &osc.ReadRouteTablesOpts{}
 		response, httpRes, err := c.fcu.ReadRouteTables(request)
 		if err != nil {
-		    fmt.Errorf("http %q", httpRes)
+		    if httpRes != nil {
+                return osc.RouteTable{}, fmt.Errorf(httpRes.Status)
+            }
 			return osc.RouteTable{}, err
 		}
 
@@ -148,7 +152,10 @@ func (c *Cloud) configureInstanceSourceDestCheck(instanceID string, sourceDestCh
 
 	_, httpRes, err := c.fcu.UpdateVm(request)
 	if err != nil {
-		return fmt.Errorf("error configuring source-dest-check on instance %s: %q %q", instanceID, err, httpRes)
+	    if httpRes != nil {
+			return fmt.Errorf(httpRes.Status)
+		}
+		return fmt.Errorf("error configuring source-dest-check on instance %s: %q", instanceID, err)
 	}
 	return nil
 }
@@ -199,7 +206,10 @@ func (c *Cloud) CreateRoute(ctx context.Context, clusterName string, nameHint st
 
 		_, httpRes, errBlackhole := c.fcu.DeleteRoute(request)
 		if err != nil {
-			return fmt.Errorf("error deleting blackholed OSC route (%s): %q %q", deleteRoute.DestinationIpRange, errBlackhole, httpRes)
+		    if httpRes != nil {
+                return fmt.Errorf(httpRes.Status)
+            }
+			return fmt.Errorf("error deleting blackholed OSC route (%s): %q", deleteRoute.DestinationIpRange, errBlackhole)
 		}
 	}
 
@@ -215,7 +225,10 @@ func (c *Cloud) CreateRoute(ctx context.Context, clusterName string, nameHint st
 
 	_, httpRes, errRoute := c.fcu.CreateRoute(request)
 	if err != nil {
-		return fmt.Errorf("error creating OSC route (%s): %q %q", route.DestinationCIDR, errRoute, httpRes)
+	    if httpRes != nil {
+			return fmt.Errorf(httpRes.Status)
+		}
+		return fmt.Errorf("error creating OSC route (%s): %q", route.DestinationCIDR, errRoute)
 	}
 
 	return nil
@@ -239,7 +252,10 @@ func (c *Cloud) DeleteRoute(ctx context.Context, clusterName string, route *clou
 
 	_, httpRes, errDelete := c.fcu.DeleteRoute(request)
 	if err != nil {
-		return fmt.Errorf("error deleting OSC route (%s): %q %q", route.DestinationCIDR, errDelete, httpRes)
+	    if httpRes != nil {
+			return fmt.Errorf(httpRes.Status)
+		}
+		return fmt.Errorf("error deleting OSC route (%s): %q", route.DestinationCIDR, errDelete)
 	}
 
 	return nil
