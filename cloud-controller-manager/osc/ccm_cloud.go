@@ -1533,14 +1533,13 @@ func (c *Cloud) getTaggedSecurityGroups() (map[string]osc.SecurityGroup, error) 
 	    ReadSecurityGroupsRequest: optional.NewInterface(
 	        osc.ReadSecurityGroupsRequest{
                 Filters: osc.FiltersSecurityGroup{
-                    Tags: []string{
-//                         {c.tagging.clusterTagKey(): ResourceLifecycleOwned},
-//                         {c.tagging.clusterTagKey(): ResourceLifecycleShared},
-//                         {TagNameMainSG+c.tagging.clusterID(): True},
+                    TagKeys:   []string{c.tagging.clusterTagKey(), c.tagging.clusterTagKey(), TagNameMainSG+c.tagging.clusterID()},
+		            TagValues: []string{ResourceLifecycleOwned, ResourceLifecycleShared, "True"},
+
                     // A verifier
 //                 newTagFilter(c.tagging.clusterTagKey(), []string{ResourceLifecycleOwned, ResourceLifecycleShared}...),
 //                 newtagFilter(TagNameMainSG+c.tagging.clusterID(), "True"),
-                    },
+
                 },
 	    }),
 	}
@@ -2082,14 +2081,14 @@ func (c *Cloud) findInstanceByNodeName(nodeName types.NodeName) (osc.Vm, error) 
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("findInstanceByNodeName(%v)", nodeName)
 
-	//privateDnsName := mapNodeNameToPrivateDNSName(nodeName)
+	privateDnsName := mapNodeNameToPrivateDNSName(nodeName)
 
 	filters := osc.FiltersVm{
-	        Tags: []string{
-//                 {TagNameClusterNode: privateDNSName},
-//                 {c.tagging.clusterTagKey(): ResourceLifecycleOwned},
-//                 {c.tagging.clusterTagKey(): ResourceLifecycleShared},
-            },
+	            TagKeys: []string{TagNameClusterNode, c.tagging.clusterTagKey()},
+	            TagValues: []string{privateDnsName, ResourceLifecycleOwned, ResourceLifecycleShared},
+            }
+
+
 //             Tags: []string{
 //                 {
 //                     c.tagging.clusterTagKey(): ResourceLifecycleOwned,
@@ -2107,7 +2106,7 @@ func (c *Cloud) findInstanceByNodeName(nodeName types.NodeName) (osc.Vm, error) 
 // 		newVmFilter("instance-state-name", aliveFilter...),
 // 		newVmFilter("tag:"+c.tagging.clusterTagKey(),
 // 			[]string{ResourceLifecycleOwned, ResourceLifecycleShared}...),
-	}
+
 
 	instances, err := c.describeInstances(filters)
 

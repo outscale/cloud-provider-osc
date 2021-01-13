@@ -819,11 +819,13 @@ func (c *Cloud) ensureLoadBalancerInstances(loadBalancerName string,
 	klog.V(10).Infof("ensureLoadBalancerInstances register/Deregister addInstances(%v) , removeInstances(%v)", addInstances, removeInstances)
 
 	if len(addInstances) > 0 {
-	    request := osc.RegisterVmsInLoadBalancerRequest{
-	        BackendVmIds: addInstances,
-	        LoadBalancerName: loadBalancerName,
-	    }
-		registerRequest := &osc.RegisterVmsInLoadBalancerOpts{optional.NewInterface(request)}
+		registerRequest := &osc.RegisterVmsInLoadBalancerOpts{
+            RegisterVmsInLoadBalancerRequest: optional.NewInterface(
+                osc.RegisterVmsInLoadBalancerRequest{
+                    BackendVmIds: addInstances,
+	                LoadBalancerName: loadBalancerName,
+                }),
+		}
 
 		_, httpRes, err := c.lbu.RegisterVmsInLoadBalancer(registerRequest)
 		if err != nil {
@@ -836,11 +838,15 @@ func (c *Cloud) ensureLoadBalancerInstances(loadBalancerName string,
 	}
 
 	if len(removeInstances) > 0 {
-	    request := osc.DeregisterVmsInLoadBalancerRequest{
-	        BackendVmIds: removeInstances,
-		    LoadBalancerName: loadBalancerName,
-	    }
-		deregisterRequest := &osc.DeregisterVmsInLoadBalancerOpts{optional.NewInterface(request)}
+		deregisterRequest := &osc.DeregisterVmsInLoadBalancerOpts{
+            DeregisterVmsInLoadBalancerRequest: optional.NewInterface(
+                osc.DeregisterVmsInLoadBalancerRequest{
+                    BackendVmIds: removeInstances,
+		            LoadBalancerName: loadBalancerName,
+                }),
+		}
+
+
 
 		_, httpRes, err := c.lbu.DeregisterVmsInLoadBalancer(deregisterRequest)
 		if err != nil {

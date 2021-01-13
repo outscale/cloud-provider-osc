@@ -499,14 +499,14 @@ func TestNewOSCCloud(t *testing.T) {
 		},
 		{
 			"Config specifies valid zone",
-			strings.NewReader("[global]\nzone = eu-west-1a"), newMockedFakeOSCServices(TestClusterID),
-			false, "eu-west-1",
+			strings.NewReader("[global]\nzone = eu-west-2a"), newMockedFakeOSCServices(TestClusterID),
+			false, "eu-west-2",
 		},
 		{
 			"Gets zone from metadata when not in config",
 			strings.NewReader("[global]\n"),
 			newMockedFakeOSCServices(TestClusterID),
-			false, "us-east-1",
+			false, "eu-west-2",
 		},
 		{
 			"No zone in config or metadata",
@@ -519,10 +519,15 @@ func TestNewOSCCloud(t *testing.T) {
 	for _, test := range tests {
 		t.Logf("Running test case %s", test.name)
 		cfg, err := readOSCCloudConfig(test.reader)
+		t.Logf("After readOSCCloudConfig")
+
 		var c *Cloud
 		if err == nil {
+		    t.Logf("if  newOSCCloud Before")
 			c, err = newOSCCloud(*cfg, test.oscServices)
+			t.Logf("if  newOSCCloud After")
 		}
+		t.Logf("After newOSCCloud")
 		if test.expectError {
 			if err == nil {
 				t.Errorf("Should error for case %s", test.name)

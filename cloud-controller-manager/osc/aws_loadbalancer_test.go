@@ -60,21 +60,22 @@ func TestLbuProtocolsAreEqual(t *testing.T) {
 			R:        "",
 			Expected: true,
 		},
-		{
-			L:        "",
-			R:        "",
-			Expected: false,
-		},
-		{
-			L:        "",
-			R:        "",
-			Expected: false,
-		},
-		{
-			L:        "",
-			R:        "",
-			Expected: true,
-		},
+// A verifier (string cannot be nill)
+// 		{
+// 			L:        nil,
+// 			R:        "",
+// 			Expected: false,
+// 		},
+// 		{
+// 			L:        "",
+// 			R:        nil,
+// 			Expected: false,
+// 		},
+// 		{
+// 			L:        nil,
+// 			R:        nil,
+// 			Expected: true,
+// 		},
 	}
 	for _, g := range grid {
 		actual := lbuProtocolsAreEqual(g.L, g.R)
@@ -110,21 +111,21 @@ func TestOSCARNEquals(t *testing.T) {
 			R:        "",
 			Expected: true,
 		},
-		{
-			L:        "",
-			R:        "",
-			Expected: false,
-		},
-		{
-			L:        "",
-			R:        "",
-			Expected: false,
-		},
-		{
-			L:        "",
-			R:        "",
-			Expected: true,
-		},
+// 		{
+// 			L:        nil,
+// 			R:        "",
+// 			Expected: false,
+// 		},
+// 		{
+// 			L:        "",
+// 			R:        nil,
+// 			Expected: false,
+// 		},
+// 		{
+// 			L:        nil,
+// 			R:        nil,
+// 			Expected: true,
+// 		},
 	}
 	for _, g := range grid {
 		actual := oscArnEquals(g.L, g.R)

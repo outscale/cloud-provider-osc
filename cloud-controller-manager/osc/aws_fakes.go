@@ -46,7 +46,7 @@ type FakeOSCServices struct {
 // NewFakeOSCServices creates a new FakeOSCServices
 func NewFakeOSCServices(clusterID string) *FakeOSCServices {
 	s := &FakeOSCServices{}
-	s.region = "us-east-1"
+	s.region = "eu-west-2"
 	s.fcu = &FakeFCUImpl{osc: s}
 	s.lbu = &FakeLBU{osc: s}
 	s.metadata = &FakeMetadata{osc: s}
@@ -57,7 +57,7 @@ func NewFakeOSCServices(clusterID string) *FakeOSCServices {
 	selfInstance := osc.Vm{}
 	selfInstance.VmId = "i-self"
 	selfInstance.Placement = osc.Placement{
-		SubregionName: "us-east-1a",
+		SubregionName: "eu-west-2a",
 	}
 	selfInstance.PrivateDnsName = "ip-172-20-0-100.ec2.internal"
 	selfInstance.PrivateIp = "192.168.0.1"

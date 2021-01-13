@@ -35,6 +35,7 @@ type oscSdk struct {
 	//fcu    *osc.
 }
 
+
 // Implementation of OSC.Vm
 func (s *oscSdk) ReadVms(request *osc.ReadVmsOpts) ([]osc.Vm, *_nethttp.Response, error) {
 	// Instances are not paged
@@ -42,15 +43,14 @@ func (s *oscSdk) ReadVms(request *osc.ReadVmsOpts) ([]osc.Vm, *_nethttp.Response
 	requestTime := time.Now()
 	var httpRes *_nethttp.Response
 	var err error
-	for {
-		response, httpRes, err = s.api.VmApi.ReadVms(s.auth, request)
-		if err != nil {
-			recordOSCMetric("describe_instance", 0, err)
-			return nil, httpRes, fmt.Errorf("error listing OSC instances: %q", err)
-		}
+	response, httpRes, err = s.api.VmApi.ReadVms(s.auth, request)
+	if err != nil {
+		recordOSCMetric("read_vms", 0, err)
+		return nil, httpRes, fmt.Errorf("error listing OSC instances: %q", err)
 	}
+
 	timeTaken := time.Since(requestTime).Seconds()
-	recordOSCMetric("describe_instance", timeTaken, nil)
+	recordOSCMetric("read_vms", timeTaken, nil)
 	return response.Vms, httpRes, nil
 }
 
@@ -61,15 +61,14 @@ func (s *oscSdk) ReadSecurityGroups(request *osc.ReadSecurityGroupsOpts) ([]osc.
 	requestTime := time.Now()
 	var httpRes *_nethttp.Response
 	var err error
-	for {
-		results, httpRes, err = s.api.SecurityGroupApi.ReadSecurityGroups(s.auth, request)
-		if err != nil {
-			recordOSCMetric("describe_security_groups", 0, err)
-			return nil, httpRes, fmt.Errorf("error listing OSC security groups: %q", err)
-		}
+	results, httpRes, err = s.api.SecurityGroupApi.ReadSecurityGroups(s.auth, request)
+	if err != nil {
+		recordOSCMetric("read_security_groups", 0, err)
+		return nil, httpRes, fmt.Errorf("error listing OSC security groups: %q", err)
 	}
+
 	timeTaken := time.Since(requestTime).Seconds()
-	recordOSCMetric("describe_security_groups", timeTaken, nil)
+	recordOSCMetric("read_security_groups", timeTaken, nil)
 	return results.SecurityGroups, httpRes, nil
 }
 
@@ -112,17 +111,14 @@ func (s *oscSdk) ReadRouteTables(request *osc.ReadRouteTablesOpts) ([]osc.RouteT
 	requestTime := time.Now()
 	var httpRes *_nethttp.Response
 	var err error
-	for {
 		results, httpRes, err = s.api.RouteTableApi.ReadRouteTables(s.auth, request)
 		if err != nil {
-			recordOSCMetric("describe_route_tables", 0, err)
+			recordOSCMetric("read_route_tables", 0, err)
 			return nil, httpRes, fmt.Errorf("error listing OSC route tables: %q", err)
 		}
-        // A verifier
-		 //results = append(results, results.RouteTables...)
-	}
+
 	timeTaken := time.Since(requestTime).Seconds()
-	recordOSCMetric("describe_route_tables", timeTaken, nil)
+	recordOSCMetric("read_route_tables", timeTaken, nil)
 	return results.RouteTables, httpRes, nil
 }
 
