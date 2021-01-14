@@ -139,16 +139,21 @@ func newOSCCloud(cfg CloudConfig, oscServices Services) (*Cloud, error) {
 	}
 
 	if cfg.Global.KubernetesClusterTag != "" || cfg.Global.KubernetesClusterID != "" {
+	    klog.Infof("Inside if cfg.Global.KubernetesClusterTag  || cfg.Global.KubernetesClusterID ")
 		if err := oscCloud.tagging.init(cfg.Global.KubernetesClusterTag, cfg.Global.KubernetesClusterID); err != nil {
+		    klog.Infof("Inside if osccloud.tagging.init")
 			return nil, err
 		}
 	} else {
+	    klog.Infof("Inside else")
 		// TODO: Clean up double-API query
 		info, err := oscCloud.selfOSCInstance.describeInstance()
+		klog.Infof("after oscCloud.selfOSCInstance.describeInstance %v %q", info, err)
 		if err != nil {
 			return nil, err
 		}
 		if err := oscCloud.tagging.initFromTags(info.Tags); err != nil {
+		    klog.Infof(" if osccloud.tagging.initfromtags %v", err)
 			return nil, err
 		}
 	}

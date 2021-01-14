@@ -197,6 +197,8 @@ func (c *Cloud) HasClusterID() bool {
 func (c *Cloud) NodeAddresses(ctx context.Context, name types.NodeName) ([]v1.NodeAddress, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("NodeAddresses(%v)", name)
+	klog.Infof("NodeAddresses name  %v", name)
+	klog.Infof("NodeAddresses  c.selfOSCInstance.nodeName %v", c.selfOSCInstance.nodeName)
 	if c.selfOSCInstance.nodeName == name || len(name) == 0 {
 		addresses := []v1.NodeAddress{}
 
@@ -257,6 +259,8 @@ func (c *Cloud) NodeAddresses(ctx context.Context, name types.NodeName) ([]v1.No
 	}
 
 	instance, err := c.getInstanceByNodeName(name)
+	klog.Infof("NodeAddresses before extractNodeadresse %v %v", len(instance) , instance)
+
 	if err != nil {
 		return nil, fmt.Errorf("getInstanceByNodeName failed for %q with %q", name, err)
 	}
@@ -2051,14 +2055,22 @@ func (c *Cloud) describeInstances(filters osc.FiltersVm) ([]osc.Vm, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("describeInstances(%v)", filters)
 
-
+    klog.Infof("describeInstances filters %v", filters)
+    privateDnsName := mapNodeNameToPrivateDNSName(nodeName)
 	request := &osc.ReadVmsOpts{
 		ReadVmsRequest: optional.NewInterface(
 			osc.ReadVmsRequest{
-				Filters: filters,
+				//Filters: filters,
+				Filters: osc.FiltersVm{
+	                VmIds: []string{"test"},
+				},
 			}),
     }
+
+
+    klog.Infof("describeInstances request %v", request)
 	response, httpRes, err := c.fcu.ReadVms(request)
+	klog.Infof("describeInstances response Tag %v", response[0].Tags)
 	if err != nil {
 	    if httpRes != nil {
 			return []osc.Vm{}, fmt.Errorf(httpRes.Status)
@@ -2072,6 +2084,7 @@ func (c *Cloud) describeInstances(filters osc.FiltersVm) ([]osc.Vm, error) {
 			matches = append(matches, instance)
 		}
 	}
+	klog.Infof("describeInstances matches %v", matches)
 	return matches, nil
 }
 
@@ -2080,8 +2093,10 @@ func (c *Cloud) describeInstances(filters osc.FiltersVm) ([]osc.Vm, error) {
 func (c *Cloud) findInstanceByNodeName(nodeName types.NodeName) (osc.Vm, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("findInstanceByNodeName(%v)", nodeName)
+	klog.Infof("findInstanceByNodeName nodeName %v", nodeName)
 
 	privateDnsName := mapNodeNameToPrivateDNSName(nodeName)
+	klog.Infof("findInstanceByNodeName privateDnsName %v", privateDnsName)
 
 	filters := osc.FiltersVm{
 	            TagKeys: []string{TagNameClusterNode, c.tagging.clusterTagKey()},
@@ -2107,8 +2122,12 @@ func (c *Cloud) findInstanceByNodeName(nodeName types.NodeName) (osc.Vm, error) 
 // 		newVmFilter("tag:"+c.tagging.clusterTagKey(),
 // 			[]string{ResourceLifecycleOwned, ResourceLifecycleShared}...),
 
+    klog.Infof("findInstanceByNodeName filters %v", filters)
 
 	instances, err := c.describeInstances(filters)
+	klog.Infof("findInstanceByNodeName describeInstances %v", instances)
+	klog.Infof("findInstanceByNodeName describeInstances length %v", len(instances))
+	klog.Infof("findInstanceByNodeName Tags %v", instances[0].Tags)
 
 	if err != nil {
 		return osc.Vm{}, err
@@ -2136,13 +2155,19 @@ func (c *Cloud) getInstanceByNodeName(nodeName types.NodeName) (osc.Vm, error) {
 	// get instance by provider id is way more efficient than by filters in
 	// osc context
 	oscID, err := c.nodeNameToProviderID(nodeName)
+	klog.Infof("getInstanceByNodeName nodeName %v", nodeName)
+	klog.Infof("getInstanceByNodeName oscID %v %v", oscID, err)
 	if err != nil {
 		klog.V(3).Infof("Unable to convert node name %q to osc instanceID, fall back to findInstanceByNodeName: %v", nodeName, err)
+		klog.Infof("getInstanceByNodeName Before findInstanceByNodeName")
 		instance, err = c.findInstanceByNodeName(nodeName)
+		klog.Infof("getInstanceByNodeName After  findInstanceByNodeName %v", instance)
 		// we need to set provider id for next calls
 
 	} else {
+
 		instance, err = c.getInstanceByID(string(oscID))
+		klog.Infof("getInstanceByNodeName %v", instance)
 	}
 	if err == nil && reflect.DeepEqual(instance,osc.Vm{}) {
 		return osc.Vm{}, cloudprovider.InstanceNotFound
@@ -2168,6 +2193,7 @@ func (c *Cloud) getFullInstance(nodeName types.NodeName) (*oscInstance, osc.Vm, 
 func (c *Cloud) nodeNameToProviderID(nodeName types.NodeName) (InstanceID, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("nodeNameToProviderID(%v)", nodeName)
+	klog.Infof("nodeNameToProviderID %v", nodeName)
 	if len(nodeName) == 0 {
 		return "", fmt.Errorf("no nodeName provided")
 	}
@@ -2183,6 +2209,7 @@ func (c *Cloud) nodeNameToProviderID(nodeName types.NodeName) (InstanceID, error
 	if len(node.Spec.ProviderID) == 0 {
 		return "", fmt.Errorf("node has no providerID")
 	}
-
+    klog.Infof("nodeNameToProviderID node.Spec.ProviderID %v", node.Spec.ProviderID)
+    klog.Infof("nodeNameToProviderID KubernetesInstanceID(node.Spec.ProviderID) %v", KubernetesInstanceID(node.Spec.ProviderID))
 	return KubernetesInstanceID(node.Spec.ProviderID).MapToOSCInstanceID()
 }

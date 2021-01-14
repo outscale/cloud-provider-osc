@@ -119,6 +119,8 @@ type FakeFCUImpl struct {
 func (fcui *FakeFCUImpl) ReadVms(request *osc.ReadVmsOpts) ([]osc.Vm, *_nethttp.Response, error) {
 	matches := []osc.Vm{}
 
+    klog.Infof("fake readvm")
+
     requestVm := request.ReadVmsRequest.Value().(osc.ReadVmsRequest).Filters
 	for _, instance := range fcui.osc.instances {
 		if requestVm.VmIds != nil {

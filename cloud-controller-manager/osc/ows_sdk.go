@@ -43,6 +43,8 @@ func (s *oscSdk) ReadVms(request *osc.ReadVmsOpts) ([]osc.Vm, *_nethttp.Response
 	requestTime := time.Now()
 	var httpRes *_nethttp.Response
 	var err error
+	klog.Infof("True readvm")
+
 	response, httpRes, err = s.api.VmApi.ReadVms(s.auth, request)
 	if err != nil {
 		recordOSCMetric("read_vms", 0, err)

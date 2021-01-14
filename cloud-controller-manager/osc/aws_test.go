@@ -623,6 +623,7 @@ func TestNodeAddresses(t *testing.T) {
 // 	}
 	instance1.State = "running"
 
+
 	//2
 	instance2.VmId = "i-2"
 	instance2.PrivateDnsName = "instance-other.ec2.internal"
@@ -741,7 +742,7 @@ func TestParseMetadataLocalHostname(t *testing.T) {
 }
 
 func TestGetRegion(t *testing.T) {
-	osc := mockAvailabilityZone("us-west-2e")
+	osc := mockAvailabilityZone("eu-west-2a")
 	zones, ok := osc.Zones()
 	if !ok {
 		t.Fatalf("Unexpected missing zones impl")
@@ -750,10 +751,10 @@ func TestGetRegion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
-	if zone.Region != "us-west-2" {
+	if zone.Region != "eu-west-2a" {
 		t.Errorf("Unexpected region: %s", zone.Region)
 	}
-	if zone.FailureDomain != "us-west-2e" {
+	if zone.FailureDomain != "eu-west-2a" {
 		t.Errorf("Unexpected FailureDomain: %s", zone.FailureDomain)
 	}
 }

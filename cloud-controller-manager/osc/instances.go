@@ -141,7 +141,10 @@ func describeInstance(fcuClient FCU, instanceID InstanceID) (osc.Vm, error) {
 			}),
 	}
 
+	klog.Infof("Inside describeInstance before readvm")
+
 	instances, httpRes, err := fcuClient.ReadVms(request)
+	klog.Infof("Inside describeInstance after readvm")
 	if err != nil {
 	    if httpRes != nil {
 			return osc.Vm{}, fmt.Errorf(httpRes.Status)
@@ -154,6 +157,7 @@ func describeInstance(fcuClient FCU, instanceID InstanceID) (osc.Vm, error) {
 	if len(instances) > 1 {
 		return osc.Vm{}, fmt.Errorf("multiple instances found for instance: %s", instanceID)
 	}
+	klog.Infof("Inside describeInstance before last return")
 	return instances[0], nil
 }
 

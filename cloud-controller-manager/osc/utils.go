@@ -518,7 +518,7 @@ func newOSCInstance(oscService FCU, instance osc.Vm) *oscInstance {
 // extractNodeAddresses maps the instance information from OSC to an array of NodeAddresses
 func extractNodeAddresses(instance osc.Vm) ([]v1.NodeAddress, error) {
 	// Not clear if the order matters here, but we might as well indicate a sensible preference order
-
+    klog.Infof("Inside extractNodeAddresses instance %v", instance)
 	if instance.VmId == "" {
 		return nil, fmt.Errorf("nil instance passed to extractNodeAddresses")
 	}
