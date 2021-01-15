@@ -2060,17 +2060,14 @@ func (c *Cloud) describeInstances(filters osc.FiltersVm) ([]osc.Vm, error) {
 	request := &osc.ReadVmsOpts{
 		ReadVmsRequest: optional.NewInterface(
 			osc.ReadVmsRequest{
-				//Filters: filters,
-				Filters: osc.FiltersVm{
-	                VmIds: []string{"test"},
-				},
+				Filters: filters,
 			}),
     }
 
 
     klog.Infof("describeInstances request %v", request)
 	response, httpRes, err := c.fcu.ReadVms(request)
-	klog.Infof("describeInstances response Tag %v", response[0].Tags)
+	//klog.Infof("describeInstances response Tag %v", response[0].Tags)
 	if err != nil {
 	    if httpRes != nil {
 			return []osc.Vm{}, fmt.Errorf(httpRes.Status)

@@ -27,6 +27,8 @@ import (
 
 	"k8s.io/klog"
 	_nethttp "net/http"
+
+	"reflect"
 )
 
 // FakeOSCServices is an fake AWS session used for testing
@@ -122,6 +124,8 @@ func (fcui *FakeFCUImpl) ReadVms(request *osc.ReadVmsOpts) ([]osc.Vm, *_nethttp.
     klog.Infof("fake readvm")
 
     requestVm := request.ReadVmsRequest.Value().(osc.ReadVmsRequest).Filters
+    klog.Infof("Fake ReadVms filter %v ", requestVm)
+    klog.Infof("Fake ReadVms request %v ", request)
 	for _, instance := range fcui.osc.instances {
 		if requestVm.VmIds != nil {
 			if instance.VmId == "" {
@@ -140,18 +144,21 @@ func (fcui *FakeFCUImpl) ReadVms(request *osc.ReadVmsOpts) ([]osc.Vm, *_nethttp.
 				continue
 			}
 		}
-// 		if request.Filters != nil {
-// 			allMatch := true
-// 			for _, filter := range request.Filters {
-// 				if !instanceMatchesFilter(instance, filter) {
-// 					allMatch = false
-// 					break
-// 				}
-// 			}
-// 			if !allMatch {
-// 				continue
-// 			}
-// 		}
+
+
+		// A verifier
+ 		if !reflect.DeepEqual(requestVm, osc.FiltersVm{}) {
+ 			allMatch := true
+ 			//for _, filter := range requestVm {
+ 				if !instanceMatchesFilter(instance, requestVm) {
+ 					allMatch = false
+ 					break
+ 				}
+ 			//}
+ 			if !allMatch {
+ 				continue
+ 			}
+ 		}
 		matches = append(matches, instance)
 	}
 
@@ -442,12 +449,34 @@ func (lbu *FakeLBU) expectDescribeLoadBalancers(loadBalancerName string) {
 	panic("Not implemented")
 }
 
-// func instanceMatchesFilter(instance osc.Vm, filter *osc.FiltersVm) bool {
-//     filter.VmIds[0]
-//     instance.PrivateDnsName
-//
-//
-//
+func instanceMatchesFilter(instance osc.Vm, filter osc.FiltersVm) bool {
+    klog.Infof("instanceMatchesFilter instance, filter %v %v", instance, filter)
+    if contains(filter.TagValues, instance.PrivateDnsName){
+            klog.Infof("instanceMatchesFilter contains(filter.TagValues, instance.PrivateDnsName) %v %v", filter.TagValues, instance.PrivateDnsName)
+            return true
+    }
+    klog.Infof("instanceMatchesFilter filter.TagValues %v", filter.TagValues)
+    klog.Infof("instanceMatchesFilter filter.Tagkeys %v", filter.TagKeys)
+    klog.Infof("instanceMatchesFilter instance.Tags %v", instance.Tags)
+    klog.Infof("instanceMatchesFilter instance.PrivateDnsName %v", instance.PrivateDnsName)
+     for _, instanceTag := range instance.Tags {
+ 		if contains(filter.TagKeys, instanceTag.Key) {
+ 		    klog.Infof("instanceMatchesFilter contains(filter.TagKeys, instanceTag.Key) %v %v", filter.TagKeys, instanceTag.Key)
+ 			return true
+ 		}
+ 	}
+
+
+
+	if contains(filter.VmIds, instance.VmId){
+	    klog.Infof("instanceMatchesFilter contains(filter.VmIds, instance.VmId) %v %v", filter.VmIds, instance.VmId)
+	    return true
+	}
+
+	return false
+
+
+
 // 	name := *filter.Name
 // 	if name == "private-dns-name" {
 // 		if instance.PrivateDnsName == "" {
@@ -478,9 +507,9 @@ func (lbu *FakeLBU) expectDescribeLoadBalancers(loadBalancerName string) {
 // 		}
 // 		return false
 // 	}
-//
-// 	panic("Unknown filter name: " + name)
-// }
+
+	//panic("Unknown filter ")
+}
 
 func contains(haystack []string, needle string) bool {
 	for _, s := range haystack {
