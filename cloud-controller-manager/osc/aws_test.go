@@ -715,15 +715,15 @@ func TestParseMetadataLocalHostname(t *testing.T) {
 	}{
 		{
 			"single hostname",
-			"ip-172-31-16-168.us-west-2.compute.internal",
-			"ip-172-31-16-168.us-west-2.compute.internal",
-			[]string{"ip-172-31-16-168.us-west-2.compute.internal"},
+			"ip-172-31-16-168.eu-west-2.compute.internal",
+			"ip-172-31-16-168.eu-west-2.compute.internal",
+			[]string{"ip-172-31-16-168.eu-west-2.compute.internal"},
 		},
 		{
 			"dhcp options set with three additional domain names",
-			"ip-172-31-16-168.us-west-2.compute.internal example.com example.ca example.org",
-			"ip-172-31-16-168.us-west-2.compute.internal",
-			[]string{"ip-172-31-16-168.us-west-2.compute.internal", "ip-172-31-16-168.example.com", "ip-172-31-16-168.example.ca", "ip-172-31-16-168.example.org"},
+			"ip-172-31-16-168.eu-west-2.compute.internal example.com example.ca example.org",
+			"ip-172-31-16-168.eu-west-2.compute.internal",
+			[]string{"ip-172-31-16-168.eu-west-2.compute.internal", "ip-172-31-16-168.example.com", "ip-172-31-16-168.example.ca", "ip-172-31-16-168.example.org"},
 		},
 	}
 	for _, test := range tests {
@@ -853,13 +853,13 @@ func TestSubnetIDsinVPC(t *testing.T) {
 	subnets := make(map[int]map[string]string)
 	subnets[0] = make(map[string]string)
 	subnets[0]["id"] = "subnet-a0000001"
-	subnets[0]["az"] = "af-south-1a"
+	subnets[0]["az"] = "eu-west-2a"
 	subnets[1] = make(map[string]string)
 	subnets[1]["id"] = "subnet-b0000001"
-	subnets[1]["az"] = "af-south-1b"
+	subnets[1]["az"] = "eu-west-2b"
 	subnets[2] = make(map[string]string)
 	subnets[2]["id"] = "subnet-c0000001"
-	subnets[2]["az"] = "af-south-1c"
+	subnets[2]["az"] = "eu-west-2a"
 	constructedSubnets := constructSubnets(subnets)
 	oscServices.fcu.RemoveSubnets()
 	for _, subnet := range constructedSubnets {
@@ -946,10 +946,10 @@ func TestSubnetIDsinVPC(t *testing.T) {
 	// in the same AZ.
 	subnets[3] = make(map[string]string)
 	subnets[3]["id"] = "subnet-c0000000"
-	subnets[3]["az"] = "af-south-1c"
+	subnets[3]["az"] = "eu-west-2b"
 	subnets[4] = make(map[string]string)
 	subnets[4]["id"] = "subnet-c0000002"
-	subnets[4]["az"] = "af-south-1c"
+	subnets[4]["az"] = "eu-west-2b"
 	constructedSubnets = constructSubnets(subnets)
 	oscServices.fcu.RemoveSubnets()
 	for _, subnet := range constructedSubnets {
@@ -988,10 +988,10 @@ func TestSubnetIDsinVPC(t *testing.T) {
 	// with 3 private subnets
 	subnets[4] = make(map[string]string)
 	subnets[4]["id"] = "subnet-d0000001"
-	subnets[4]["az"] = "af-south-1a"
+	subnets[4]["az"] = "eu-west-2a"
 	subnets[5] = make(map[string]string)
 	subnets[5]["id"] = "subnet-d0000002"
-	subnets[5]["az"] = "af-south-1b"
+	subnets[5]["az"] = "eu-west-2b"
 
 	constructedSubnets = constructSubnets(subnets)
 	oscServices.fcu.RemoveSubnets()

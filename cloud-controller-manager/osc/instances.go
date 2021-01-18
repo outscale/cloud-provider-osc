@@ -141,10 +141,13 @@ func describeInstance(fcuClient FCU, instanceID InstanceID) (osc.Vm, error) {
 			}),
 	}
 
+    klog.Infof("Inside describeInstance request %v", request)
+
+
 	klog.Infof("Inside describeInstance before readvm")
 
 	instances, httpRes, err := fcuClient.ReadVms(request)
-	klog.Infof("Inside describeInstance after readvm")
+	klog.Infof("Inside describeInstance after readvm %v", instances)
 	if err != nil {
 	    if httpRes != nil {
 			return osc.Vm{}, fmt.Errorf(httpRes.Status)

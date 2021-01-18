@@ -87,17 +87,20 @@ func findClusterIDs(tags []osc.ResourceTag) (string, string, error) {
 	legacyClusterID := ""
 	newClusterID := ""
 
+    klog.Infof("findClusterIDs(%v)", tags)
+
 	for _, tag := range tags {
 	    klog.Infof("findClusterIDs 1")
 		tagKey := tag.Key
 		klog.Infof("findClusterIDs TaggKey %v", tagKey)
 		if strings.HasPrefix(tagKey, TagNameKubernetesClusterPrefix) {
 			id := strings.TrimPrefix(tagKey, TagNameKubernetesClusterPrefix)
-			klog.Infof("findClusterIDs 2")
+			klog.Infof("findClusterIDs id, TagNameKubernetesClusterPrefix %v, %v", id, TagNameKubernetesClusterPrefix)
 			if newClusterID != "" {
 				return "", "", fmt.Errorf("Found multiple cluster tags with prefix %s (%q and %q)", TagNameKubernetesClusterPrefix, newClusterID, id)
 			}
 			newClusterID = id
+			klog.Infof("findClusterIDs newClusterID %v", newClusterID)
 		}
         klog.Infof("findClusterIDs tagNameKubernetesCluster %v", tagNameKubernetesCluster())
 		if tagKey == tagNameKubernetesCluster() {
@@ -107,6 +110,7 @@ func findClusterIDs(tags []osc.ResourceTag) (string, string, error) {
 				return "", "", fmt.Errorf("Found multiple %s tags (%q and %q)", tagNameKubernetesCluster(), legacyClusterID, id)
 			}
 			legacyClusterID = id
+			klog.Infof("findClusterIDs legacyClusterID %v", legacyClusterID)
 		}
 	}
     klog.Infof("findClusterIDs 4 %q %q", legacyClusterID, newClusterID)
@@ -140,8 +144,10 @@ func (t *oscTagging) init(legacyClusterID string, clusterID string) error {
 // If multiple (different) clusterIDs are found, returns an error
 func (t *oscTagging) initFromTags(tags []osc.ResourceTag) error {
 	debugPrintCallerFunctionName()
+	klog.Infof("initFromTags")
 	klog.V(10).Infof("initFromTags(%v)", tags)
 	legacyClusterID, newClusterID, err := findClusterIDs(tags)
+	klog.Infof("initFromTags legacyClusterID, newClusterID %v %v", legacyClusterID, newClusterID)
 	if err != nil {
 		return err
 	}

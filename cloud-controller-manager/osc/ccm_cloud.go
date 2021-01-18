@@ -91,6 +91,7 @@ func (c *Cloud) buildSelfOSCInstance() (*oscInstance, error) {
 		panic("do not call buildSelfOSCInstance directly")
 	}
 	instanceID, err := c.metadata.GetMetadata("instance-id")
+	klog.Infof("buildSelfOSCInstance instanceID %v", instanceID)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching instance-id from osc metadata service: %q", err)
 	}
@@ -104,6 +105,7 @@ func (c *Cloud) buildSelfOSCInstance() (*oscInstance, error) {
 	// single API call to get all the information, and it means we don't
 	// have two code paths.
 	instance, err := c.getInstanceByID(instanceID)
+	klog.Infof("buildSelfOSCInstance instance %v", instance)
 	if err != nil {
 		return nil, fmt.Errorf("error finding instance %s: %q", instanceID, err)
 	}
@@ -200,6 +202,7 @@ func (c *Cloud) NodeAddresses(ctx context.Context, name types.NodeName) ([]v1.No
 	klog.Infof("NodeAddresses name  %v", name)
 	klog.Infof("NodeAddresses  c.selfOSCInstance.nodeName %v", c.selfOSCInstance.nodeName)
 	if c.selfOSCInstance.nodeName == name || len(name) == 0 {
+	    klog.Infof("NodeAddresses if c.selfOSCInstance.nodeName == name")
 		addresses := []v1.NodeAddress{}
 
 		macs, err := c.metadata.GetMetadata("network/interfaces/macs/")
@@ -258,8 +261,10 @@ func (c *Cloud) NodeAddresses(ctx context.Context, name types.NodeName) ([]v1.No
 		return addresses, nil
 	}
 
+	klog.Infof("NodeAddresses outside if ")
+
 	instance, err := c.getInstanceByNodeName(name)
-	klog.Infof("NodeAddresses before extractNodeadresse %v %v", len(instance) , instance)
+	klog.Infof("NodeAddresses before extractNodeadresse %v %v", instance, name)
 
 	if err != nil {
 		return nil, fmt.Errorf("getInstanceByNodeName failed for %q with %q", name, err)
@@ -1049,7 +1054,9 @@ func (c *Cloud) findLBUSubnets(internalLBU bool) ([]string, error) {
                 }),
 	    }
 
+        klog.Infof("findLBUSubnets  request %v", rRequest)
 	    rt, httpRes, err = c.fcu.ReadRouteTables(rRequest)
+	    klog.Infof("findLBUSubnets  rt %v", rt)
 
 		if err != nil {
 		    if httpRes != nil {
@@ -1128,6 +1135,8 @@ func (c *Cloud) findLBUSubnets(internalLBU bool) ([]string, error) {
 	for _, key := range azNames {
 		subnetIDs = append(subnetIDs, subnetsByAZ[key].SubnetId)
 	}
+
+	klog.Infof("findLBUSubnets  subnetIDs %v", subnetIDs)
 
 	return subnetIDs, nil
 }
@@ -2056,7 +2065,6 @@ func (c *Cloud) describeInstances(filters osc.FiltersVm) ([]osc.Vm, error) {
 	klog.V(10).Infof("describeInstances(%v)", filters)
 
     klog.Infof("describeInstances filters %v", filters)
-    privateDnsName := mapNodeNameToPrivateDNSName(nodeName)
 	request := &osc.ReadVmsOpts{
 		ReadVmsRequest: optional.NewInterface(
 			osc.ReadVmsRequest{
@@ -2124,7 +2132,7 @@ func (c *Cloud) findInstanceByNodeName(nodeName types.NodeName) (osc.Vm, error) 
 	instances, err := c.describeInstances(filters)
 	klog.Infof("findInstanceByNodeName describeInstances %v", instances)
 	klog.Infof("findInstanceByNodeName describeInstances length %v", len(instances))
-	klog.Infof("findInstanceByNodeName Tags %v", instances[0].Tags)
+	//klog.Infof("findInstanceByNodeName Tags %v", instances[0].Tags)
 
 	if err != nil {
 		return osc.Vm{}, err
