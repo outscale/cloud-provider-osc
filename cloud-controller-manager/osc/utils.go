@@ -278,32 +278,38 @@ func buildListener(port v1.ServicePort, annotations map[string]string, sslPorts 
 }
 
 func isSubnetPublic(rt []osc.RouteTable, subnetID string) (bool, error) {
+    klog.Infof("isSubnetPublic  rt subnetID %v %v", rt, subnetID)
 	var subnetTable osc.RouteTable
 	for _, table := range rt {
 		for _, assoc := range table.LinkRouteTables {
+		    klog.Infof("isSubnetPublic  table.LinkRouteTables %v", table.LinkRouteTables)
 			if assoc.SubnetId == subnetID {
 				subnetTable = table
 				break
 			}
 		}
 	}
+	klog.Infof("isSubnetPublic  subnetTable %v", subnetTable)
+	klog.Infof("isSubnetPublic  subnetTable.RouteTableId %v", subnetTable.RouteTableId)
 
-	if subnetTable.RouteTableId == "" {
+	if reflect.DeepEqual(subnetTable, osc.RouteTable{}) {
 		// If there is no explicit association, the subnet will be implicitly
 		// associated with the VPC's main routing table.
 		for _, table := range rt {
 			for _, assoc := range table.LinkRouteTables {
+			    klog.Infof("isSubnetPublic  boucle table %v", table)
 				if assoc.Main == true {
 					klog.V(4).Infof("Assuming implicit use of main routing table %s for %s",
 						table.RouteTableId, subnetID)
 					subnetTable = table
+					klog.Infof("isSubnetPublic  subnetTable table %v %v", subnetTable, table)
 					break
 				}
 			}
 		}
 	}
-
-	if subnetTable.RouteTableId == "" {
+    klog.Infof("isSubnetPublic  subnetTable RouteTableId 2 %v", subnetTable.RouteTableId)
+	if reflect.DeepEqual(subnetTable, osc.RouteTable{}) {
 		return false, fmt.Errorf("could not locate routing table for subnet %s", subnetID)
 	}
 

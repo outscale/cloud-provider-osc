@@ -108,23 +108,23 @@ func (m *MockedFakeLBU) CreateTags(input *osc.CreateTagsOpts) (osc.CreateTagsRes
 	return args.Get(0).(osc.CreateTagsResponse), nil, nil
 }
 
-// func (m *MockedFakeLBU) ConfigureHealthCheck(input *elb.ConfigureHealthCheckInput) (*elb.ConfigureHealthCheckOutput, error) {
-// 	args := m.Called(input)
-// 	if args.Get(0) == nil {
-// 		return nil, args.Error(1)
-// 	}
-// 	return args.Get(0).(*elb.ConfigureHealthCheckOutput), args.Error(1)
-// }
-//
-// func (m *MockedFakeLBU) expectConfigureHealthCheck(loadBalancerName *string, expectedHC *elb.HealthCheck, returnErr error) {
-// 	expected := &elb.ConfigureHealthCheckInput{HealthCheck: expectedHC, LoadBalancerName: loadBalancerName}
-// 	call := m.On("ConfigureHealthCheck", expected)
-// 	if returnErr != nil {
-// 		call.Return(nil, returnErr)
-// 	} else {
-// 		call.Return(&elb.ConfigureHealthCheckOutput{}, nil)
-// 	}
-// }
+
+func (m *MockedFakeLBU) UpdateLoadBalancer(input *osc.UpdateLoadBalancerOpts) (osc.UpdateLoadBalancerResponse, *_nethttp.Response, error) {
+	args := m.Called(input)
+	return args.Get(0).(osc.UpdateLoadBalancerResponse), nil, nil
+}
+
+func (m *MockedFakeLBU) expectUpdateLoadBalancer(loadBalancerName string, expectedHC osc.HealthCheck, returnErr error) {
+	m.On("UpdateLoadBalancer", &osc.UpdateLoadBalancerOpts{
+		UpdateLoadBalancerRequest: optional.NewInterface(
+			osc.UpdateLoadBalancerRequest{
+				HealthCheck: expectedHC,
+                LoadBalancerName: loadBalancerName,
+			}),
+	}).Return(osc.UpdateLoadBalancerResponse{})
+}
+
+
 
 func TestReadOSCCloudConfig(t *testing.T) {
 	tests := []struct {
@@ -751,7 +751,7 @@ func TestGetRegion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
-	if zone.Region != "eu-west-2a" {
+	if zone.Region != "eu-west-2" {
 		t.Errorf("Unexpected region: %s", zone.Region)
 	}
 	if zone.FailureDomain != "eu-west-2a" {
@@ -855,11 +855,11 @@ func TestSubnetIDsinVPC(t *testing.T) {
 	subnets[0]["id"] = "subnet-a0000001"
 	subnets[0]["az"] = "eu-west-2a"
 	subnets[1] = make(map[string]string)
-	subnets[1]["id"] = "subnet-b0000001"
-	subnets[1]["az"] = "eu-west-2b"
-	subnets[2] = make(map[string]string)
-	subnets[2]["id"] = "subnet-c0000001"
-	subnets[2]["az"] = "eu-west-2a"
+ 	subnets[1]["id"] = "subnet-b0000001"
+ 	subnets[1]["az"] = "eu-west-2b"
+//  	subnets[2] = make(map[string]string)
+//  	subnets[2]["id"] = "subnet-c0000001"
+//  	subnets[2]["az"] = "eu-west-2a"
 	constructedSubnets := constructSubnets(subnets)
 	oscServices.fcu.RemoveSubnets()
 	for _, subnet := range constructedSubnets {
@@ -869,7 +869,7 @@ func TestSubnetIDsinVPC(t *testing.T) {
 	routeTables := map[string]bool{
 		"subnet-a0000001": true,
 		"subnet-b0000001": true,
-		"subnet-c0000001": true,
+// 		"subnet-c0000001": true,
 	}
 	constructedRouteTables := constructRouteTables(routeTables)
 	oscServices.fcu.RemoveRouteTables()
@@ -888,13 +888,15 @@ func TestSubnetIDsinVPC(t *testing.T) {
 	t.Logf("subnetsRes, err----: %v", subnetsRes)
 
 	result, err := c.findLBUSubnets(false)
+	t.Logf("result ----: %v", result)
 	if err != nil {
 		t.Errorf("Error listing subnets: %v", err)
 		return
 	}
 
-	if len(result) != 3 {
-		t.Errorf("Expected 3 subnets but got %d", len(result))
+	if len(result) != 2 {
+	    t.Logf("1")
+		t.Errorf("Expected 2 subnets but got %d", len(result))
 		return
 	}
 
@@ -923,8 +925,9 @@ func TestSubnetIDsinVPC(t *testing.T) {
 		return
 	}
 
-	if len(result) != 3 {
-		t.Errorf("Expected 3 subnets but got %d", len(result))
+	if len(result) != 2 {
+	    t.Logf("2")
+		t.Errorf("Expected 2 subnets but got %d", len(result))
 		return
 	}
 
@@ -945,18 +948,18 @@ func TestSubnetIDsinVPC(t *testing.T) {
 	// check that we both choose the correct entry when it comes after and before another element
 	// in the same AZ.
 	subnets[3] = make(map[string]string)
-	subnets[3]["id"] = "subnet-c0000000"
+	subnets[3]["id"] = "subnet-b0000000"
 	subnets[3]["az"] = "eu-west-2b"
 	subnets[4] = make(map[string]string)
-	subnets[4]["id"] = "subnet-c0000002"
+	subnets[4]["id"] = "subnet-b0000002"
 	subnets[4]["az"] = "eu-west-2b"
 	constructedSubnets = constructSubnets(subnets)
 	oscServices.fcu.RemoveSubnets()
 	for _, subnet := range constructedSubnets {
 		oscServices.fcu.CreateSubnet(subnet)
 	}
-	routeTables["subnet-c0000000"] = true
-	routeTables["subnet-c0000002"] = true
+	routeTables["subnet-b0000000"] = true
+	routeTables["subnet-b0000002"] = true
 	constructedRouteTables = constructRouteTables(routeTables)
 	oscServices.fcu.RemoveRouteTables()
 	for _, rt := range constructedRouteTables {
@@ -969,12 +972,13 @@ func TestSubnetIDsinVPC(t *testing.T) {
 		return
 	}
 
-	if len(result) != 3 {
-		t.Errorf("Expected 3 subnets but got %d", len(result))
+	if len(result) != 2 {
+	    t.Logf("3")
+		t.Errorf("Expected 2 subnets but got %d", len(result))
 		return
 	}
 
-	expected := []string{"subnet-a0000001", "subnet-b0000001", "subnet-c0000000"}
+	expected := []string{"subnet-a0000001", "subnet-b0000000"}//, "subnet-c0000000"}
 	for _, s := range result {
 		if !contains(expected, s) {
 			t.Errorf("Unexpected subnet '%s' found", s)
@@ -1000,12 +1004,13 @@ func TestSubnetIDsinVPC(t *testing.T) {
 	}
 
 	routeTables["subnet-a0000001"] = false
+	routeTables["subnet-b0000000"] = false
 	routeTables["subnet-b0000001"] = false
-	routeTables["subnet-c0000001"] = false
 	routeTables["subnet-c0000000"] = true
 	routeTables["subnet-d0000001"] = true
 	routeTables["subnet-d0000002"] = true
 	constructedRouteTables = constructRouteTables(routeTables)
+	t.Logf("constructedRouteTables %v", constructedRouteTables)
 	oscServices.fcu.RemoveRouteTables()
 	for _, rt := range constructedRouteTables {
 		oscServices.fcu.CreateRouteTable(rt)
@@ -1016,12 +1021,13 @@ func TestSubnetIDsinVPC(t *testing.T) {
 		return
 	}
 
-	if len(result) != 3 {
-		t.Errorf("Expected 3 subnets but got %d", len(result))
+	if len(result) != 2 {
+	    t.Logf("4")
+		t.Errorf("Expected 2 subnets but got %d", len(result))
 		return
 	}
 
-	expected = []string{"subnet-c0000000", "subnet-d0000001", "subnet-d0000002"}
+	expected = []string{"subnet-d0000001", "subnet-d0000002"}//, "subnet-d0000002"}
 	for _, s := range result {
 		if !contains(expected, s) {
 			t.Errorf("Unexpected subnet '%s' found", s)
@@ -1236,6 +1242,7 @@ func TestGetInstanceByNodeNameBatching(t *testing.T) {
 	        Value: "",
 	    },
 	}
+    //tags := []osc.ResourceTag{}
 
 	nodeNames := []string{}
 	for i := 0; i < 200; i++ {
@@ -1407,7 +1414,7 @@ func TestBuildListener(t *testing.T) {
 				if test.certID != "" {
 					cert = test.certID
 				}
-				expected := osc.Listener{
+				expected := osc.ListenerForCreation{
 					BackendPort:     int32(test.instancePort),
 					BackendProtocol: test.instanceProtocol,
 					LoadBalancerPort: int32(test.lbPort),
@@ -1516,9 +1523,11 @@ func TestGetLoadBalancerAdditionalTags(t *testing.T) {
 }
 
 func TestLBExtraSecurityGroupsAnnotation(t *testing.T) {
+    t.Logf("TestLBExtraSecurityGroupsAnnotation")
 	oscServices := newMockedFakeOSCServices(TestClusterID)
 	c, _ := newOSCCloud(CloudConfig{}, oscServices)
 	c.netID = "vpc-123456"
+
 
 	sg1 := map[string]string{ServiceAnnotationLoadBalancerExtraSecurityGroups: "sg-000001"}
 	sg2 := map[string]string{ServiceAnnotationLoadBalancerExtraSecurityGroups: "sg-000002"}
@@ -1535,8 +1544,9 @@ func TestLBExtraSecurityGroupsAnnotation(t *testing.T) {
 		{"SG specified", sg1, []string{sg1[ServiceAnnotationLoadBalancerExtraSecurityGroups]}},
 		{"Multiple SGs specified", sg3, []string{sg1[ServiceAnnotationLoadBalancerExtraSecurityGroups], sg2[ServiceAnnotationLoadBalancerExtraSecurityGroups]}},
 	}
-
-	oscServices.fcu.(*MockedFakeFCU).expectReadSecurityGroups(TestClusterID, "k8s-lbu-aid")
+    t.Logf("before expectReadSecurityGroups")
+	oscServices.fcu.(*MockedFakeFCU).expectReadSecurityGroups(TestClusterID, "k8s-elb-aid")
+    t.Logf("after expectReadSecurityGroups")
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -1570,7 +1580,7 @@ func TestLBSecurityGroupsAnnotation(t *testing.T) {
 		{"Multiple SGs specified", sg3, []string{sg1[ServiceAnnotationLoadBalancerSecurityGroups], sg2[ServiceAnnotationLoadBalancerSecurityGroups]}},
 	}
 
-	oscServices.fcu.(*MockedFakeFCU).expectReadSecurityGroups(TestClusterID, "k8s-lbu-aid")
+	oscServices.fcu.(*MockedFakeFCU).expectReadSecurityGroups(TestClusterID, "k8s-elb-aid")
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -1612,120 +1622,120 @@ func TestAddLoadBalancerTags(t *testing.T) {
 	oscServices.lbu.(*MockedFakeLBU).AssertExpectations(t)
 }
 
-// func TestEnsureLoadBalancerHealthCheck(t *testing.T) {
-//
-// 	tests := []struct {
-// 		name                string
-// 		annotations         map[string]string
-// 		overriddenFieldName string
-// 		overriddenValue     int64
-// 	}{
-// 		{"falls back to HC defaults", map[string]string{}, "", int64(0)},
-// 		{"healthy threshold override", map[string]string{ServiceAnnotationLoadBalancerHCHealthyThreshold: "7"}, "HealthyThreshold", int64(7)},
-// 		{"unhealthy threshold override", map[string]string{ServiceAnnotationLoadBalancerHCUnhealthyThreshold: "7"}, "UnhealthyThreshold", int64(7)},
-// 		{"timeout override", map[string]string{ServiceAnnotationLoadBalancerHCTimeout: "7"}, "Timeout", int64(7)},
-// 		{"interval override", map[string]string{ServiceAnnotationLoadBalancerHCInterval: "7"}, "Interval", int64(7)},
-// 	}
-// 	lbName := "myLB"
-// 	// this HC will always differ from the expected HC and thus it is expected an
-// 	// API call will be made to update it
-// 	currentHC := osc.HealthCheck{}
-// 	lbuDesc := osc.LoadBalancer{LoadBalancerName: lbName, HealthCheck: currentHC}
-// 	defaultHealthyThreshold := int32(2)
-// 	defaultUnhealthyThreshold := int32(6)
-// 	defaultTimeout := int32(5)
-// 	defaultInterval := int32(10)
-// 	protocol, path, port := "tcp", "", int32(8080)
-// 	target := "tcp:8080"
-// 	defaultHC := osc.HealthCheck{
-// 		HealthyThreshold:   defaultHealthyThreshold,
-// 		UnhealthyThreshold: defaultUnhealthyThreshold,
-// 		Timeout:            defaultTimeout,
-// 		CheckInterval:           defaultInterval,
-// 		Path:             target,
-// 	}
-// 	for _, test := range tests {
-// 		t.Run(test.name, func(t *testing.T) {
-// 			oscServices := newMockedFakeOSCServices(TestClusterID)
-// 			c, err := newOSCCloud(CloudConfig{}, oscServices)
-// 			assert.Nil(t, err, "Error building osc cloud: %v", err)
-// 			expectedHC := *defaultHC
-// 			if test.overriddenFieldName != "" { // cater for test case with no overrides
-// 				value := reflect.ValueOf(&test.overriddenValue)
-// 				reflect.ValueOf(&expectedHC).Elem().FieldByName(test.overriddenFieldName).Set(value)
-// 			}
-// 			oscServices.lbu.(*MockedFakeLBU).expectConfigureHealthCheck(lbName, expectedHC, nil)
-//
-// 			err = c.ensureLoadBalancerHealthCheck(lbuDesc, protocol, port, path, test.annotations)
-//
-// 			require.Nil(t, err)
-// 			oscServices.lbu.(*MockedFakeLBU).AssertExpectations(t)
-// 		})
-// 	}
-//
-// 	t.Run("does not make an API call if the current health check is the same", func(t *testing.T) {
-// 		oscServices := newMockedFakeOSCServices(TestClusterID)
-// 		c, err := newOSCCloud(CloudConfig{}, oscServices)
-// 		assert.Nil(t, err, "Error building osc cloud: %v", err)
-// 		expectedHC := *defaultHC
-// 		timeout := int64(3)
-// 		expectedHC.Timeout = timeout
-// 		annotations := map[string]string{ServiceAnnotationLoadBalancerHCTimeout: "3"}
-// 		var currentHC osc.HealthCheck
-// 		currentHC = expectedHC
-//
-// 		// NOTE no call expectations are set on the LBU mock
-// 		// test default HC
-// 		lbuDesc := osc.LoadBalancer{LoadBalancerName: lbName, HealthCheck: defaultHC}
-// 		err = c.ensureLoadBalancerHealthCheck(lbuDesc, protocol, port, path, map[string]string{})
-// 		assert.Nil(t, err)
-// 		// test HC with override
-// 		lbuDesc = osc.LoadBalancer{LoadBalancerName: lbName, HealthCheck: currentHC}
-// 		err = c.ensureLoadBalancerHealthCheck(lbuDesc, protocol, port, path, annotations)
-// 		assert.Nil(t, err)
-// 	})
-//
-// 	t.Run("validates resulting expected health check before making an API call", func(t *testing.T) {
-// 		oscServices := newMockedFakeOSCServices(TestClusterID)
-// 		c, err := newOSCCloud(CloudConfig{}, oscServices)
-// 		assert.Nil(t, err, "Error building osc cloud: %v", err)
-// 		expectedHC := *defaultHC
-// 		invalidThreshold := int64(1)
-// 		expectedHC.HealthyThreshold = invalidThreshold
-// 		require.Error(t, expectedHC.Validate()) // confirm test precondition
-// 		annotations := map[string]string{ServiceAnnotationLoadBalancerHCTimeout: "1"}
-//
-// 		// NOTE no call expectations are set on the LBU mock
-// 		err = c.ensureLoadBalancerHealthCheck(lbuDesc, protocol, port, path, annotations)
-//
-// 		require.Error(t, err)
-// 	})
-//
-// 	t.Run("handles invalid override values", func(t *testing.T) {
-// 		oscServices := newMockedFakeOSCServices(TestClusterID)
-// 		c, err := newOSCCloud(CloudConfig{}, oscServices)
-// 		assert.Nil(t, err, "Error building osc cloud: %v", err)
-// 		annotations := map[string]string{ServiceAnnotationLoadBalancerHCTimeout: "3.3"}
-//
-// 		// NOTE no call expectations are set on the LBU mock
-// 		err = c.ensureLoadBalancerHealthCheck(lbuDesc, protocol, port, path, annotations)
-//
-// 		require.Error(t, err)
-// 	})
-//
-// 	t.Run("returns error when updating the health check fails", func(t *testing.T) {
-// 		oscServices := newMockedFakeOSCServices(TestClusterID)
-// 		c, err := newOSCCloud(CloudConfig{}, oscServices)
-// 		assert.Nil(t, err, "Error building osc cloud: %v", err)
-// 		returnErr := fmt.Errorf("throttling error")
-// 		//oscServices.lbu.(*MockedFakeLBU).expectConfigureHealthCheck(lbName, defaultHC, returnErr)
-//
-// 		err = c.ensureLoadBalancerHealthCheck(lbuDesc, protocol, port, path, map[string]string{})
-//
-// 		require.Error(t, err)
-// 		oscServices.lbu.(*MockedFakeLBU).AssertExpectations(t)
-// 	})
-// }
+func TestEnsureLoadBalancerHealthCheck(t *testing.T) {
+
+	tests := []struct {
+		name                string
+		annotations         map[string]string
+		overriddenFieldName string
+		overriddenValue     int64
+	}{
+		{"falls back to HC defaults", map[string]string{}, "", int64(0)},
+		{"healthy threshold override", map[string]string{ServiceAnnotationLoadBalancerHCHealthyThreshold: "7"}, "HealthyThreshold", int64(7)},
+		{"unhealthy threshold override", map[string]string{ServiceAnnotationLoadBalancerHCUnhealthyThreshold: "7"}, "UnhealthyThreshold", int64(7)},
+		{"timeout override", map[string]string{ServiceAnnotationLoadBalancerHCTimeout: "7"}, "Timeout", int64(7)},
+		{"interval override", map[string]string{ServiceAnnotationLoadBalancerHCInterval: "7"}, "Interval", int64(7)},
+	}
+	lbName := "myLB"
+	// this HC will always differ from the expected HC and thus it is expected an
+	// API call will be made to update it
+	currentHC := osc.HealthCheck{}
+	lbuDesc := osc.LoadBalancer{LoadBalancerName: lbName, HealthCheck: currentHC}
+	defaultHealthyThreshold := int32(2)
+	defaultUnhealthyThreshold := int32(6)
+	defaultTimeout := int32(5)
+	defaultInterval := int32(10)
+	protocol, path, port := "tcp", "", int32(8080)
+	target := "tcp:8080"
+	defaultHC := osc.HealthCheck{
+		HealthyThreshold:   defaultHealthyThreshold,
+		UnhealthyThreshold: defaultUnhealthyThreshold,
+		Timeout:            defaultTimeout,
+		CheckInterval:           defaultInterval,
+		Path:             target,
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			oscServices := newMockedFakeOSCServices(TestClusterID)
+			c, err := newOSCCloud(CloudConfig{}, oscServices)
+			assert.Nil(t, err, "Error building osc cloud: %v", err)
+			expectedHC := defaultHC
+			if test.overriddenFieldName != "" { // cater for test case with no overrides
+				value := reflect.ValueOf(&test.overriddenValue)
+				reflect.ValueOf(expectedHC).Elem().FieldByName(test.overriddenFieldName).Set(value)
+			}
+			//oscServices.lbu.(*MockedFakeLBU).expectConfigureHealthCheck(lbName, expectedHC, nil)
+            oscServices.lbu.(*MockedFakeLBU).expectUpdateLoadBalancer(lbName, expectedHC, nil)
+			err = c.ensureLoadBalancerHealthCheck(lbuDesc, protocol, port, path, test.annotations)
+
+			require.Nil(t, err)
+			oscServices.lbu.(*MockedFakeLBU).AssertExpectations(t)
+		})
+	}
+
+	t.Run("does not make an API call if the current health check is the same", func(t *testing.T) {
+		oscServices := newMockedFakeOSCServices(TestClusterID)
+		c, err := newOSCCloud(CloudConfig{}, oscServices)
+		assert.Nil(t, err, "Error building osc cloud: %v", err)
+		expectedHC := defaultHC
+		timeout := int32(3)
+		expectedHC.Timeout = timeout
+		annotations := map[string]string{ServiceAnnotationLoadBalancerHCTimeout: "3"}
+		var currentHC osc.HealthCheck
+		currentHC = expectedHC
+
+		// NOTE no call expectations are set on the LBU mock
+		// test default HC
+		lbuDesc := osc.LoadBalancer{LoadBalancerName: lbName, HealthCheck: defaultHC}
+		err = c.ensureLoadBalancerHealthCheck(lbuDesc, protocol, port, path, map[string]string{})
+		assert.Nil(t, err)
+		// test HC with override
+		lbuDesc = osc.LoadBalancer{LoadBalancerName: lbName, HealthCheck: currentHC}
+		err = c.ensureLoadBalancerHealthCheck(lbuDesc, protocol, port, path, annotations)
+		assert.Nil(t, err)
+	})
+
+	t.Run("validates resulting expected health check before making an API call", func(t *testing.T) {
+		oscServices := newMockedFakeOSCServices(TestClusterID)
+		c, err := newOSCCloud(CloudConfig{}, oscServices)
+		assert.Nil(t, err, "Error building osc cloud: %v", err)
+		expectedHC := defaultHC
+		invalidThreshold := int32(1)
+		expectedHC.HealthyThreshold = invalidThreshold
+		//require.Error(t, expectedHC.Validate()) // confirm test precondition
+		annotations := map[string]string{ServiceAnnotationLoadBalancerHCTimeout: "1"}
+
+		// NOTE no call expectations are set on the LBU mock
+		err = c.ensureLoadBalancerHealthCheck(lbuDesc, protocol, port, path, annotations)
+
+		require.Error(t, err)
+	})
+
+	t.Run("handles invalid override values", func(t *testing.T) {
+		oscServices := newMockedFakeOSCServices(TestClusterID)
+		c, err := newOSCCloud(CloudConfig{}, oscServices)
+		assert.Nil(t, err, "Error building osc cloud: %v", err)
+		annotations := map[string]string{ServiceAnnotationLoadBalancerHCTimeout: "3.3"}
+
+		// NOTE no call expectations are set on the LBU mock
+		err = c.ensureLoadBalancerHealthCheck(lbuDesc, protocol, port, path, annotations)
+
+		require.Error(t, err)
+	})
+
+	t.Run("returns error when updating the health check fails", func(t *testing.T) {
+		oscServices := newMockedFakeOSCServices(TestClusterID)
+		c, err := newOSCCloud(CloudConfig{}, oscServices)
+		assert.Nil(t, err, "Error building osc cloud: %v", err)
+		returnErr := fmt.Errorf("throttling error")
+		//oscServices.lbu.(*MockedFakeLBU).expectConfigureHealthCheck(lbName, defaultHC, returnErr)
+        oscServices.lbu.(*MockedFakeLBU).expectUpdateLoadBalancer(lbName, defaultHC, returnErr)
+		err = c.ensureLoadBalancerHealthCheck(lbuDesc, protocol, port, path, map[string]string{})
+
+		require.Error(t, err)
+		oscServices.lbu.(*MockedFakeLBU).AssertExpectations(t)
+	})
+}
 
 func TestFindSecurityGroupForInstance(t *testing.T) {
 	groups := map[string]osc.SecurityGroup{"sg123": {SecurityGroupId: "sg123"}}

@@ -882,12 +882,14 @@ func (c *Cloud) ensureSecurityGroup(name string, description string, additionalT
         request := osc.ReadSecurityGroupsRequest{}
 
 		if c.netID != "" {
-		    request.Filters = osc.FiltersSecurityGroup{SecurityGroupIds: []string{c.netID}}
+		    request.Filters = osc.FiltersSecurityGroup{NetIds: []string{c.netID}, SecurityGroupNames: []string{name}}
 		}
 
 
         requestOpts := &osc.ReadSecurityGroupsOpts{ReadSecurityGroupsRequest: optional.NewInterface(request)}
+        klog.Infof("ensureSecurityGroup requestOpts %v", requestOpts)
 		securityGroups, httpRes, err := c.fcu.ReadSecurityGroups(requestOpts)
+		klog.Infof("ensureSecurityGroup securityGroups %v", securityGroups)
 		if err != nil {
 		    if httpRes != nil {
                 return "", fmt.Errorf(httpRes.Status)
@@ -1074,31 +1076,43 @@ func (c *Cloud) findLBUSubnets(internalLBU bool) ([]string, error) {
 		tagName = TagNameSubnetPublicLBU
 	}
 
+	klog.Infof("findLBUSubnets  tagname %v", tagName)
+
 	subnetsByAZ := make(map[string]osc.Subnet)
 	for _, subnet := range subnets {
 		az := subnet.SubregionName
 		id := subnet.SubnetId
+		klog.Infof("findLBUSubnets  subnet %v", id)
+		klog.Infof("findLBUSubnets  subnet.SubregionName  subnet.SubnetId %v %v", az, id)
 		if az == "" || id == "" {
 			klog.Warningf("Ignoring subnet with empty az/id: %v", subnet)
 			continue
 		}
 
 		isPublic, err := isSubnetPublic(rt, id)
+		klog.Infof("findLBUSubnets  isPublic %v", isPublic)
 		if err != nil {
+		    klog.Infof("findLBUSubnets  after err %v", err)
 			return nil, err
 		}
+
 		if !internalLBU && !isPublic {
 			klog.V(2).Infof("Ignoring private subnet for public LBU %q", id)
 			continue
 		}
 
 		existing := subnetsByAZ[az]
+		klog.Infof("findLBUSubnets  existing %v ", existing)
+
 		_, subnetHasTag := findTag(subnet.Tags, tagName)
+		klog.Infof("findLBUSubnets  after first subnetHasTag tagName %v %v ", subnetHasTag, tagName)
 		if reflect.DeepEqual(existing, osc.Subnet{}) {
 			if subnetHasTag {
 				subnetsByAZ[az] = subnet
+				klog.Infof("findLBUSubnets  if subnetHasTag %v", subnetsByAZ[az])
 			} else if isPublic && !internalLBU {
 				subnetsByAZ[az] = subnet
+				klog.Infof("findLBUSubnets  if isPublic && !internalLBU %v", subnetsByAZ[az])
 			}
 			continue
 		}
@@ -1124,10 +1138,13 @@ func (c *Cloud) findLBUSubnets(internalLBU bool) ([]string, error) {
 		continue
 	}
 
+    klog.Infof("findLBUSubnets  subnetsByAZ %v", subnetsByAZ)
+
 	var azNames []string
 	for key := range subnetsByAZ {
 		azNames = append(azNames, key)
 	}
+	klog.Infof("findLBUSubnets  azNames %v", azNames)
 
 	sort.Strings(azNames)
 
@@ -1149,6 +1166,7 @@ func (c *Cloud) findLBUSubnets(internalLBU bool) ([]string, error) {
 // setting the security groups specified.
 func (c *Cloud) buildLBUSecurityGroupList(serviceName types.NamespacedName, loadBalancerName string, annotations map[string]string) ([]string, error) {
 	debugPrintCallerFunctionName()
+	klog.Infof("buildLBUSecurityGroupList")
 	klog.V(10).Infof("buildLBUSecurityGroupList(%v,%v,%v)", serviceName, loadBalancerName, annotations)
 	var err error
 	var securityGroupID string
@@ -1157,7 +1175,7 @@ func (c *Cloud) buildLBUSecurityGroupList(serviceName types.NamespacedName, load
 		securityGroupID = c.cfg.Global.LbuSecurityGroup
 	} else {
 		// Create a security group for the load balancer
-		sgName := "k8s-elb-" + loadBalancerName
+		sgName := "k8s-lbu-" + loadBalancerName
 		sgDescription := fmt.Sprintf("Security group for Kubernetes LBU %s (%v)", loadBalancerName, serviceName)
 		securityGroupID, err = c.ensureSecurityGroup(sgName, sgDescription, getLoadBalancerAdditionalTags(annotations))
 		if err != nil {
@@ -1186,6 +1204,8 @@ func (c *Cloud) buildLBUSecurityGroupList(serviceName types.NamespacedName, load
 			sgList = append(sgList, extraSG)
 		}
 	}
+
+	klog.Infof("buildLBUSecurityGroupList sgList %v", sgList)
 
 	return sgList, nil
 }
@@ -2107,19 +2127,6 @@ func (c *Cloud) findInstanceByNodeName(nodeName types.NodeName) (osc.Vm, error) 
 	            TagKeys: []string{TagNameClusterNode, c.tagging.clusterTagKey()},
 	            TagValues: []string{privateDnsName, ResourceLifecycleOwned, ResourceLifecycleShared},
             }
-
-
-//             Tags: []string{
-//                 {
-//                     c.tagging.clusterTagKey(): ResourceLifecycleOwned,
-//                 },
-//                 {
-//                     c.tagging.clusterTagKey(): ResourceLifecycleShared,
-//                 },
-//                 {
-//                     [TagNameClusterNode: privateDNSName],
-//                 },
-//             },
 
 // 		newVmFilter("tag:"+TagNameClusterNode, privateDNSName),
 // 		// exclude instances in "terminated" state
