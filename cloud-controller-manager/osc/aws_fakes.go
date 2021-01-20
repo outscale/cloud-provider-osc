@@ -467,6 +467,10 @@ func instanceMatchesFilter(instance osc.Vm, filter osc.FiltersVm) bool {
             klog.Infof("instanceMatchesFilter contains(filter.TagValues, instance.PrivateDnsName) %v %v", filter.TagValues, instance.PrivateDnsName)
             return true
     	}
+    if contains(filter.TagValues, instance.PrivateDnsName){
+            klog.Infof("instanceMatchesFilter contains(filter.TagValues, instance.PrivateDnsName) %v %v", filter.TagValues, instance.PrivateDnsName)
+            return true
+    	}
 	if contains(filter.VmIds, instance.VmId) {
 		return true
 	}

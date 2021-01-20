@@ -2144,6 +2144,7 @@ func (c *Cloud) findInstanceByNodeName(nodeName types.NodeName) (osc.Vm, error) 
 	instances, err := c.describeInstances(filters)
 	klog.Infof("findInstanceByNodeName describeInstances %v", instances)
 	klog.Infof("findInstanceByNodeName describeInstances length %v", len(instances))
+
 	//klog.Infof("findInstanceByNodeName Tags %v", instances[0].Tags)
 
 	if err != nil {
