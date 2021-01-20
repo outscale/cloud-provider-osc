@@ -1175,7 +1175,7 @@ func (c *Cloud) buildLBUSecurityGroupList(serviceName types.NamespacedName, load
 		securityGroupID = c.cfg.Global.LbuSecurityGroup
 	} else {
 		// Create a security group for the load balancer
-		sgName := "k8s-lbu-" + loadBalancerName
+		sgName := "k8s-elb-" + loadBalancerName
 		sgDescription := fmt.Sprintf("Security group for Kubernetes LBU %s (%v)", loadBalancerName, serviceName)
 		securityGroupID, err = c.ensureSecurityGroup(sgName, sgDescription, getLoadBalancerAdditionalTags(annotations))
 		if err != nil {
@@ -1947,6 +1947,8 @@ func (c *Cloud) UpdateLoadBalancer(ctx context.Context, clusterName string, serv
 		return err
 	}
 
+	klog.Infof("UpdateLoadBalancer lb  %v", lb)
+
 	if reflect.DeepEqual(lb, osc.LoadBalancer{}) {
 		return fmt.Errorf("Load balancer not found")
 	}
@@ -2046,7 +2048,7 @@ func (c *Cloud) getInstancesByNodeNames(nodeNames []string, states ...string) ([
 
 	names := nodeNames
 	oscInstances := []osc.Vm{}
-
+    klog.Infof("getInstancesByNodeNames nodeNames %v", nodeNames)
 	for i := 0; i < len(names); i += filterNodeLimit {
 		end := i + filterNodeLimit
 		if end > len(names) {
@@ -2055,16 +2057,19 @@ func (c *Cloud) getInstancesByNodeNames(nodeNames []string, states ...string) ([
 
 		nameSlice := names[i:end]
 
+        klog.Infof("getInstancesByNodeNames nameSlice %v", nameSlice )
         // A verifier
 		filters := osc.FiltersVm{
 		    Tags: nameSlice,
 		 }
+		 klog.Infof("getInstancesByNodeNames filters %v", filters)
 
 // 		if len(states) > 0 {
 // 			filters = append(filters, newVmFilter("instance-state-name", states...))
 // 		}
 
 		instances, err := c.describeInstances(filters)
+		klog.Infof("getInstancesByNodeNames instances %v", instances)
 		if err != nil {
 			klog.V(2).Infof("Failed to describe instances %v", nodeNames)
 			return []osc.Vm{}, err

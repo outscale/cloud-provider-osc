@@ -160,7 +160,7 @@ func (fcui *FakeFCUImpl) ReadVms(request *osc.ReadVmsOpts) ([]osc.Vm, *_nethttp.
  				if !instanceMatchesFilter(instance, requestVm) {
  				    klog.Infof("Fake readVms !instanceMatchesFilter(instance, requestVm) instance %v", instance)
  					allMatch = false
- 					break
+ 					//break
  				}
  			//}
  			if !allMatch {
@@ -459,9 +459,11 @@ func (lbu *FakeLBU) expectDescribeLoadBalancers(loadBalancerName string) {
 
 
 func instanceMatchesFilter(instance osc.Vm, filter osc.FiltersVm) bool {
-	klog.Infof("instanceMatchesFilter instance, filter %v %v", instance, filter)
+	klog.Infof("instanceMatchesFilter instance %v", instance)
+	klog.Infof("instanceMatchesFilter filter %v ", filter)
 	klog.Infof("instanceMatchesFilter filter.TagValues, instance.PrivateDnsName %v %v", filter.TagValues, instance.PrivateDnsName)
-	if contains(filter.TagValues, instance.PrivateDnsName){
+	klog.Infof("instanceMatchesFilter filter.TagValues %v", filter.Tags)
+	if contains(filter.Tags, instance.PrivateDnsName){
             klog.Infof("instanceMatchesFilter contains(filter.TagValues, instance.PrivateDnsName) %v %v", filter.TagValues, instance.PrivateDnsName)
             return true
     	}

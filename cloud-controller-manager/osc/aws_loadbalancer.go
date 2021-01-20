@@ -702,7 +702,7 @@ func oscArnEquals(l, r string) bool {
 func (c *Cloud) getExpectedHealthCheck(target string, annotations map[string]string) (osc.HealthCheck, error) {
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("getExpectedHealthCheck(%v,%v)", target, annotations)
-	healthcheck := osc.HealthCheck{Protocol: target}
+	healthcheck := osc.HealthCheck{Path: target}
 	getOrDefault := func(annotation string, defaultValue int64) (int32, error) {
 		i32 := defaultValue
 		var err error
@@ -745,11 +745,13 @@ func (c *Cloud) ensureLoadBalancerHealthCheck(loadBalancer osc.LoadBalancer,
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("ensureLoadBalancerHealthCheck(%v,%v, %v, %v, %v)",
 		loadBalancer, protocol, port, path, annotations)
+	klog.Infof("ensureLoadBalancerHealthCheck(%v,%v, %v, %v, %v)", loadBalancer, protocol, port, path, annotations)
 	name := loadBalancer.LoadBalancerName
 
 	actual := loadBalancer.HealthCheck
 	expectedTarget := protocol + ":" + strconv.FormatInt(int64(port), 10) + path
 	expected, err := c.getExpectedHealthCheck(expectedTarget, annotations)
+	klog.Infof("ensureLoadBalancerHealthCheck expected expectedTarget %v %v)", expected, expectedTarget)
 	if err != nil {
 		return fmt.Errorf("cannot update health check for load balancer %q: %q", name, err)
 	}
@@ -772,8 +774,11 @@ func (c *Cloud) ensureLoadBalancerHealthCheck(loadBalancer osc.LoadBalancer,
                     LoadBalancerName: loadBalancer.LoadBalancerName,
                 }),
     }
+    klog.Infof("ensureLoadBalancerHealthCheck expected.Path %v expected.Protocol %v", expected.Path, expected.Protocol)
+
 
 	_, httpRes, errUpdate := c.lbu.UpdateLoadBalancer(request)
+
 	if err != nil {
 	    if httpRes != nil {
 			return fmt.Errorf(httpRes.Status)
