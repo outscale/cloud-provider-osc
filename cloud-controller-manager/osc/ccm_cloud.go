@@ -575,7 +575,7 @@ func (c *Cloud) describeLoadBalancer(name string) (osc.LoadBalancer, error) {
 // 		ret = loadBalancer
 // 	}
 
-    if len(response) == 0 {
+    if len(response.LoadBalancers) == 0 {
         return osc.LoadBalancer{}, nil
     }
 	return response.LoadBalancers[0], nil
@@ -2132,10 +2132,38 @@ func (c *Cloud) findInstanceByNodeName(nodeName types.NodeName) (osc.Vm, error) 
 	privateDnsName := mapNodeNameToPrivateDNSName(nodeName)
 	klog.Infof("findInstanceByNodeName privateDnsName %v", privateDnsName)
 
-	filters := osc.FiltersVm{
-	            TagKeys: []string{TagNameClusterNode, c.tagging.clusterTagKey()},
-	            TagValues: []string{privateDnsName, ResourceLifecycleOwned, ResourceLifecycleShared},
-            }
+
+
+//     requestState := &osc.ReadVmsStateOpts{
+// 		ReadVmsStateRequest: optional.NewInterface(
+// 			osc.ReadVmsStateRequest{
+// 				AllVms: true,
+// 				Filters: osc.FiltersVmsState{
+// 				    VmStates: aliveFilter,
+// 				},
+// 			}),
+// 	    }
+//
+// 	state, httpState, errState := c.fcu.ReadVmsState(requestState)
+//
+//     if errState != nil {
+// 	    if httpState != nil {
+//             return []osc.Vm{} fmt.Errorf(httpState.Status)
+//         }
+// 		return []osc.Vm{}, errState
+// 	}
+//
+// 	id := []string{}
+// 	klog.Infof("findInstanceByNodeName requestState %v", requestState)
+// 	klog.Infof("findInstanceByNodeName state %v", state)
+// 	for _, vm := range state {
+// 		id = append(id, vm.VmId)
+// 	}
+
+    filters := osc.FiltersVm{
+	    TagKeys: []string{TagNameClusterNode, c.tagging.clusterTagKey()},
+	    TagValues: []string{privateDnsName, ResourceLifecycleOwned, ResourceLifecycleShared},
+    }
 
 // 		newVmFilter("tag:"+TagNameClusterNode, privateDNSName),
 // 		// exclude instances in "terminated" state
@@ -2149,8 +2177,6 @@ func (c *Cloud) findInstanceByNodeName(nodeName types.NodeName) (osc.Vm, error) 
 	klog.Infof("findInstanceByNodeName describeInstances %v", instances)
 	klog.Infof("findInstanceByNodeName describeInstances length %v", len(instances))
 
-	//klog.Infof("findInstanceByNodeName Tags %v", instances[0].Tags)
-
 	if err != nil {
 		return osc.Vm{}, err
 	}
@@ -2162,7 +2188,21 @@ func (c *Cloud) findInstanceByNodeName(nodeName types.NodeName) (osc.Vm, error) 
 		return osc.Vm{}, fmt.Errorf("multiple instances found for name: %s", nodeName)
 	}
 
-	return instances[0], nil
+    instanceFinal := []osc.Vm{}
+    for _, instanceState := range instances{
+        if instanceState.State != "terminated"{
+            instanceFinal = append(instanceFinal, instanceState)
+        }
+    }
+
+    klog.Infof("findInstanceByNodeName instanceFinal %v", len(instanceFinal))
+    klog.Infof("findInstanceByNodeName instance State %v", instances[0].State)
+
+    if len(instanceFinal) == 0{
+        return osc.Vm{}, nil
+    }
+
+	return instanceFinal[0], nil
 }
 
 // Returns the instance with the specified node name

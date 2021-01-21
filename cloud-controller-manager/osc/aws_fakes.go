@@ -173,7 +173,8 @@ func (fcui *FakeFCUImpl) ReadVms(request *osc.ReadVmsOpts) ([]osc.Vm, *_nethttp.
 	return matches, nil, nil
 }
 
-// DescribeSecurityGroups is not implemented but is required for interface
+
+// ReadSecurityGroups is not implemented but is required for interface
 // conformance
 func (fcui *FakeFCUImpl) ReadSecurityGroups(request *osc.ReadSecurityGroupsOpts) ([]osc.SecurityGroup, *_nethttp.Response, error) {
 	panic("Not implemented")
@@ -477,69 +478,6 @@ func instanceMatchesFilter(instance osc.Vm, filter osc.FiltersVm) bool {
 
 	return false
 }
-
-
-
-//  boolean := false
-//     if instance.PrivateDnsName == "" {
-// 			boolean = false
-// 	}else if instance.PrivateDnsName != "" {
-// 	    klog.Infof("instanceMatchesFilter contains(filter.TagValues, instance.PrivateDnsName) %v %v", filter.TagValues, instance.PrivateDnsName)
-// 	    boolean = contains(filter.TagValues, instance.PrivateDnsName)
-// 	}
-//
-//     klog.Infof("instanceMatchesFilter filter.TagValues %v", filter.TagValues)
-//     klog.Infof("instanceMatchesFilter filter.Tagkeys %v", filter.TagKeys)
-//     klog.Infof("instanceMatchesFilter instance.Tags %v", instance.Tags)
-//     klog.Infof("instanceMatchesFilter instance.PrivateDnsName %v", instance.PrivateDnsName)
-//      for _, instanceTag := range instance.Tags {
-//  		if contains(filter.TagKeys, instanceTag.Key) {
-//  		    klog.Infof("instanceMatchesFilter contains(filter.TagKeys, instanceTag.Key) boolean %v %v %v", filter.TagKeys, instanceTag.Key, boolean)
-//  			boolean = true
-//  		}
-//  	}
-//
-// 	if contains(filter.VmIds, instance.VmId){
-// 	    klog.Infof("instanceMatchesFilter contains(filter.VmIds, instance.VmId) boolean %v %v %v", filter.VmIds, instance.VmId, boolean)
-// 	    boolean = true
-// 	}
-
-
-
-
-
-// 	name := *filter.Name
-// 	if name == "private-dns-name" {
-// 		if instance.PrivateDnsName == "" {
-// 			return false
-// 		}
-// 		return contains(filter.Values, *instance.PrivateDnsName)
-// 	}
-//
-// 	if name == "instance-state-name" {
-// 		return contains(filter.Values, *instance.State.Name)
-// 	}
-//
-// 	if name == "tag-key" {
-// 		for _, instanceTag := range instance.Tags {
-// 			if contains(filter.Values, instanceTag.Key) {
-// 				return true
-// 			}
-// 		}
-// 		return false
-// 	}
-//
-// 	if strings.HasPrefix(name, "tag:") {
-// 		tagName := name[4:]
-// 		for _, instanceTag := range instance.Tags {
-// 			if instanceTag.Key == tagName && contains(filter.Values, instanceTag.Value) {
-// 				return true
-// 			}
-// 		}
-// 		return false
-// 	}
-
-	//panic("Unknown filter ")
 
 
 func contains(haystack []string, needle string) bool {
