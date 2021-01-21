@@ -779,7 +779,7 @@ func (c *Cloud) ensureLoadBalancerHealthCheck(loadBalancer osc.LoadBalancer,
 
 	_, httpRes, errUpdate := c.lbu.UpdateLoadBalancer(request)
 
-	if err != nil {
+	if errUpdate != nil {
 	    if httpRes != nil {
 			return fmt.Errorf(httpRes.Status)
 		}

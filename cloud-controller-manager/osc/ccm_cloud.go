@@ -574,6 +574,10 @@ func (c *Cloud) describeLoadBalancer(name string) (osc.LoadBalancer, error) {
 // 		}
 // 		ret = loadBalancer
 // 	}
+
+    if len(response) == 0 {
+        return osc.LoadBalancer{}, nil
+    }
 	return response.LoadBalancers[0], nil
 }
 
