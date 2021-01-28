@@ -374,14 +374,12 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 		createRequest := osc.CreateLoadBalancerOpts{CreateLoadBalancerRequest: optional.NewInterface(request)}
 
 		klog.Infof("Creating load balancer for %v with name: %s", namespacedName, loadBalancerName)
-		klog.Infof("c.lbu.CreateLoadBalancer(createRequest): %v", createRequest)
 
 		_, httpRes, err := c.lbu.CreateLoadBalancer(&createRequest)
 		if err != nil {
 		    if httpRes != nil {
 			    return osc.LoadBalancer{}, fmt.Errorf(httpRes.Status)
 		    }
-		    klog.Infof("c.lbu.CreateLoadBalancer(createRequest) Error : %v", err)
 			return osc.LoadBalancer{}, err
 		}
 
@@ -576,21 +574,29 @@ func (c *Cloud) ensureLoadBalancer(namespacedName types.NamespacedName, loadBala
 		}
 
 		foundAttributes := describeAttributesOutput.LoadBalancers[0]
-
+        klog.V(2).Infof("ensureLoadBalncer foundAttributes (%v)", foundAttributes)
 		// Update attributes if they're dirty
 		if !reflect.DeepEqual(loadBalancerAttributes, foundAttributes) {
 			modifyAttributesRequest := &osc.UpdateLoadBalancerOpts{
 			    UpdateLoadBalancerRequest: optional.NewInterface(
 			        osc.UpdateLoadBalancerRequest {
                             LoadBalancerName: loadBalancerName,
-			                HealthCheck: loadBalancerAttributes.HealthCheck,
 			                AccessLog: loadBalancerAttributes.AccessLog,
                         }),
 			}
 
+			klog.V(2).Infof("Updating load-balancer attributes modifyAttributesRequest loadBalancerName healthcheck accesslog %v %v %v", loadBalancerName, loadBalancerAttributes.HealthCheck, loadBalancerAttributes.AccessLog)
+
 			klog.V(2).Infof("Updating load-balancer attributes for %q with attributes (%v)",
 				loadBalancerName, loadBalancerAttributes)
-			_, httpRes, err = c.lbu.UpdateLoadBalancer(modifyAttributesRequest)
+
+			klog.V(2).Infof("ensureLoadBalancer modifyAttributesRequest (%v)", modifyAttributesRequest)
+			//_, httpRes, err = c.lbu.UpdateLoadBalancer(modifyAttributesRequest)
+			update := osc.UpdateLoadBalancerResponse{}
+			update, httpRes, err = c.lbu.UpdateLoadBalancer(modifyAttributesRequest)
+			klog.V(2).Infof("ensureLoadBalancer update %v", update)
+			klog.V(2).Infof("ensureLoadBalancer update.LoadBalancer.LoadBalancerName %v", update.LoadBalancer.LoadBalancerName)
+
 			if err != nil {
 				return osc.LoadBalancer{}, fmt.Errorf("Unable to update load balancer attributes during attribute sync: %q httpRes: %q", err, httpRes.Status)
 			}
@@ -745,13 +751,11 @@ func (c *Cloud) ensureLoadBalancerHealthCheck(loadBalancer osc.LoadBalancer,
 	debugPrintCallerFunctionName()
 	klog.V(10).Infof("ensureLoadBalancerHealthCheck(%v,%v, %v, %v, %v)",
 		loadBalancer, protocol, port, path, annotations)
-	klog.Infof("ensureLoadBalancerHealthCheck(%v,%v, %v, %v, %v)", loadBalancer, protocol, port, path, annotations)
 	name := loadBalancer.LoadBalancerName
 
 	actual := loadBalancer.HealthCheck
 	expectedTarget := protocol + ":" + strconv.FormatInt(int64(port), 10) + path
 	expected, err := c.getExpectedHealthCheck(expectedTarget, annotations)
-	klog.Infof("ensureLoadBalancerHealthCheck expected expectedTarget %v %v)", expected, expectedTarget)
 	if err != nil {
 		return fmt.Errorf("cannot update health check for load balancer %q: %q", name, err)
 	}
@@ -774,8 +778,6 @@ func (c *Cloud) ensureLoadBalancerHealthCheck(loadBalancer osc.LoadBalancer,
                     LoadBalancerName: loadBalancer.LoadBalancerName,
                 }),
     }
-    klog.Infof("ensureLoadBalancerHealthCheck expected.Path %v expected.Protocol %v", expected.Path, expected.Protocol)
-
 
 	_, httpRes, errUpdate := c.lbu.UpdateLoadBalancer(request)
 

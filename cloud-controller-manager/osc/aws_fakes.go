@@ -71,7 +71,6 @@ func NewFakeOSCServices(clusterID string) *FakeOSCServices {
 	tag.Key = TagNameKubernetesClusterLegacy
 	tag.Value = clusterID
 	selfInstance.Tags = []osc.ResourceTag{tag}
-    klog.Infof("NewFakeOSCServices selfInstance.Tags %v", selfInstance.Tags)
 
     s.selfInstance = selfInstance
     s.instances = []osc.Vm{selfInstance}
@@ -125,12 +124,8 @@ type FakeFCUImpl struct {
 func (fcui *FakeFCUImpl) ReadVms(request *osc.ReadVmsOpts) ([]osc.Vm, *_nethttp.Response, error) {
 	matches := []osc.Vm{}
 
-    klog.Infof("fake readvm")
-
     requestVm := request.ReadVmsRequest.Value().(osc.ReadVmsRequest).Filters
-    klog.Infof("Fake ReadVms filter %v ", requestVm)
-    klog.Infof("Fake ReadVms request %v ", request)
-    klog.Infof("Fake ReadVms fcui.osc.instances %v ", fcui.osc.instances)
+
 	for _, instance := range fcui.osc.instances {
 		if requestVm.VmIds != nil {
 			if instance.VmId == "" {
@@ -141,7 +136,6 @@ func (fcui *FakeFCUImpl) ReadVms(request *osc.ReadVmsOpts) ([]osc.Vm, *_nethttp.
 			found := false
 			for _, instanceID := range requestVm.VmIds {
 				if instanceID == instance.VmId {
-				    klog.Infof("Fake if instanceID == instance.VmId %v ", instanceID)
 					found = true
 					break
 				}
@@ -154,11 +148,9 @@ func (fcui *FakeFCUImpl) ReadVms(request *osc.ReadVmsOpts) ([]osc.Vm, *_nethttp.
 
 		// A verifier
  		if !reflect.DeepEqual(requestVm, osc.FiltersVm{}) {
- 		    klog.Infof("Fake readVms reflect.DeepEqual(requestVm, osc.FiltersVm{})")
  			allMatch := true
  			//for _, filter := range requestVm {
  				if !instanceMatchesFilter(instance, requestVm) {
- 				    klog.Infof("Fake readVms !instanceMatchesFilter(instance, requestVm) instance %v", instance)
  					allMatch = false
  					//break
  				}
@@ -460,16 +452,10 @@ func (lbu *FakeLBU) expectDescribeLoadBalancers(loadBalancerName string) {
 
 
 func instanceMatchesFilter(instance osc.Vm, filter osc.FiltersVm) bool {
-	klog.Infof("instanceMatchesFilter instance %v", instance)
-	klog.Infof("instanceMatchesFilter filter %v ", filter)
-	klog.Infof("instanceMatchesFilter filter.TagValues, instance.PrivateDnsName %v %v", filter.TagValues, instance.PrivateDnsName)
-	klog.Infof("instanceMatchesFilter filter.TagValues %v", filter.Tags)
 	if contains(filter.Tags, instance.PrivateDnsName){
-            klog.Infof("instanceMatchesFilter contains(filter.TagValues, instance.PrivateDnsName) %v %v", filter.TagValues, instance.PrivateDnsName)
             return true
     	}
     if contains(filter.TagValues, instance.PrivateDnsName){
-            klog.Infof("instanceMatchesFilter contains(filter.TagValues, instance.PrivateDnsName) %v %v", filter.TagValues, instance.PrivateDnsName)
             return true
     	}
 	if contains(filter.VmIds, instance.VmId) {
