@@ -2,23 +2,14 @@
  
 ## Generate and apply the osc-secret 
 ```
-	OSC_ACCOUNT_ID=XXXXX		: the osc user id
-	OSC_ACCOUNT_IAM=xxxx		: the eim user name  
-	OSC_USER_ID=XXXX			: the eim user id
-	OSC_ARN="XXXXX"				: the eim user orn
-	AWS_ACCESS_KEY_ID=XXXX 		: the AK
-	AWS_SECRET_ACCESS_KEY=XXXX 	: the SK
-	AWS_DEFAULT_REGION=XXX		: the Region to be used
+	export OSC_ACCESS_KEY=XXXXX
+    export OSC_SECRET_KEY=XXXXX
+    
+    
 	
 	cat ./deploy/secret_osc.yaml | \
-	sed "s@AWS_ACCESS_KEY_ID@\"${AWS_ACCESS_KEY_ID}\"@g" 			  | \
-	sed "s@AWS_SECRET_ACCESS_KEY@\"${AWS_SECRET_ACCESS_KEY}\"@g"    | \
-	sed "s@AWS_DEFAULT_REGION@\"${AWS_DEFAULT_REGION}\"@g"		  | \
-	sed "s@AWS_AVAILABILITY_ZONES@\"${AWS_AVAILABILITY_ZONES}\"@g"  | \
-	sed "s@OSC_ACCOUNT_ID@\"${OSC_ACCOUNT_ID}\"@g" 				  | \
-	sed "s@OSC_ACCOUNT_IAM@\"${OSC_ACCOUNT_IAM}\"@g"				  | \
-	sed "s@OSC_USER_ID@\"${OSC_USER_ID}\"@g" 						  | \
-	sed "s@OSC_ARN@\"${OSC_ARN}\"@g" > apply_secret.yaml
+	sed "s/secret_key: \"\"/secret_key: \"$OSC_SECRET_KEY\"/g" | \
+    sed "s/access_key: \"\"/access_key: \"$OSC_ACCESS_KEY\"/g" > apply_secret.yaml
 	
 	cat apply_secret.yaml
 	
