@@ -1632,6 +1632,10 @@ func (c *Cloud) EnsureLoadBalancerDeleted(ctx context.Context, clusterName strin
 	securityGroupsItem := []string{}
 	if len(lb.SecurityGroups) == 0 && c.vpcID == "" {
 		securityGroupsItem = append(securityGroupsItem, DefaultSrcSgName)
+	} else if len(lb.SecurityGroups) > 0 {
+		for _, securityGroup := range lb.SecurityGroups {
+			securityGroupsItem = append(securityGroupsItem, *securityGroup)
+		}
 	}
 
 	{
