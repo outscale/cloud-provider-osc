@@ -30,13 +30,19 @@ replace (
 )
 
 require (
+	github.com/antihax/optional v1.0.0
+	github.com/aws/aws-sdk-go v1.16.26
+	github.com/prometheus/client_golang v1.0.0
 	github.com/spf13/cobra v0.0.5
+	github.com/stretchr/testify v1.4.0
+	gopkg.in/gcfg.v1 v1.2.0
+	k8s.io/api v0.0.0
 	k8s.io/apimachinery v0.0.0
 	k8s.io/apiserver v0.0.0
+	k8s.io/client-go v0.0.0
 	k8s.io/cloud-provider v0.0.0
 	k8s.io/component-base v0.0.0
 	k8s.io/klog v1.0.0
 	k8s.io/kubernetes v1.17.2
-	k8s.io/legacy-cloud-providers v0.0.0
 	k8s.io/utils v0.0.0-20191114184206-e782cd3c129f
 )
