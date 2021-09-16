@@ -40,7 +40,7 @@ require (
 	k8s.io/apimachinery v0.0.0
 	k8s.io/apiserver v0.22.1
 	k8s.io/client-go v0.0.0
-	k8s.io/cloud-provider v0.0.0
+	k8s.io/cloud-provider v0.22.1
 	k8s.io/component-base v0.22.1
 	k8s.io/klog v1.0.0
 	k8s.io/kubernetes v1.17.2
