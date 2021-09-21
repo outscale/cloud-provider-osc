@@ -3,7 +3,7 @@ module github.com/outscale-dev/cloud-provider-osc
 go 1.15
 
 require (
-	github.com/aws/aws-sdk-go v1.28.2
+	github.com/aws/aws-sdk-go v1.40.45
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.16.0
 	github.com/prometheus/client_golang v1.7.1
@@ -14,7 +14,7 @@ require (
 	k8s.io/api v0.22.1
 	k8s.io/apimachinery v0.22.1
 	k8s.io/apiserver v0.19.7
-	k8s.io/client-go v0.19.7
+	k8s.io/client-go v0.22.2
 	k8s.io/cloud-provider v0.22.1
 	k8s.io/component-base v0.22.1
 	k8s.io/klog/v2 v2.4.0
