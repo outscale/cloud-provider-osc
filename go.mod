@@ -13,7 +13,7 @@ require (
 	github.com/stretchr/testify v1.7.0
 	google.golang.org/grpc/examples v0.0.0-20210917050107-e469f0d5f5bc // indirect
 	gopkg.in/gcfg.v1 v1.2.3
-	k8s.io/api v0.22.1
+	k8s.io/api v0.22.2
 	k8s.io/apimachinery v0.22.1
 	k8s.io/apiserver v0.19.7
 	k8s.io/client-go v0.22.2
