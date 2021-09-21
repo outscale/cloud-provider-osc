@@ -31,7 +31,7 @@ replace (
 
 require (
 	github.com/antihax/optional v1.0.0
-	github.com/aws/aws-sdk-go v1.40.44
+	github.com/aws/aws-sdk-go v1.40.45
 	github.com/prometheus/client_golang v1.0.0
 	github.com/spf13/cobra v0.0.7
 	github.com/stretchr/testify v1.7.0
