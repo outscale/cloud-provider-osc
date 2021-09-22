@@ -3,11 +3,11 @@ module github.com/outscale-dev/cloud-provider-osc
 go 1.15
 
 require (
-	github.com/aws/aws-sdk-go v1.40.46
+	github.com/aws/aws-sdk-go v1.40.47
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.16.0
 	github.com/prometheus/client_golang v1.7.1
-	github.com/spf13/cobra v1.2.1
+	github.com/spf13/cobra v1.2.1 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.0
 	gopkg.in/gcfg.v1 v1.2.0
@@ -23,7 +23,6 @@ require (
 )
 
 replace (
-
 	github.com/coreos/etcd => github.com/coreos/etcd v3.3.13+incompatible
 	go.etcd.io/etcd => go.etcd.io/etcd v0.5.0-alpha.5.0.20200910180754-dd1b699fc489 // ae9734ed278b is the SHA for git tag v3.4.13
 	google.golang.org/grpc => google.golang.org/grpc v1.27.1
