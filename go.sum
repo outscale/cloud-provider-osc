@@ -714,8 +714,8 @@ k8s.io/component-helpers v0.25.6/go.mod h1:TbxdooEyf6EgMtx/5WayyChEXY6uTgZs59T1F
 k8s.io/controller-manager v0.25.6 h1:m6TOcxj20Na0mBg3d8596XdEsgdGwa0Fp36YsgS1G5o=
 k8s.io/controller-manager v0.25.6/go.mod h1:NSq3oQUkOXxcj0RZCSxRBOXbEOQSZ1cYnVbaQb1LaQE=
 k8s.io/klog/v2 v2.0.0/go.mod h1:PBfzABfn139FHAV07az/IF9Wp1bkk3vpT2XSJ76fSDE=
-k8s.io/klog/v2 v2.70.1 h1:7aaoSdahviPmR+XkS7FyxlkkXs6tHISSG03RxleQAVQ=
-k8s.io/klog/v2 v2.70.1/go.mod h1:y1WjHnz7Dj687irZUWR/WLkLc5N1YHtjLdmgWjndZn0=
+k8s.io/klog/v2 v2.90.1 h1:m4bYOKall2MmOiRaR1J+We67Do7vm9KiQVlT96lnHUw=
+k8s.io/klog/v2 v2.90.1/go.mod h1:y1WjHnz7Dj687irZUWR/WLkLc5N1YHtjLdmgWjndZn0=
 k8s.io/kube-openapi v0.0.0-20220803162953-67bda5d908f1 h1:MQ8BAZPZlWk3S9K4a9NCkIFQtZShWqoha7snGixVgEA=
 k8s.io/kube-openapi v0.0.0-20220803162953-67bda5d908f1/go.mod h1:C/N6wCaBHeBHkHUesQOQy2/MZqGgMAFPqGsGQLdbZBU=
 k8s.io/kubectl v0.25.6 h1:uGoNw4vF+O62NTwRqM40gMCEI5ujw2g0ocT6dDPt55c=
