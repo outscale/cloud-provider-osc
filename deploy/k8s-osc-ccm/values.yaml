@@ -4,7 +4,10 @@
 
 # -- Number of replicas to deploy
 replicaCount: 1
-
+customEndpoint: "https://api.dv-west-2.outscale.com/api/v1"
+customEndpointFcu: "https://fcu.dv-west-2.outscale.com"
+customEndpointLbu: "https://lbu.dv-west-2.outscale.com"
+customEndpointEim: "https://eim.dv-west-2.outscale.com"
 image:
   # -- Container image to use
   repository: outscale/cloud-provider-osc

@@ -22,7 +22,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-
+	"os"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/ec2metadata"
@@ -69,9 +69,20 @@ func SetupServiceResolver(region string) endpoints.ResolverFunc {
 		}
 		var oscService string
 		var ok bool
+		var url string
+		switch {
+		case os.Getenv("OSC_ENDPOINT_LBU") != "" :
+			url = os.Getenv("OSC_ENDPOINT_FCU")
+		case os.Getenv("OSC_ENDPOINT_EIM") != "":
+			url = os.Getenv("OSC_ENDPOINT_EIM")
+		case os.Getenv("OSC_ENDPOINT_FCU") != "" :
+			url = os.Getenv("OSC_ENDPOINT_FCU")
+		default:
+			url = Endpoint(region, oscService)
+		}
 		if oscService, ok = supportedService[service]; ok {
 			return endpoints.ResolvedEndpoint{
-				URL:           Endpoint(region, oscService),
+				URL:           url,
 				SigningRegion: region,
 				SigningName:   service,
 			}, nil
