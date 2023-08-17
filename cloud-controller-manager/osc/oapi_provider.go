@@ -118,14 +118,11 @@ func (p *awsSDKProvider) getCrossRequestRetryDelay(regionName string) *CrossRequ
 	return delayer
 }
 
-func (p *awsSDKProvider) Compute(regionName string) (Compute, error) {
-	debugPrintCallerFunctionName()
-	klog.V(5).Infof("Compute(%v)", regionName)
-	// osc config
+func NewOscClient(regionName string) (context.Context, *osc.APIClient, error) {
 	configEnv := osc.NewConfigEnv()
 	config, err := configEnv.Configuration()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	config.Debug = true
 	config.UserAgent = fmt.Sprintf("osc-cloud-controller-manager/%v", utils.GetVersion())
@@ -136,6 +133,16 @@ func (p *awsSDKProvider) Compute(regionName string) (Compute, error) {
 	})
 	ctx = context.WithValue(ctx, osc.ContextServerIndex, 0)
 	ctx = context.WithValue(ctx, osc.ContextServerVariables, map[string]string{"region": regionName})
+	return ctx, client, err
+}
+func (p *awsSDKProvider) Compute(regionName string) (Compute, error) {
+	debugPrintCallerFunctionName()
+	klog.V(5).Infof("Compute(%v)", regionName)
+	// osc config
+	ctx, client, err := NewOscClient(regionName)
+	if err != nil {
+		return nil, err
+	}
 
 	sdk := &oscSdkCompute{
 		client: client,
