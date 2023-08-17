@@ -17,12 +17,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	"k8s.io/klog/v2"
 
-	"github.com/outscale-dev/cloud-provider-osc/cloud-controller-manager/utils"
 	"github.com/outscale/osc-sdk-go/v2"
 
 	v1 "k8s.io/api/core/v1"
@@ -36,21 +34,10 @@ func newInstancesV2(az string, tagging *resourceTagging) (cloudprovider.Instance
 	if err != nil {
 		return nil, err
 	}
-	configEnv := osc.NewConfigEnv()
-	config, err := configEnv.Configuration()
+	ctx, client, err := NewOscClient(region)
 	if err != nil {
 		return nil, err
 	}
-	config.Debug = true
-	config.UserAgent = fmt.Sprintf("osc-cloud-controller-manager/%v", utils.GetVersion())
-	client := osc.NewAPIClient(config)
-	ctx := context.WithValue(context.Background(), osc.ContextAWSv4, osc.AWSv4{
-		AccessKey: os.Getenv("OSC_ACCESS_KEY"),
-		SecretKey: os.Getenv("OSC_SECRET_KEY"),
-	})
-	ctx = context.WithValue(ctx, osc.ContextServerIndex, 0)
-	ctx = context.WithValue(ctx, osc.ContextServerVariables, map[string]string{"region": region})
-
 	return &instancesV2{
 		availabilityZone: az,
 		region:           region,
