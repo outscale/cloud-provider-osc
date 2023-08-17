@@ -33,44 +33,38 @@ func ListDeployment(client clientset.Interface, namespace *v1.Namespace) {
 }
 
 // CreateDeployment create a deployement
-func CreateDeployment(client clientset.Interface, namespace *v1.Namespace, cmd string) *apps.Deployment {
+func CreateDeployment(client clientset.Interface, namespace *v1.Namespace, cmd, metaName, name, image string, replicas int32, ports []apiv1.ContainerPort) *apps.Deployment {
 	deploymentsClient := client.AppsV1().Deployments(namespace.Name)
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "echoheaders",
+			Name: metaName,
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: int32Ptr(1),
+			Replicas: int32Ptr(replicas),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"app": "echoheaders",
+					"app": name,
 				},
 			},
 			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"app": "echoheaders",
+						"app": name,
 					},
 				},
 				Spec: apiv1.PodSpec{
 					Containers: []apiv1.Container{
 						{
-							Name:  "echoheaders",
-							Image: "gcr.io/google_containers/echoserver:1.10",
-							Ports: []apiv1.ContainerPort{
-								{
-									Name:          "tcp",
-									Protocol:      apiv1.ProtocolTCP,
-									ContainerPort: 8080,
-								},
-							},
+							Name:            name,
+							ImagePullPolicy: apiv1.PullIfNotPresent,
+							Image:           image,
+							Ports:           ports,
 						},
 					},
 				},
 			},
 		},
 	}
-
 	if len(cmd) > 0 {
 		deployment.Spec.Template.Spec.Containers[0].Command = []string{"/bin/sh"}
 		deployment.Spec.Template.Spec.Containers[0].Args = []string{"-c", cmd}

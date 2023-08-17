@@ -6,7 +6,6 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	clientset "k8s.io/client-go/kubernetes"
 	e2esvc "k8s.io/kubernetes/test/e2e/framework/service"
 )
@@ -25,7 +24,7 @@ func getAnnotations() map[string]string {
 }
 
 // CreateSvc create an svc
-func CreateSvc(client clientset.Interface, namespace *v1.Namespace, additional map[string]string) *v1.Service {
+func CreateSvc(client clientset.Interface, namespace *v1.Namespace, additional map[string]string, metaName, name string, servicePort []v1.ServicePort, sourceRanges bool, sourceRangesCidr []string) *v1.Service {
 	fmt.Printf("Creating Service...\n")
 	svcClient := client.CoreV1().Services(namespace.Name)
 
@@ -36,26 +35,21 @@ func CreateSvc(client clientset.Interface, namespace *v1.Namespace, additional m
 
 	service := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        "echoheaders-lb-public",
+			Name:        metaName,
 			Namespace:   namespace.Name,
 			Annotations: annotations,
 		},
 		Spec: v1.ServiceSpec{
 			Type: v1.ServiceTypeLoadBalancer,
 			Selector: map[string]string{
-				"app": "echoheaders",
+				"app": name,
 			},
-			Ports: []v1.ServicePort{
-				{
-					Name:       "tcp",
-					Protocol:   v1.ProtocolTCP,
-					TargetPort: intstr.FromInt(8080),
-					Port:       80,
-				},
-			},
+			Ports: servicePort,
 		},
 	}
-
+	if sourceRanges {
+		service.Spec.LoadBalancerSourceRanges = sourceRangesCidr
+	}
 	result, err := svcClient.Create(context.TODO(), service, metav1.CreateOptions{})
 	if err != nil {
 		panic(err)
