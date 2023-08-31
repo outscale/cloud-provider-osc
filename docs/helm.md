@@ -24,14 +24,18 @@ Kubernetes: `>=1.20.0-0`
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| caBundle.key | string | `""` | Entry key in secret used to store additional certificates authorities |
+| caBundle.name | string | `""` | Secret name containing additional certificates authorities |
 | customEndpoint | string | `""` | Use customEndpoint (url with protocol) ex: https://api.eu-west-2.outscale.com/api/v1 |
 | customEndpointEim | string | `""` | Use customEndpointEim (url with protocol) ex: https://eim.eu-west-2.outscale.com     |
 | customEndpointFcu | string | `""` | Use customEndpointFcu (url with protocol) ex: https://fcu.eu-west-2.outscale.com |
 | customEndpointLbu | string | `""` | Use customEndpointLbu (url with protocol) ex: https://lbu.eu-west-2.outscale.com   |
+| httpsProxy | string | `""` | Value used to create environment variable HTTPS_PROXY |
 | image.pullPolicy | string | `"IfNotPresent"` | Container pull policy |
 | image.repository | string | `"outscale/cloud-provider-osc"` | Container image to use |
 | image.tag | string | `"v0.2.3"` | Container image tag to deploy |
 | imagePullSecrets | list | `[]` | Specify image pull secrets |
+| noProxy | string | `""` | Value used to create environment variable NO_PROXY |
 | nodeSelector | object | `{}` | Assign Pod to Nodes (see [kubernetes doc](https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes/)) |
 | oscSecretName | string | `"osc-secret"` | Secret name containing cloud credentials |
 | podLabels | object | `{}` | Labels for pod |
