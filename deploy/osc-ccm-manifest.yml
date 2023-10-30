@@ -155,7 +155,6 @@ spec:
             - --configure-cloud-routes=false
             - --cloud-provider=osc
             - -v=5
-            - --logtostderr
           env:
             - name: OSC_ACCOUNT_ID
               valueFrom:
