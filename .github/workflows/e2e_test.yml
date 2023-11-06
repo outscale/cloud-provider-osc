@@ -67,6 +67,8 @@ jobs:
         public_cloud: "false"
         image_id: ${{ secrets.OMI_ID }}
         version: ${{ format('{0}.{1}', github.sha, github.run_attempt) }}
+        rke_version: ${{ secrets.RKE_VERSION }}
+        kubernetes_version: ${{ secrets.KUBERNETES_VERSION }}
     ## Create Public Cloud Cluster
     - name: Test on Public cluster
       uses: ./.github/local_action/start_ccm_e2e
@@ -77,6 +79,8 @@ jobs:
         public_cloud: "true"
         image_id: ${{ secrets.OMI_ID }}
         version: ${{ format('{0}.{1}', github.sha, github.run_attempt) }}
+        rke_version: ${{ secrets.RKE_VERSION }}
+        kubernetes_version: ${{ secrets.KUBERNETES_VERSION }}
     - name: Clean images
       run: |
         docker image prune -a -f
