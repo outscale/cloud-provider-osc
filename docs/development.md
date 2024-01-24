@@ -49,6 +49,9 @@ Make sure to copy, edit and deploy your own [secrets.yml](../deploy/secrets.exam
 kubectl apply -f deploy/secrets.yaml
 ```
 
+**Replace only MY_AWS_ACCESS_KEY_ID with your outscale access key, MY_AWS_SECRET_ACCESS_KEY with your outscale secret key and MY_AWS_DEFAULT_REGION with your outscale region.**
+
+
 Install/upgrade your CCM with your "dev" image:
 ```
 helm upgrade --install --wait --wait-for-jobs k8s-osc-ccm deploy/k8s-osc-ccm --set image.pullPolicy="Always" --set oscSecretName=osc-secret --set image.repository=10.0.1.10:32500/osc/cloud-provider-osc --set image.tag=dev
