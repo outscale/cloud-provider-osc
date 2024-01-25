@@ -68,6 +68,8 @@ Make sure to have kubectl configured and deploy the Secret Resource containing y
 kubectl apply -f deploy/secrets.yaml
 ```
 
+**Replace only MY_AWS_ACCESS_KEY_ID with your outscale access key, MY_AWS_SECRET_ACCESS_KEY with your outscale secret key and MY_AWS_DEFAULT_REGION with your outscale region.**
+
 ## Add Cloud Controller Manager
 
 You can then deploy Outscale Cloud Controller Manager using a simple manifest:
