@@ -67,11 +67,6 @@ jobs:
         public_cloud: "false"
         image_id: ${{ secrets.OMI_ID }}
         version: ${{ format('{0}.{1}', github.sha, github.run_attempt) }}
-        rke_version: "v1.4.12"
-        kubernetes_version: "v1.26.11-rancher2-1"
-        bastion_vm_type: ${{ secrets.BASTION_VMTYPE }}
-        worker_vm_type: ${{ secrets.WORKER_VMTYPE }}
-        control_plane_vm_type: ${{ secrets.CP_VMTYPE }}        
     ## Create Public Cloud Cluster
     - name: Test on Public cluster
       uses: ./.github/local_action/start_ccm_e2e
@@ -82,11 +77,6 @@ jobs:
         public_cloud: "true"
         image_id: ${{ secrets.OMI_ID }}
         version: ${{ format('{0}.{1}', github.sha, github.run_attempt) }}
-        rke_version: "v1.4.12"
-        kubernetes_version: "v1.26.11-rancher2-1"
-        bastion_vm_type: ${{ secrets.BASTION_VMTYPE }}
-        worker_vm_type: ${{ secrets.WORKER_VMTYPE }}
-        control_plane_vm_type: ${{ secrets.CP_VMTYPE }}
     - name: Clean images
       run: |
         docker image prune -a -f
