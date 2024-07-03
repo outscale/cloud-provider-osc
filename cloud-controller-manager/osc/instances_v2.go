@@ -245,6 +245,11 @@ func parseInstanceIDFromProviderIDV2(providerID string) (string, error) {
 	// * /<availability-zone>/<instance-id>
 	// * <instance-id>
 	instanceID := ""
+	if !strings.HasPrefix(providerID, "i-") && !strings.HasPrefix(providerID, "aws://") {
+	// providerID does not have the expected prefix
+		return "", errors.New("invalid providerID format: missing 'aws://' prefix or 'i-' prefix")
+	}
+
 	metadata := strings.Split(strings.TrimPrefix(providerID, "aws://"), "/")
 	if len(metadata) == 1 {
 		// instance-id
@@ -255,6 +260,11 @@ func parseInstanceIDFromProviderIDV2(providerID string) (string, error) {
 	} else if len(metadata) == 3 {
 		// /az/instance-id
 		instanceID = metadata[2]
+	} else {
+		return "", errors.New("invalid providerID format")
+	}
+	if !strings.HasPrefix(instanceID, "i-") {
+		return "", errors.New("instance ID not found in providerID or it's wrong format")
 	}
 
 	return instanceID, nil

@@ -1805,6 +1805,45 @@ func TestNodeNameToProviderID(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestParseInstanceIDFromProviderIDV2(t *testing.T) {
+	testCases := []struct {
+		providerID          string
+		expectedInstanceID  string
+		expectedErrorString string
+	}{
+		// Valid cases
+		{providerID: "aws://eu-west-2a/i-xxxxx", expectedInstanceID: "i-xxxxx", expectedErrorString: ""},
+		{providerID: "i-xxxx", expectedInstanceID: "i-xxxx", expectedErrorString: ""},
+		{providerID: "aws://i-xxxxx", expectedInstanceID: "i-xxxxx", expectedErrorString: ""},
+		{providerID: "aws:///eu-west-2a/i-xxxxx", expectedInstanceID: "i-xxxxx", expectedErrorString: ""},
+		{providerID: "aws:///i-xxxx", expectedInstanceID: "i-xxxx", expectedErrorString: ""},
+
+		// Invalid cases
+		{providerID: "invalid-format", expectedInstanceID: "", expectedErrorString: "invalid providerID format"},
+		{providerID: "aws://", expectedInstanceID: "", expectedErrorString: "instance ID not found in providerID or it's wrong format"},
+		{providerID: "aws://eu-west-2a/", expectedInstanceID: "", expectedErrorString: "instance ID not found in providerID or it's wrong format"},
+		{providerID: "aws:///eu-west-2a/", expectedInstanceID: "", expectedErrorString: "instance ID not found in providerID or it's wrong format"},
+
+	}
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("ProviderID_%s", tc.providerID), func(t *testing.T) {
+			instanceID, err := parseInstanceIDFromProviderIDV2(tc.providerID)
+			if tc.expectedErrorString == "" {
+				if err != nil {
+					t.Errorf("expected no error for providerID '%s', but got: %v", tc.providerID, err)
+				}
+				if instanceID != tc.expectedInstanceID {
+					t.Errorf("expected instanceID '%s' for providerID '%s', but got '%s'", tc.expectedInstanceID, tc.providerID, instanceID)
+				}
+			} else {
+				if err == nil || !strings.Contains(err.Error(), tc.expectedErrorString) {
+					t.Errorf("expected error containing '%s' for providerID '%s', but got no error or different error: %v", tc.expectedErrorString, tc.providerID, err)
+				}
+			}
+		})
+	}
+}
+
 func informerSynced() bool {
 	return true
 }
