@@ -135,7 +135,17 @@ func (i *instancesV2) getInstance(ctx context.Context, node *v1.Node) (*osc.Vm, 
 	var request *osc.ReadVmsRequest
 	if node.Spec.ProviderID == "" {
 		// get Instance by private DNS name
-		request = &osc.ReadVmsRequest{}
+		request = &osc.ReadVmsRequest{
+			Filters: &osc.FiltersVm{
+				VmStateNames: &[]string{
+					"pending",
+					"running",
+					"stopping",
+					"stopped",
+					"shutting-down",
+				},
+			},
+		}
 		klog.V(4).Infof("looking for node by private DNS name %v", node.Name)
 	} else {
 		// get Instance by provider ID
@@ -147,13 +157,6 @@ func (i *instancesV2) getInstance(ctx context.Context, node *v1.Node) (*osc.Vm, 
 		request = &osc.ReadVmsRequest{
 			Filters: &osc.FiltersVm{
 				VmIds: &[]string{instanceID},
-				VmStateNames: &[]string{
-					"pending",
-					"running",
-					"stopping",
-					"stopped",
-					"shutting-down",
-				},
 			},
 		}
 		klog.V(4).Infof("looking for node by provider ID %v", node.Spec.ProviderID)
