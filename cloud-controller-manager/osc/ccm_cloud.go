@@ -1946,7 +1946,15 @@ func (c *Cloud) getInstancesByNodeNames(nodeNames []string, states ...string) ([
 	names := nodeNames
 	oscInstances := []*osc.Vm{}
 
-	filters := osc.FiltersVm{}
+	filters := osc.FiltersVm{
+		VmStateNames: &[]string{
+			"pending",
+			"running",
+			"stopping",
+			"stopped",
+			"shutting-down",
+		},
+	}
 
 	instances, err := c.describeInstances(&filters)
 	if err != nil {
@@ -2005,6 +2013,13 @@ func (c *Cloud) findInstanceByNodeName(nodeName types.NodeName) (*osc.Vm, error)
 		},
 		Tags: &[]string{
 			fmt.Sprintf("%s=%s", TagNameClusterNode, privateDNSName),
+		},
+		VmStateNames: &[]string{
+			"pending",
+			"running",
+			"stopping",
+			"stopped",
+			"shutting-down",
 		},
 	}
 
