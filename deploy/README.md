@@ -91,3 +91,11 @@ kubectl get pod -n kube-system -l "app=osc-cloud-controller-manager"
 ```
 
 You can also deploy a simple application exposed by a Service like [2048 web application](../examples/2048/README.md).
+
+# Troubleshooting
+
+When troubleshooting issues, you can follow this debug tree to identify and resolve common problems.
+
+## Debug Tree
+
+![Debug Tree](debug-tree.png)
