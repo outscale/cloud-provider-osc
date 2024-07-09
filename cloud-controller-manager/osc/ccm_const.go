@@ -181,7 +181,7 @@ const (
 
 // awsTagNameMasterRoles is a set of well-known AWS tag names that indicate the instance is a master
 // The major consequence is that it is then not considered for AWS zone discovery for dynamic volume creation.
-var awsTagNameMasterRoles = sets.NewString("kubernetes.io/role/master", "k8s.io/role/master")
+var awsTagNameMasterRoles = sets.NewString("kubernetes.io/role/control-plane", "k8s.io/role/control-plane")
 
 // Maps from backend protocol to ELB protocol
 var backendProtocolMapping = map[string]string{

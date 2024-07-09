@@ -257,7 +257,7 @@ spec:
         # cloud controller manages should be able to run on masters
         # this is to have the daemonset runnable on master nodes
         # the taint may vary depending on your cluster setup
-        - key: node-role.kubernetes.io/master
+        - key: node-role.kubernetes.io/control-plane
           effect: NoSchedule
         {{- with .Values.tolerations }}
           {{- toYaml . | nindent 8 }}
