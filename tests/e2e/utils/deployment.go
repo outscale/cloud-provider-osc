@@ -97,11 +97,11 @@ func WaitForDeployementReady(client clientset.Interface, namespace *v1.Namespace
 	err := e2edeployment.WaitForDeploymentComplete(client, deployment)
 	framework.ExpectNoError(err)
 
-	pods, err := e2edeployment.GetPodsForDeployment(client, deployment)
+	pods, err := e2edeployment.GetPodsForDeployment(context.TODO(), client, deployment)
 	framework.ExpectNoError(err)
 	fmt.Printf("pods:  %v\n", len(pods.Items))
 	// always get first pod as there should only be one
 	pod := pods.Items[0]
-	err = e2epod.WaitForPodRunningInNamespace(client, &pod)
+	err = e2epod.WaitForPodRunningInNamespace(context.TODO(), client, &pod)
 	framework.ExpectNoError(err)
 }
