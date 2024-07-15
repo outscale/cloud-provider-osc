@@ -18,11 +18,13 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"context"
 
 	e2eutils "github.com/outscale-dev/cloud-provider-osc/tests/e2e/utils"
 
 	elbApi "github.com/aws/aws-sdk-go/service/elb"
 	"github.com/onsi/ginkgo/v2"
+	omega "github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
 
 	apiv1 "k8s.io/api/core/v1"
@@ -286,7 +288,7 @@ var _ = ginkgo.Describe("[ccm-e2e] SVC-LB", func() {
 			fmt.Printf("address:  %v\n", address)
 
 			ginkgo.By("Test Connection (wait to have endpoint ready)")
-			e2esvc.TestReachableHTTP(address, int(servicePorts[0].Port), 600*time.Second)
+			e2esvc.TestReachableHTTP(context.TODO(), address, int(servicePorts[0].Port), 600*time.Second)
 			if updateService {
 				ginkgo.By("Remove Instances from lbu")
 				elb, err := e2eutils.ElbAPI()
@@ -301,14 +303,16 @@ var _ = ginkgo.Describe("[ccm-e2e] SVC-LB", func() {
 					lbInstanceItem.InstanceId = lbInstance.InstanceId
 					lbInstances = append(lbInstances, lbInstanceItem)
 				}
-				framework.ExpectNotEqual(len(lbInstances), 0)
+				omega.Expect(len(lbInstances)).NotTo(omega.Equal(0), "Value should be 2")
+				//framework.ExpectNotEqual(len(lbInstances), 0)
 
 				err = e2eutils.RemoveLbInst(elb, lbName, lbInstances)
 				framework.ExpectNoError(err)
 
 				lb, err = e2eutils.GetLb(elb, lbName)
 				framework.ExpectNoError(err)
-				framework.ExpectEqual(len(lb.Instances), 0)
+				omega.Expect(len(lb.Instances)).To(omega.Equal(0), "Value should be 0")
+				//framework.ExpectEqual(len(lb.Instances), 0)
 
 				ginkgo.By("Add port to force update of LB")
 				port := v1.ServicePort{
@@ -333,10 +337,11 @@ var _ = ginkgo.Describe("[ccm-e2e] SVC-LB", func() {
 				lb, err = e2eutils.GetLb(elb, lbName)
 
 				framework.ExpectNoError(err)
-				framework.ExpectNotEqual(len(lb.Instances), 0)
+				omega.Expect(len(lb.Instances)).NotTo(omega.Equal(0))
+				//framework.ExpectNotEqual(len(lb.Instances), 0)
 
 				ginkgo.By("TestReachableHTTP after update")
-				e2esvc.TestReachableHTTP(address, int(servicePorts[0].Port), 240*time.Second)
+				e2esvc.TestReachableHTTP(context.TODO(), address, int(servicePorts[0].Port), 240*time.Second)
 			}
 		})
 
@@ -383,9 +388,9 @@ var _ = ginkgo.Describe("[ccm-e2e] SVC-LB", func() {
 		},
 	}
 	ginkgo.It(title, func() {
-		nsSvc1, err := f.CreateNamespace("svc1", map[string]string{})
+		nsSvc1, err := f.CreateNamespace(context.TODO(), "svc1", map[string]string{})
 		framework.ExpectNoError(err)
-		nsSvc2, err := f.CreateNamespace("svc2", map[string]string{})
+		nsSvc2, err := f.CreateNamespace(context.TODO(), "svc2", map[string]string{})
 		framework.ExpectNoError(err)
 
 		fmt.Printf("Params :  %v / %v / %v\n", title, cmd, annotations)
@@ -454,7 +459,7 @@ var _ = ginkgo.Describe("[ccm-e2e] SVC-LB", func() {
 
 		ginkgo.By("Test Connection (wait to have endpoint ready)")
 		for i := 0; i < 2; i++ {
-			e2esvc.TestReachableHTTP(addresses[i], 80, 600*time.Second)
+			e2esvc.TestReachableHTTP(context.TODO(), addresses[i], 80, 600*time.Second)
 		}
 
 		ginkgo.By("Remove SVC 1")
@@ -466,7 +471,7 @@ var _ = ginkgo.Describe("[ccm-e2e] SVC-LB", func() {
 		time.Sleep(120 * time.Second)
 
 		ginkgo.By("Test SVC 2")
-		e2esvc.TestReachableHTTP(addresses[1], 80, 240*time.Second)
+		e2esvc.TestReachableHTTP(context.TODO(), addresses[1], 80, 240*time.Second)
 
 	})
 
