@@ -1,5 +1,16 @@
 # Changelog
 
+## [v0.2.4]
+### Bugfixes
+* use buildx and wait more time lb to be up ([#327](https://github.com/outscale/cloud-provider-osc/pull/327))
+* Make generic createSvc and createDeployment([#329]( https://github.com/outscale/cloud-provider-osc/pull/329))
+* Create createOscClient ([#330](https://github.com/outscale/cloud-provider-osc/pull/330))
+* Select VmType ([#339] (https://github.com/outscale/cloud-provider-osc/pull/339
+Filters terminated Vms in getInstance ([#352] (https://github.com/outscale/cloud-provider-osc/pull/352))
+* add debug tree to help troubelshooting ([#354] (https://github.com/outscale/cloud-provider-osc/pull/354))
+* change deprecated master taint and role ([#355]( https://github.com/outscale/cloud-provider-osc/pull/355))
+* update go v1.22.5 and k8s v0.30.2 ([#357] (https://github.com/outscale/cloud-provider-osc/pull/357))
+
 ## [v0.2.3]
 ### Bugfixes
 * Can set customEndpoint for instancev2 ([#323](https://github.com/outscale/cloud-provider-osc/pull/323))

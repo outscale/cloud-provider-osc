@@ -1,0 +1,2 @@
+[console_scripts]
+osc-cli = osc_sdk.sdk:main
