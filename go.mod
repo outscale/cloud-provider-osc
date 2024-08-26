@@ -6,7 +6,7 @@ require (
 	github.com/aws/aws-sdk-go v1.44.116
 	github.com/onsi/ginkgo/v2 v2.19.0
 	github.com/onsi/gomega v1.33.1
-	github.com/outscale/osc-sdk-go/v2 v2.21.0
+	github.com/outscale/osc-sdk-go/v2 v2.23.0
 	github.com/prometheus/client_golang v1.16.0
 	github.com/stretchr/testify v1.8.4
 	gopkg.in/gcfg.v1 v1.2.3
