@@ -3,7 +3,7 @@ module github.com/outscale-dev/cloud-provider-osc
 go 1.22.5
 
 require (
-	github.com/aws/aws-sdk-go v1.44.116
+	github.com/aws/aws-sdk-go v1.55.5
 	github.com/onsi/ginkgo/v2 v2.19.0
 	github.com/onsi/gomega v1.33.1
 	github.com/outscale/osc-sdk-go/v2 v2.21.0
