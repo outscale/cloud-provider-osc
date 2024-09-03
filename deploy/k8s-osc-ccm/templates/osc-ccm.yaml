@@ -134,8 +134,10 @@ spec:
         {{- end}}
     spec:
       serviceAccountName: cloud-controller-manager
+      {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
-        - name: {{ .Values.imagePullSecrets | default "registry-dockerconfigjson" }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: osc-cloud-controller-manager
           image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
