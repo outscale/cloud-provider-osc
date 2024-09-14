@@ -133,6 +133,7 @@ helm_deploy:
 		--install \
 		--wait \
 		--wait-for-jobs k8s-osc-ccm \
+		--set imagePullSecrets[0].name=registry-dockerconfigjson \
 		--set oscSecretName=osc-secret \
 		--set image.repository=$(TARGET_IMAGE) \
 		--set image.tag=$(TARGET_TAG) \
