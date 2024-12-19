@@ -148,6 +148,8 @@ spec:
             - --cloud-provider=osc
             - -v={{ .Values.verbose }}
           {{- if .Values.caBundle.name }}
+          resources:
+          {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
             - name: ca-bundle
               mountPath: /etc/ssl/certs

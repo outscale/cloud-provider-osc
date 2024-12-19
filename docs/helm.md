@@ -40,6 +40,7 @@ Kubernetes: `>=1.20.0-0`
 | oscSecretName | string | `"osc-secret"` | Secret name containing cloud credentials |
 | podLabels | object | `{}` | Labels for pod |
 | replicaCount | int | `1` | Number of replicas to deploy |
+| resources | object | `{}` | Pod resource requests and limits. |
 | tolerations | list | `[]` | Pod tolerations (see [kubernetes doc](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)) |
 | verbose | int | `5` | Verbosity level of the plugin |
 
