@@ -1,6 +1,6 @@
 # osc-cloud-controller-manager
 
-![Version: 0.3.0](https://img.shields.io/badge/Version-0.3.0-informational?style=flat-square) ![AppVersion: 0.2.4](https://img.shields.io/badge/AppVersion-0.2.4-informational?style=flat-square)
+![Version: 0.3.1](https://img.shields.io/badge/Version-0.3.1-informational?style=flat-square) ![AppVersion: 0.2.6](https://img.shields.io/badge/AppVersion-0.2.6-informational?style=flat-square)
 
 A Helm chart for OSC CCM cloud provider
 
