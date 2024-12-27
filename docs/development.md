@@ -9,9 +9,9 @@ Resources regarding developping this ccm:
 # Pre-requisites
 
 You will need a Kubernetes cluster to launch some tests and debug some behaviors.
-You can use [osc-k8s-rke-cluster](https://github.com/outscale-dev/osc-k8s-rke-cluster/) for this purpose.
+You can use [osc-k8s-rke-cluster](https://github.com/outscale/osc-k8s-rke-cluster/) for this purpose.
 
-You will also need a registry where to push your dev images. You can use whatever registry you want or install [a private registry](https://github.com/outscale-dev/osc-k8s-rke-cluster/tree/master/addons/docker-registry) which is available with osc-k8s-rke-cluster.
+You will also need a registry where to push your dev images. You can use whatever registry you want or install [a private registry](https://github.com/outscale/osc-k8s-rke-cluster/tree/master/addons/docker-registry) which is available with osc-k8s-rke-cluster.
 
 # Building
 
@@ -31,7 +31,7 @@ Dependencies are managed through go module. To build the project, first turn on 
 
 # Push dev image to registry
 
-If you are using the [private registry addon](https://github.com/outscale-dev/osc-k8s-rke-cluster/tree/master/addons/docker-registry), start port-fowarding to access the registry:
+If you are using the [private registry addon](https://github.com/outscale/osc-k8s-rke-cluster/tree/master/addons/docker-registry), start port-fowarding to access the registry:
 ```
 ./start_port_forwarding.sh
 ```

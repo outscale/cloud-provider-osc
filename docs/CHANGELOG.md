@@ -34,30 +34,30 @@ Filters terminated Vms in getInstance ([#352] (https://github.com/outscale/cloud
 
 ## [v0.2.0]
 ### Features
-* Support link  kubernetes node name and IaaS tag OscK8sNodeName ([#177](https://github.com/outscale-dev/cloud-provider-osc/issues/177))
-* Add NodeSelector and Tolerations in helm Chart ([#173](https://github.com/outscale-dev/cloud-provider-osc/issues/173))
+* Support link  kubernetes node name and IaaS tag OscK8sNodeName ([#177](https://github.com/outscale/cloud-provider-osc/issues/177))
+* Add NodeSelector and Tolerations in helm Chart ([#173](https://github.com/outscale/cloud-provider-osc/issues/173))
 ### Bugfixes
-* Fix LoadBalancer creation in multi-AZ architecture ([#165](https://github.com/outscale-dev/cloud-provider-osc/issues/165))
-* Update IAM Policy ([#167](https://github.com/outscale-dev/cloud-provider-osc/issues/167))
+* Fix LoadBalancer creation in multi-AZ architecture ([#165](https://github.com/outscale/cloud-provider-osc/issues/165))
+* Update IAM Policy ([#167](https://github.com/outscale/cloud-provider-osc/issues/167))
 ## [v0.1.1]
 ### Bugfixes
-* Invalid zone in the metadata ([#149](https://github.com/outscale-dev/cloud-provider-osc/issues/149)) 
+* Invalid zone in the metadata ([#149](https://github.com/outscale/cloud-provider-osc/issues/149)) 
 ## [v0.1.0]
 ### Notable changes
-* Partial migration from AWS SDK to Outscale SDK ([#61](https://github.com/outscale-dev/cloud-provider-osc/issues/61))
-* Provide Region and Zone during node initialization ([#118](https://github.com/outscale-dev/cloud-provider-osc/issues/118))
-* Reduce log verbosity ([#64](https://github.com/outscale-dev/cloud-provider-osc/issues/64))
+* Partial migration from AWS SDK to Outscale SDK ([#61](https://github.com/outscale/cloud-provider-osc/issues/61))
+* Provide Region and Zone during node initialization ([#118](https://github.com/outscale/cloud-provider-osc/issues/118))
+* Reduce log verbosity ([#64](https://github.com/outscale/cloud-provider-osc/issues/64))
 
 ### Bugfixes
-* Implement workaround for the public cloud issue ([#68](https://github.com/outscale-dev/cloud-provider-osc/issues/68)) 
+* Implement workaround for the public cloud issue ([#68](https://github.com/outscale/cloud-provider-osc/issues/68)) 
     > **NOTE**: The actual solution is to not delete (in Public Cloud) the rule that allows all Public Cloud Loadbalancers to forward traffic to the cluster. 
 ## [v0.0.10beta]
 
 ### Notable changes
-* Support the ability to label CCM pods ([#72](https://github.com/outscale-dev/cloud-provider-osc/pull/72))
+* Support the ability to label CCM pods ([#72](https://github.com/outscale/cloud-provider-osc/pull/72))
 * Update to k8s v1.23.4 
 ### Bugfixes
-* Handle deletion of old nodes ([#84](https://github.com/outscale-dev/cloud-provider-osc/pull/84))
+* Handle deletion of old nodes ([#84](https://github.com/outscale/cloud-provider-osc/pull/84))
 
 ## [v0.0.9beta]
 

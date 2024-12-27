@@ -4,7 +4,7 @@
 
 A Helm chart for OSC CCM cloud provider
 
-**Homepage:** <https://github.com/outscale-dev/cloud-provider-osc/>
+**Homepage:** <https://github.com/outscale/cloud-provider-osc/>
 
 ## Maintainers
 
@@ -14,7 +14,7 @@ A Helm chart for OSC CCM cloud provider
 
 ## Source Code
 
-* <https://github.com/outscale-dev/cloud-provider-osc/>
+* <https://github.com/outscale/cloud-provider-osc/>
 
 ## Requirements
 

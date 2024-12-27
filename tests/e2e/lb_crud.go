@@ -20,7 +20,7 @@ import (
 	"strings"
 	"time"
 
-	e2eutils "github.com/outscale-dev/cloud-provider-osc/tests/e2e/utils"
+	e2eutils "github.com/outscale/cloud-provider-osc/tests/e2e/utils"
 
 	elbApi "github.com/aws/aws-sdk-go/service/elb"
 	"github.com/onsi/ginkgo/v2"
