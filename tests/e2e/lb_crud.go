@@ -15,10 +15,10 @@ limitations under the License.
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
-	"context"
 
 	e2eutils "github.com/outscale-dev/cloud-provider-osc/tests/e2e/utils"
 
