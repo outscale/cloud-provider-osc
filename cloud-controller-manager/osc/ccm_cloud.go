@@ -1869,7 +1869,7 @@ func (c *Cloud) UpdateLoadBalancer(ctx context.Context, clusterName string, serv
 
 	err = c.ensureLoadBalancerInstances(aws.StringValue(lb.LoadBalancerName), lb.Instances, instances)
 	if err != nil {
-		return nil
+		return err
 	}
 
 	securityGroupsItem := []string{}
