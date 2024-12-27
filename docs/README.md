@@ -28,6 +28,6 @@ Check [annotation documentation](../docs/annotations.md) for more details.
 
 # Contributing
 
-For new feature request or bug fixes, please [create an issue](https://github.com/outscale-dev/cloud-provider-osc/issues).
+For new feature request or bug fixes, please [create an issue](https://github.com/outscale/cloud-provider-osc/issues).
 
 If you want to dig into cloud-provider-osc, check [development documentation](development.md).

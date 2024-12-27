@@ -37,7 +37,7 @@ Tag key is `OscK8sNodeName` and tag value `my-kybernetes-host-name` (`my-kyberne
 By default, the service controller will automatically create a Security Group for each Load Balancer Unit (LBU) and will attach it to nodes in a VPC setup.
 
 If you want to use a pre-created Security Group to be applied to be attached/associated to the LBU, you must tag it with key `OscK8sMainSG/my-cluster-id` and value `True`.
-Note that using LBU has some limitation (see issue [#68](https://github.com/outscale-dev/cloud-provider-osc/issues/68)).
+Note that using LBU has some limitation (see issue [#68](https://github.com/outscale/cloud-provider-osc/issues/68)).
 
 ## Networking
 

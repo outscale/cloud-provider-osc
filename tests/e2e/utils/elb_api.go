@@ -12,8 +12,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	elbApi "github.com/aws/aws-sdk-go/service/elb"
 
-	osc "github.com/outscale-dev/cloud-provider-osc/cloud-controller-manager/osc"
-	"github.com/outscale-dev/cloud-provider-osc/cloud-controller-manager/utils"
+	osc "github.com/outscale/cloud-provider-osc/cloud-controller-manager/osc"
+	"github.com/outscale/cloud-provider-osc/cloud-controller-manager/utils"
 )
 
 func elbSession() (*session.Session, error) {

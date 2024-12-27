@@ -4,9 +4,9 @@ description: A Helm chart for OSC CCM cloud provider
 name: osc-cloud-controller-manager
 version: 0.3.1
 kubeVersion: ">=1.20.0-0"
-home: https://github.com/outscale-dev/cloud-provider-osc/
+home: https://github.com/outscale/cloud-provider-osc/
 sources:
-  - https://github.com/outscale-dev/cloud-provider-osc/
+  - https://github.com/outscale/cloud-provider-osc/
 keywords:
   - osc
   - ows

@@ -41,7 +41,7 @@ import (
 	_ "k8s.io/component-base/metrics/prometheus/version"  // for version metric registration
 	"k8s.io/klog/v2"
 
-	osc "github.com/outscale-dev/cloud-provider-osc/cloud-controller-manager/osc"
+	osc "github.com/outscale/cloud-provider-osc/cloud-controller-manager/osc"
 )
 
 func main() {

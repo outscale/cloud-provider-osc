@@ -15,12 +15,12 @@ limitations under the License.
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
-	"context"
 
-	e2eutils "github.com/outscale-dev/cloud-provider-osc/tests/e2e/utils"
+	e2eutils "github.com/outscale/cloud-provider-osc/tests/e2e/utils"
 
 	elbApi "github.com/aws/aws-sdk-go/service/elb"
 	"github.com/onsi/ginkgo/v2"
