@@ -445,23 +445,23 @@ func (m *FakeMetadata) Available() bool {
 func (m *FakeMetadata) GetMetadata(key string) (string, error) {
 	networkInterfacesPrefix := "network/interfaces/macs/"
 	i := m.aws.selfInstance
-	if key == "placement/availability-zone" {
-		az := ""
+	switch {
+	case key == "placement/availability-zone":
 		if i.Placement != nil {
-			az = i.Placement.GetSubregionName()
+			return i.Placement.GetSubregionName(), nil
 		}
-		return az, nil
-	} else if key == "instance-id" {
+		return "", nil
+	case key == "instance-id":
 		return i.GetVmId(), nil
-	} else if key == "local-hostname" {
+	case key == "local-hostname":
 		return i.GetPrivateDnsName(), nil
-	} else if key == "public-hostname" {
+	case key == "public-hostname":
 		return i.GetPublicDnsName(), nil
-	} else if key == "local-ipv4" {
+	case key == "local-ipv4":
 		return i.GetPrivateIp(), nil
-	} else if key == "public-ipv4" {
+	case key == "public-ipv4":
 		return i.GetPublicIp(), nil
-	} else if strings.HasPrefix(key, networkInterfacesPrefix) {
+	case strings.HasPrefix(key, networkInterfacesPrefix):
 		if key == networkInterfacesPrefix {
 			return strings.Join(m.aws.networkInterfacesMacs, "/\n") + "/\n", nil
 		}
@@ -501,7 +501,7 @@ func (fakeElb *FakeELB) CreateLoadBalancer(input *elb.CreateLoadBalancerInput) (
 	lb := elb.LoadBalancerDescription{
 		Subnets:           input.Subnets,
 		AvailabilityZones: input.AvailabilityZones,
-		DNSName:           aws.String(fmt.Sprintf("%v", *input.LoadBalancerName)),
+		DNSName:           input.LoadBalancerName,
 		HealthCheck:       &elb.HealthCheck{},
 		LoadBalancerName:  input.LoadBalancerName,
 	}
@@ -642,53 +642,6 @@ func (fakeElb *FakeELB) ModifyLoadBalancerAttributes(*elb.ModifyLoadBalancerAttr
 	panic("Not implemented")
 }
 
-// expectDescribeLoadBalancers is not implemented but is required for interface
-// conformance
-func (fakeElb *FakeELB) expectDescribeLoadBalancers(loadBalancerName string) {
-	panic("Not implemented")
-}
-
-func instanceMatchesFilter(instance *ec2.Instance, filter *ec2.Filter) bool {
-	name := *filter.Name
-	if name == "private-dns-name" {
-		if instance.PrivateDnsName == nil {
-			return false
-		}
-		return contains(filter.Values, *instance.PrivateDnsName)
-	}
-
-	if name == "instance-state-name" {
-		return contains(filter.Values, *instance.State.Name)
-	}
-
-	if name == "tag-key" {
-		for _, instanceTag := range instance.Tags {
-			if contains(filter.Values, aws.StringValue(instanceTag.Key)) {
-				return true
-			}
-		}
-		return false
-	}
-
-	if strings.HasPrefix(name, "tag:") {
-		tagName := name[4:]
-		for _, instanceTag := range instance.Tags {
-			if aws.StringValue(instanceTag.Key) == tagName && contains(filter.Values, aws.StringValue(instanceTag.Value)) {
-				return true
-			}
-		}
-		return false
-	}
-
-	panic("Unknown filter name: " + name)
-}
-
-func contains(haystack []*string, needle string) bool {
-	for _, s := range haystack {
-		// (deliberately panic if s == nil)
-		if needle == *s {
-			return true
-		}
-	}
-	return false
-}
+var _ Services = (*FakeOscServices)(nil)
+var _ LoadBalancer = (*FakeELB)(nil)
+var _ Compute = (*FakeComputeImpl)(nil)

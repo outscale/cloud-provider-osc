@@ -25,6 +25,7 @@ import (
 
 	osc "github.com/outscale/osc-sdk-go/v2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -82,16 +83,11 @@ func TestMapToAWSInstanceIDs(t *testing.T) {
 
 	for _, test := range tests {
 		awsID, err := test.Kubernetes.MapToAWSInstanceID()
-		if err != nil {
-			if !test.ExpectError {
-				t.Errorf("unexpected error parsing %s: %v", test.Kubernetes, err)
-			}
+		if test.ExpectError {
+			require.Error(t, err)
 		} else {
-			if test.ExpectError {
-				t.Errorf("expected error parsing %s", test.Kubernetes)
-			} else if test.Aws != awsID {
-				t.Errorf("unexpected value parsing %s, got %s", test.Kubernetes, awsID)
-			}
+			require.NoError(t, err)
+			assert.Equal(t, test.Aws, awsID)
 		}
 	}
 
@@ -100,31 +96,20 @@ func TestMapToAWSInstanceIDs(t *testing.T) {
 		node.Spec.ProviderID = string(test.Kubernetes)
 
 		awsInstanceIds, err := mapToAWSInstanceIDs([]*v1.Node{node})
-		if err != nil {
-			if !test.ExpectError {
-				t.Errorf("unexpected error parsing %s: %v", test.Kubernetes, err)
-			}
+		if test.ExpectError {
+			require.Error(t, err)
 		} else {
-			if test.ExpectError {
-				t.Errorf("expected error parsing %s", test.Kubernetes)
-			} else if len(awsInstanceIds) != 1 {
-				t.Errorf("unexpected value parsing %s, got %s", test.Kubernetes, awsInstanceIds)
-			} else if awsInstanceIds[0] != test.Aws {
-				t.Errorf("unexpected value parsing %s, got %s", test.Kubernetes, awsInstanceIds)
-			}
+			require.NoError(t, err)
+			require.Len(t, awsInstanceIds, 1)
+			assert.Equal(t, test.Aws, awsInstanceIds[0])
 		}
 
 		awsInstanceIds = mapToAWSInstanceIDsTolerant([]*v1.Node{node})
 		if test.ExpectError {
-			if len(awsInstanceIds) != 0 {
-				t.Errorf("unexpected results parsing %s: %s", test.Kubernetes, awsInstanceIds)
-			}
+			require.Empty(t, awsInstanceIds)
 		} else {
-			if len(awsInstanceIds) != 1 {
-				t.Errorf("unexpected value parsing %s, got %s", test.Kubernetes, awsInstanceIds)
-			} else if awsInstanceIds[0] != test.Aws {
-				t.Errorf("unexpected value parsing %s, got %s", test.Kubernetes, awsInstanceIds)
-			}
+			require.Len(t, awsInstanceIds, 1)
+			assert.Equal(t, test.Aws, awsInstanceIds[0])
 		}
 	}
 }
@@ -132,28 +117,23 @@ func TestMapToAWSInstanceIDs(t *testing.T) {
 func TestSnapshotMeetsCriteria(t *testing.T) {
 	snapshot := &allInstancesSnapshot{timestamp: time.Now().Add(-3601 * time.Second)}
 
-	if !snapshot.MeetsCriteria(cacheCriteria{}) {
-		t.Errorf("Snapshot should always meet empty criteria")
-	}
+	assert.True(t, snapshot.MeetsCriteria(cacheCriteria{}),
+		"Snapshot should always meet empty criteria")
 
-	if snapshot.MeetsCriteria(cacheCriteria{MaxAge: time.Hour}) {
-		t.Errorf("Snapshot did not honor MaxAge")
-	}
+	assert.False(t, snapshot.MeetsCriteria(cacheCriteria{MaxAge: time.Hour}),
+		"Snapshot did not honor MaxAge")
 
-	if snapshot.MeetsCriteria(cacheCriteria{HasInstances: []InstanceID{InstanceID("i-12345678")}}) {
-		t.Errorf("Snapshot did not honor HasInstances with missing instances")
-	}
+	assert.False(t, snapshot.MeetsCriteria(cacheCriteria{HasInstances: []InstanceID{InstanceID("i-12345678")}}),
+		"Snapshot did not honor HasInstances with missing instances")
 
 	snapshot.instances = make(map[InstanceID]*osc.Vm)
 	snapshot.instances[InstanceID("i-12345678")] = &osc.Vm{}
 
-	if !snapshot.MeetsCriteria(cacheCriteria{HasInstances: []InstanceID{InstanceID("i-12345678")}}) {
-		t.Errorf("Snapshot did not honor HasInstances with matching instances")
-	}
+	assert.True(t, snapshot.MeetsCriteria(cacheCriteria{HasInstances: []InstanceID{InstanceID("i-12345678")}}),
+		"Snapshot did not honor HasInstances with matching instances")
 
-	if snapshot.MeetsCriteria(cacheCriteria{HasInstances: []InstanceID{InstanceID("i-12345678"), InstanceID("i-00000000")}}) {
-		t.Errorf("Snapshot did not honor HasInstances with partially matching instances")
-	}
+	assert.False(t, snapshot.MeetsCriteria(cacheCriteria{HasInstances: []InstanceID{InstanceID("i-12345678"), InstanceID("i-00000000")}}),
+		"Snapshot did not honor HasInstances with partially matching instances")
 }
 
 func TestOlderThan(t *testing.T) {
@@ -184,21 +164,12 @@ func TestSnapshotFindInstances(t *testing.T) {
 	}
 
 	instances := snapshot.FindInstances([]InstanceID{InstanceID("i-12345678"), InstanceID("i-23456789"), InstanceID("i-00000000")})
-	if len(instances) != 2 {
-		t.Errorf("findInstances returned %d results, expected 2", len(instances))
-	}
+	require.Len(t, instances, 2)
 
 	for _, id := range []InstanceID{InstanceID("i-12345678"), InstanceID("i-23456789")} {
 		i := instances[id]
-		if i == nil {
-			t.Errorf("findInstances did not return %s", id)
-			continue
-		}
-		if i.GetVmId() != string(id) {
-			t.Errorf("findInstances did not return expected instanceId for %s", id)
-		}
-		if i != snapshot.instances[id] {
-			t.Errorf("findInstances did not return expected instance (reference equality) for %s", id)
-		}
+		require.NotNil(t, i)
+		assert.Equal(t, string(id), i.GetVmId())
+		assert.Equal(t, snapshot.instances[id], i)
 	}
 }

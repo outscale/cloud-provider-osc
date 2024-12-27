@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -165,28 +166,22 @@ func TestReadAWSCloudConfig(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Logf("Running test case %s", test.name)
-		var metadata EC2Metadata
-		if test.aws != nil {
-			metadata, _ = test.aws.Metadata()
-		}
-		cfg, err := readCloudConfig(test.reader)
-		if err == nil {
-			err = updateConfigZone(cfg, metadata)
-		}
-		if test.expectError {
+		t.Run(test.name, func(t *testing.T) {
+			var metadata EC2Metadata
+			if test.aws != nil {
+				metadata, _ = test.aws.Metadata()
+			}
+			cfg, err := readCloudConfig(test.reader)
 			if err == nil {
-				t.Errorf("Should error for case %s (cfg=%v)", test.name, cfg)
+				err = updateConfigZone(cfg, metadata)
 			}
-		} else {
-			if err != nil {
-				t.Errorf("Should succeed for case: %s", test.name)
+			if test.expectError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, test.zone, cfg.Global.Zone)
 			}
-			if cfg.Global.Zone != test.zone {
-				t.Errorf("Incorrect zone value (%s vs %s) for case: %s",
-					cfg.Global.Zone, test.zone, test.name)
-			}
-		}
+		})
 	}
 }
 
@@ -822,11 +817,8 @@ func constructRouteTable(subnetID string, public bool) *ec2.RouteTable {
 func TestSubnetIDsinVPC(t *testing.T) {
 	awsServices := newMockedFakeAWSServices(TestClusterID)
 	c, err := newCloud(CloudConfig{}, awsServices)
+	require.NoError(t, err)
 	c.vpcID = "vpc-123456"
-	if err != nil {
-		t.Errorf("Error building aws cloud: %v", err)
-		return
-	}
 
 	// test with 3 subnets from 3 different AZs
 	subnets := make(map[int]map[string]string)
@@ -856,37 +848,24 @@ func TestSubnetIDsinVPC(t *testing.T) {
 		awsServices.compute.CreateRouteTable(rt)
 	}
 	request1111 := &osc.ReadSubnetsRequest{}
-	res, _ := awsServices.compute.DescribeSubnets(request1111)
+	res, err := awsServices.compute.DescribeSubnets(request1111)
+	require.NoError(t, err)
 	t.Logf("awsServices.ec2.DescribeSubnets----: %v", res)
 
 	request2222 := &osc.ReadRouteTablesRequest{}
 	rt, err := awsServices.compute.ReadRouteTables(request2222)
+	require.NoError(t, err)
 	t.Logf("awsServices.ec2.DescribeRouteTables----: %v", rt)
 
 	subnetsRes, err := c.findSubnets()
+	require.NoError(t, err)
 	t.Logf("subnetsRes, err----: %v", subnetsRes)
 
 	result, err := c.findELBSubnets(false)
-	if err != nil {
-		t.Errorf("Error listing subnets: %v", err)
-		return
-	}
-
-	if len(result) != 3 {
-		t.Errorf("Expected 3 subnets but got %d", len(result))
-		return
-	}
-
-	resultSet := make(map[string]bool)
-	for _, v := range result {
-		resultSet[v] = true
-	}
-
+	require.NoError(t, err)
+	assert.Len(t, result, 3)
 	for i := range subnets {
-		if !resultSet[subnets[i]["id"]] {
-			t.Errorf("Expected subnet%d '%s' in result: %v", i, subnets[i]["id"], result)
-			return
-		}
+		assert.Contains(t, result, subnets[i]["id"])
 	}
 
 	// test implicit routing table - when subnets are not explicitly linked to a table they should use main
@@ -897,26 +876,10 @@ func TestSubnetIDsinVPC(t *testing.T) {
 	}
 
 	result, err = c.findELBSubnets(false)
-	if err != nil {
-		t.Errorf("Error listing subnets: %v", err)
-		return
-	}
-
-	if len(result) != 3 {
-		t.Errorf("Expected 3 subnets but got %d", len(result))
-		return
-	}
-
-	resultSet = make(map[string]bool)
-	for _, v := range result {
-		resultSet[v] = true
-	}
-
+	require.NoError(t, err)
+	assert.Len(t, result, 3)
 	for i := range subnets {
-		if !resultSet[subnets[i]["id"]] {
-			t.Errorf("Expected subnet%d '%s' in result: %v", i, subnets[i]["id"], result)
-			return
-		}
+		assert.Contains(t, result, subnets[i]["id"])
 	}
 
 	// Test with 5 subnets from 3 different AZs.
@@ -943,23 +906,12 @@ func TestSubnetIDsinVPC(t *testing.T) {
 	}
 
 	result, err = c.findELBSubnets(false)
-	if err != nil {
-		t.Errorf("Error listing subnets: %v", err)
-		return
-	}
+	require.NoError(t, err)
+	assert.Len(t, result, 3)
 
-	if len(result) != 3 {
-		t.Errorf("Expected 3 subnets but got %d", len(result))
-		return
-	}
-
-	expected := []*string{aws.String("subnet-a0000001"), aws.String("subnet-b0000001"), aws.String("subnet-c0000000")}
-	for _, s := range result {
-		if !contains(expected, s) {
-			t.Errorf("Unexpected subnet '%s' found", s)
-			return
-		}
-	}
+	expected := []string{"subnet-a0000001", "subnet-b0000001", "subnet-c0000000"}
+	slices.Sort(result)
+	assert.Equal(t, expected, result)
 
 	delete(routeTables, "subnet-c0000002")
 
@@ -990,23 +942,12 @@ func TestSubnetIDsinVPC(t *testing.T) {
 		awsServices.compute.CreateRouteTable(rt)
 	}
 	result, err = c.findELBSubnets(false)
-	if err != nil {
-		t.Errorf("Error listing subnets: %v", err)
-		return
-	}
+	require.NoError(t, err)
+	assert.Len(t, result, 3)
 
-	if len(result) != 3 {
-		t.Errorf("Expected 3 subnets but got %d", len(result))
-		return
-	}
-
-	expected = []*string{aws.String("subnet-c0000000"), aws.String("subnet-d0000001"), aws.String("subnet-d0000002")}
-	for _, s := range result {
-		if !contains(expected, s) {
-			t.Errorf("Unexpected subnet '%s' found", s)
-			return
-		}
-	}
+	expected = []string{"subnet-c0000000", "subnet-d0000001", "subnet-d0000002"}
+	slices.Sort(result)
+	assert.Equal(t, expected, result)
 }
 
 func TestIpPermissionExistsHandlesMultipleGroupIds(t *testing.T) {
@@ -1030,15 +971,11 @@ func TestIpPermissionExistsHandlesMultipleGroupIds(t *testing.T) {
 		},
 	}
 
-	equals := ipPermissionAWSExists(&existingIPPermission, &oldIPPermission, false)
-	if !equals {
-		t.Errorf("Should have been considered equal since first is in the second array of groups")
-	}
+	assert.True(t, ipPermissionAWSExists(&existingIPPermission, &oldIPPermission, false),
+		"Should have been considered equal since first is in the second array of groups")
 
-	equals = ipPermissionAWSExists(&newIPPermission, &oldIPPermission, false)
-	if equals {
-		t.Errorf("Should have not been considered equal since first is not in the second array of groups")
-	}
+	assert.False(t, ipPermissionAWSExists(&newIPPermission, &oldIPPermission, false),
+		"Should have not been considered equal since first is not in the second array of groups")
 
 	// The first pair matches, but the second does not
 	newIPPermission2 := ec2.IpPermission{
@@ -1047,10 +984,8 @@ func TestIpPermissionExistsHandlesMultipleGroupIds(t *testing.T) {
 			{GroupId: aws.String("fourthGroupId")},
 		},
 	}
-	equals = ipPermissionAWSExists(&newIPPermission2, &oldIPPermission, false)
-	if equals {
-		t.Errorf("Should have not been considered equal since first is not in the second array of groups")
-	}
+	assert.False(t, ipPermissionAWSExists(&newIPPermission2, &oldIPPermission, false),
+		"Should have not been considered equal since first is not in the second array of groups")
 }
 
 func TestIpPermissionExistsHandlesRangeSubsets(t *testing.T) {
@@ -1082,32 +1017,21 @@ func TestIpPermissionExistsHandlesRangeSubsets(t *testing.T) {
 		},
 	}
 
-	exists := ipPermissionAWSExists(&emptyIPPermission, &emptyIPPermission, false)
-	if !exists {
-		t.Errorf("Should have been considered existing since we're comparing a range array against itself")
-	}
-	exists = ipPermissionAWSExists(&oldIPPermission, &oldIPPermission, false)
-	if !exists {
-		t.Errorf("Should have been considered existing since we're comparing a range array against itself")
-	}
+	assert.True(t, ipPermissionAWSExists(&emptyIPPermission, &emptyIPPermission, false),
+		"Should have been considered existing since we're comparing a range array against itself")
 
-	exists = ipPermissionAWSExists(&existingIPPermission, &oldIPPermission, false)
-	if !exists {
-		t.Errorf("Should have been considered existing since 10.* is in oldIPPermission's array of ranges")
-	}
-	exists = ipPermissionAWSExists(&existingIPPermission2, &oldIPPermission, false)
-	if !exists {
-		t.Errorf("Should have been considered existing since 192.* is in oldIpPermission2's array of ranges")
-	}
+	assert.True(t, ipPermissionAWSExists(&oldIPPermission, &oldIPPermission, false),
+		"Should have been considered existing since we're comparing a range array against itself")
 
-	exists = ipPermissionAWSExists(&newIPPermission, &emptyIPPermission, false)
-	if exists {
-		t.Errorf("Should have not been considered existing since we compared against a missing array of ranges")
-	}
-	exists = ipPermissionAWSExists(&newIPPermission, &oldIPPermission, false)
-	if exists {
-		t.Errorf("Should have not been considered existing since 172.* is not in oldIPPermission's array of ranges")
-	}
+	assert.True(t, ipPermissionAWSExists(&existingIPPermission, &oldIPPermission, false),
+		"Should have been considered existing since 10.* is in oldIPPermission's array of ranges")
+	assert.True(t, ipPermissionAWSExists(&existingIPPermission2, &oldIPPermission, false),
+		"Should have been considered existing since 192.* is in oldIpPermission2's array of ranges")
+
+	assert.False(t, ipPermissionAWSExists(&newIPPermission, &emptyIPPermission, false),
+		"Should have not been considered existing since we compared against a missing array of ranges")
+	assert.False(t, ipPermissionAWSExists(&newIPPermission, &oldIPPermission, false),
+		"Should have not been considered existing since 172.* is not in oldIPPermission's array of ranges")
 }
 
 func TestIpPermissionExistsHandlesMultipleGroupIdsWithUserIds(t *testing.T) {
@@ -1131,15 +1055,11 @@ func TestIpPermissionExistsHandlesMultipleGroupIdsWithUserIds(t *testing.T) {
 		},
 	}
 
-	equals := ipPermissionAWSExists(&existingIPPermission, &oldIPPermission, true)
-	if !equals {
-		t.Errorf("Should have been considered equal since first is in the second array of groups")
-	}
+	assert.True(t, ipPermissionAWSExists(&existingIPPermission, &oldIPPermission, true),
+		"Should have been considered equal since first is in the second array of groups")
 
-	equals = ipPermissionAWSExists(&newIPPermission, &oldIPPermission, true)
-	if equals {
-		t.Errorf("Should have not been considered equal since first is not in the second array of groups")
-	}
+	assert.False(t, ipPermissionAWSExists(&newIPPermission, &oldIPPermission, true),
+		"Should have not been considered equal since first is not in the second array of groups")
 }
 
 func TestFindInstanceByNodeNameExcludesTerminatedInstances(t *testing.T) {
@@ -1175,30 +1095,19 @@ func TestFindInstanceByNodeNameExcludesTerminatedInstances(t *testing.T) {
 		testInstance.SetVmId(id)
 		testInstance.SetState(awsState.state)
 
-		awsServices.instances = append(awsDefaultInstances, &testInstance)
+		awsServices.instances = append(awsDefaultInstances, &testInstance) //nolint: gocritic
 
 		c, err := newCloud(CloudConfig{}, awsServices)
-		if err != nil {
-			t.Errorf("Error building aws cloud: %v", err)
-			return
-		}
+		require.NoError(t, err)
 
 		resultInstance, err := c.findInstanceByNodeName(nodeName)
 
 		if awsState.expected {
-			if err != nil || resultInstance == nil {
-				t.Errorf("Expected to find instance %v", testInstance.GetVmId())
-				return
-			}
-			if resultInstance.GetVmId() != testInstance.GetVmId() {
-				t.Errorf("Wrong instance returned by findInstanceByNodeName() expected: %v, actual: %v", resultInstance.GetVmId(), testInstance.GetVmId())
-				return
-			}
+			require.NoError(t, err)
+			require.NotNil(t, resultInstance)
+			assert.Equal(t, testInstance.GetVmId(), resultInstance.GetVmId())
 		} else {
-			if err == nil && resultInstance != nil {
-				t.Errorf("Did not expect to find instance %v", resultInstance.GetVmId())
-				return
-			}
+			assert.Nil(t, resultInstance)
 		}
 	}
 }
@@ -1206,7 +1115,7 @@ func TestFindInstanceByNodeNameExcludesTerminatedInstances(t *testing.T) {
 func TestGetInstanceByNodeNameBatching(t *testing.T) {
 	awsServices := newMockedFakeAWSServices(TestClusterID)
 	c, err := newCloud(CloudConfig{}, awsServices)
-	assert.Nil(t, err, "Error building aws cloud: %v", err)
+	require.NoError(t, err, "Error building aws cloud")
 	var tag osc.ResourceTag
 	tag.SetKey(TagNameKubernetesClusterPrefix + TestClusterID)
 	tag.SetValue("")
@@ -1226,9 +1135,9 @@ func TestGetInstanceByNodeNameBatching(t *testing.T) {
 	}
 
 	instances, err := c.getInstancesByNodeNames(nodeNames)
-	assert.Nil(t, err, "Error getting instances by nodeNames %v: %v", nodeNames, err)
+	require.NoErrorf(t, err, "Error getting instances by nodeNames %v", nodeNames)
 	assert.NotEmpty(t, instances)
-	assert.Equal(t, 200, len(instances), "Expected 200 but got less")
+	assert.Len(t, instances, 200, "Expected 200 entries but got less")
 }
 
 func TestDescribeLoadBalancerOnDelete(t *testing.T) {
@@ -1517,7 +1426,7 @@ func TestLBExtraSecurityGroupsAnnotation(t *testing.T) {
 			serviceName := types.NamespacedName{Namespace: "default", Name: "myservice"}
 
 			sgList, err := c.buildELBSecurityGroupList(serviceName, "aid", test.annotations)
-			assert.NoError(t, err, "buildELBSecurityGroupList failed")
+			require.NoError(t, err, "buildELBSecurityGroupList failed")
 			extraSGs := sgList[1:]
 			assert.True(t, sets.NewString(test.expectedSGs...).Equal(sets.NewString(extraSGs...)),
 				"Security Groups expected=%q , returned=%q", test.expectedSGs, extraSGs)
@@ -1551,7 +1460,7 @@ func TestLBSecurityGroupsAnnotation(t *testing.T) {
 			serviceName := types.NamespacedName{Namespace: "default", Name: "myservice"}
 
 			sgList, err := c.buildELBSecurityGroupList(serviceName, "aid", test.annotations)
-			assert.NoError(t, err, "buildELBSecurityGroupList failed")
+			require.NoError(t, err, "buildELBSecurityGroupList failed")
 			assert.True(t, sets.NewString(test.expectedSGs...).Equal(sets.NewString(sgList...)),
 				"Security Groups expected=%q , returned=%q", test.expectedSGs, sgList)
 		})
@@ -1579,7 +1488,7 @@ func TestAddLoadBalancerTags(t *testing.T) {
 	awsServices.elb.(*MockedFakeELB).On("AddTags", expectedAddTagsRequest).Return(&elb.AddTagsOutput{})
 
 	err := c.addLoadBalancerTags(loadBalancerName, want)
-	assert.Nil(t, err, "Error adding load balancer tags: %v", err)
+	require.NoError(t, err, "Error adding load balancer tags")
 	awsServices.elb.(*MockedFakeELB).AssertExpectations(t)
 }
 
@@ -1619,7 +1528,7 @@ func TestEnsureLoadBalancerHealthCheck(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			awsServices := newMockedFakeAWSServices(TestClusterID)
 			c, err := newCloud(CloudConfig{}, awsServices)
-			assert.Nil(t, err, "Error building aws cloud: %v", err)
+			require.NoError(t, err, "Error building aws cloud")
 			expectedHC := *defaultHC
 			if test.overriddenFieldName != "" { // cater for test case with no overrides
 				value := reflect.ValueOf(&test.overriddenValue)
@@ -1628,8 +1537,7 @@ func TestEnsureLoadBalancerHealthCheck(t *testing.T) {
 			awsServices.elb.(*MockedFakeELB).expectConfigureHealthCheck(&lbName, &expectedHC, nil)
 
 			err = c.ensureLoadBalancerHealthCheck(elbDesc, protocol, port, path, test.annotations)
-
-			require.Nil(t, err)
+			require.NoError(t, err)
 			awsServices.elb.(*MockedFakeELB).AssertExpectations(t)
 		})
 	}
@@ -1637,7 +1545,7 @@ func TestEnsureLoadBalancerHealthCheck(t *testing.T) {
 	t.Run("does not make an API call if the current health check is the same", func(t *testing.T) {
 		awsServices := newMockedFakeAWSServices(TestClusterID)
 		c, err := newCloud(CloudConfig{}, awsServices)
-		assert.Nil(t, err, "Error building aws cloud: %v", err)
+		require.NoError(t, err, "Error building aws cloud")
 		expectedHC := *defaultHC
 		timeout := int64(3)
 		expectedHC.Timeout = &timeout
@@ -1649,17 +1557,17 @@ func TestEnsureLoadBalancerHealthCheck(t *testing.T) {
 		// test default HC
 		elbDesc := &elb.LoadBalancerDescription{LoadBalancerName: &lbName, HealthCheck: defaultHC}
 		err = c.ensureLoadBalancerHealthCheck(elbDesc, protocol, port, path, map[string]string{})
-		assert.Nil(t, err)
+		require.NoError(t, err)
 		// test HC with override
 		elbDesc = &elb.LoadBalancerDescription{LoadBalancerName: &lbName, HealthCheck: &currentHC}
 		err = c.ensureLoadBalancerHealthCheck(elbDesc, protocol, port, path, annotations)
-		assert.Nil(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("validates resulting expected health check before making an API call", func(t *testing.T) {
 		awsServices := newMockedFakeAWSServices(TestClusterID)
 		c, err := newCloud(CloudConfig{}, awsServices)
-		assert.Nil(t, err, "Error building aws cloud: %v", err)
+		require.NoError(t, err, "Error building aws cloud")
 		expectedHC := *defaultHC
 		invalidThreshold := int64(1)
 		expectedHC.HealthyThreshold = &invalidThreshold
@@ -1668,31 +1576,28 @@ func TestEnsureLoadBalancerHealthCheck(t *testing.T) {
 
 		// NOTE no call expectations are set on the ELB mock
 		err = c.ensureLoadBalancerHealthCheck(elbDesc, protocol, port, path, annotations)
-
 		require.Error(t, err)
 	})
 
 	t.Run("handles invalid override values", func(t *testing.T) {
 		awsServices := newMockedFakeAWSServices(TestClusterID)
 		c, err := newCloud(CloudConfig{}, awsServices)
-		assert.Nil(t, err, "Error building aws cloud: %v", err)
+		require.NoError(t, err, "Error building aws cloud")
 		annotations := map[string]string{ServiceAnnotationLoadBalancerHCTimeout: "3.3"}
 
 		// NOTE no call expectations are set on the ELB mock
 		err = c.ensureLoadBalancerHealthCheck(elbDesc, protocol, port, path, annotations)
-
 		require.Error(t, err)
 	})
 
 	t.Run("returns error when updating the health check fails", func(t *testing.T) {
 		awsServices := newMockedFakeAWSServices(TestClusterID)
 		c, err := newCloud(CloudConfig{}, awsServices)
-		assert.Nil(t, err, "Error building aws cloud: %v", err)
+		require.NoError(t, err, "Error building aws cloud")
 		returnErr := fmt.Errorf("throttling error")
 		awsServices.elb.(*MockedFakeELB).expectConfigureHealthCheck(&lbName, defaultHC, returnErr)
 
 		err = c.ensureLoadBalancerHealthCheck(elbDesc, protocol, port, path, map[string]string{})
-
 		require.Error(t, err)
 		awsServices.elb.(*MockedFakeELB).AssertExpectations(t)
 	})
@@ -1705,11 +1610,9 @@ func TestFindSecurityGroupForInstance(t *testing.T) {
 			{SecurityGroupId: aws.String("sg123"), SecurityGroupName: aws.String("my_group")},
 		},
 	}, groups)
-	if err != nil {
-		t.Error()
-	}
-	assert.Equal(t, id.GetSecurityGroupId(), "sg123")
-	assert.Equal(t, id.GetSecurityGroupName(), "my_group")
+	require.NoError(t, err)
+	assert.Equal(t, "sg123", id.GetSecurityGroupId())
+	assert.Equal(t, "my_group", id.GetSecurityGroupName())
 }
 
 func TestFindSecurityGroupForInstanceMultipleTagged(t *testing.T) {
@@ -1771,7 +1674,7 @@ func TestNodeNameToProviderID(t *testing.T) {
 	testProviderID := "aws:///us-east-1c/i-02bce90670bb0c7cd"
 	fakeAWS := newMockedFakeAWSServices(TestClusterID)
 	c, err := newCloud(CloudConfig{}, fakeAWS)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	fakeClient := &fake.Clientset{}
 	fakeInformerFactory := informers.NewSharedInformerFactory(fakeClient, 0)
@@ -1779,17 +1682,17 @@ func TestNodeNameToProviderID(t *testing.T) {
 
 	// no node name
 	_, err = c.nodeNameToProviderID("")
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	// informer has not synced
 	c.nodeInformerHasSynced = informerNotSynced
 	_, err = c.nodeNameToProviderID(testNodeName)
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	// informer has synced but node not found
 	c.nodeInformerHasSynced = informerSynced
 	_, err = c.nodeNameToProviderID(testNodeName)
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	// we are able to find the node in cache
 	err = c.nodeInformer.Informer().GetStore().Add(&v1.Node{
@@ -1800,9 +1703,9 @@ func TestNodeNameToProviderID(t *testing.T) {
 			ProviderID: testProviderID,
 		},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, err = c.nodeNameToProviderID(testNodeName)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestParseInstanceIDFromProviderIDV2(t *testing.T) {
@@ -1823,22 +1726,16 @@ func TestParseInstanceIDFromProviderIDV2(t *testing.T) {
 		{providerID: "aws://", expectedInstanceID: "", expectedErrorString: "instance ID not found in providerID or it's wrong format"},
 		{providerID: "aws://eu-west-2a/", expectedInstanceID: "", expectedErrorString: "instance ID not found in providerID or it's wrong format"},
 		{providerID: "aws:///eu-west-2a/", expectedInstanceID: "", expectedErrorString: "instance ID not found in providerID or it's wrong format"},
-
 	}
 	for _, tc := range testCases {
 		t.Run(fmt.Sprintf("ProviderID_%s", tc.providerID), func(t *testing.T) {
 			instanceID, err := parseInstanceIDFromProviderIDV2(tc.providerID)
 			if tc.expectedErrorString == "" {
-				if err != nil {
-					t.Errorf("expected no error for providerID '%s', but got: %v", tc.providerID, err)
-				}
-				if instanceID != tc.expectedInstanceID {
-					t.Errorf("expected instanceID '%s' for providerID '%s', but got '%s'", tc.expectedInstanceID, tc.providerID, instanceID)
-				}
+				require.NoError(t, err)
+				assert.Equal(t, tc.expectedInstanceID, instanceID)
 			} else {
-				if err == nil || !strings.Contains(err.Error(), tc.expectedErrorString) {
-					t.Errorf("expected error containing '%s' for providerID '%s', but got no error or different error: %v", tc.expectedErrorString, tc.providerID, err)
-				}
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tc.expectedErrorString)
 			}
 		})
 	}
@@ -1930,61 +1827,46 @@ func TestMultipleSubnetsAZAnnotation(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		awsServices := NewFakeAWSServices(TestClusterID)
-		c, err := newCloud(CloudConfig{}, awsServices)
-		c.vpcID = "vpc-123456"
-		if err != nil {
-			t.Errorf("Error building aws cloud: %v", err)
-			return
-		}
+		t.Run(test.name, func(t *testing.T) {
+			awsServices := NewFakeAWSServices(TestClusterID)
+			c, err := newCloud(CloudConfig{}, awsServices)
+			require.NoError(t, err)
+			c.vpcID = "vpc-123456"
 
-		subnets := make(map[int]map[string]string)
-		subnets[0] = make(map[string]string)
-		subnets[0]["id"] = "subnet-a0000001"
-		subnets[0]["az"] = "af-south-1a"
-		subnets[1] = make(map[string]string)
-		subnets[1]["id"] = "subnet-b0000001"
-		subnets[1]["az"] = "af-south-1b"
-		constructedSubnets := constructSubnets(subnets)
-		awsServices.compute.RemoveSubnets()
-		for _, subnet := range constructedSubnets {
-			awsServices.compute.CreateSubnet(subnet)
-		}
-
-		routeTables := map[string]bool{
-			"subnet-a0000001": true,
-			"subnet-b0000001": true,
-		}
-		constructedRouteTables := constructRouteTables(routeTables)
-		awsServices.compute.RemoveRouteTables()
-		for _, rt := range constructedRouteTables {
-			awsServices.compute.CreateRouteTable(rt)
-		}
-
-		res, err := c.EnsureLoadBalancer(context.TODO(), TestClusterName, &test.service, []*v1.Node{})
-
-		if err != nil {
-			if !test.errExpected {
-				t.Errorf("Error while ensuring Loadbalancer with multiple subnets with no user request %v", err)
-				return
+			subnets := make(map[int]map[string]string)
+			subnets[0] = make(map[string]string)
+			subnets[0]["id"] = "subnet-a0000001"
+			subnets[0]["az"] = "af-south-1a"
+			subnets[1] = make(map[string]string)
+			subnets[1]["id"] = "subnet-b0000001"
+			subnets[1]["az"] = "af-south-1b"
+			constructedSubnets := constructSubnets(subnets)
+			awsServices.compute.RemoveSubnets()
+			for _, subnet := range constructedSubnets {
+				awsServices.compute.CreateSubnet(subnet)
 			}
-			return
-		}
 
-		if test.errExpected {
-			t.Errorf("Did not get error on EnsureLodbalancer for test '%v'", test.name)
-			return
-		}
+			routeTables := map[string]bool{
+				"subnet-a0000001": true,
+				"subnet-b0000001": true,
+			}
+			constructedRouteTables := constructRouteTables(routeTables)
+			awsServices.compute.RemoveRouteTables()
+			for _, rt := range constructedRouteTables {
+				awsServices.compute.CreateRouteTable(rt)
+			}
 
-		iasLb := awsServices.elb.(*FakeELB).LoadBalancers[res.Ingress[0].Hostname]
-		if iasLb == nil {
-			t.Error("Did not found LB in moked Iaas")
-			return
-		}
+			res, err := c.EnsureLoadBalancer(context.TODO(), TestClusterName, &test.service, []*v1.Node{})
+			if test.errExpected {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 
-		if !(len(iasLb.Subnets) == 1 && *(iasLb.Subnets[0]) == test.subnetExpected) {
-			t.Error("Wrong subnet found in the lb with user request")
-			return
-		}
+				iasLb := awsServices.elb.(*FakeELB).LoadBalancers[res.Ingress[0].Hostname]
+				require.NotNil(t, iasLb)
+				require.Len(t, iasLb.Subnets, 1)
+				assert.Equal(t, test.subnetExpected, *(iasLb.Subnets[0]))
+			}
+		})
 	}
 }
