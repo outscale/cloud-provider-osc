@@ -1,5 +1,14 @@
 # Changelog
 
+## [v0.2.7]
+### Changes
+* Build: bump Go to 1.23.4 & distroless image ([#388](https://github.com/outscale/cloud-provider-osc/pull/388))
+* Linter fixes, test cleanup ([#386](https://github.com/outscale/cloud-provider-osc/pull/386))
+* Update import path ([#384](https://github.com/outscale/cloud-provider-osc/pull/384))
+### Bugfixes
+* Unable to set resources without caBundle ([#383](https://github.com/outscale/cloud-provider-osc/pull/383))
+* Unhandled error in UpdateLoadBalancer ([#385](https://github.com/outscale/cloud-provider-osc/pull/385))
+
 ## [v0.2.6]
 ### Bugfixes
 * add resource handlers in chart ([#381](https://github.com/outscale/cloud-provider-osc/pull/381))
