@@ -1,4 +1,4 @@
-module github.com/outscale-dev/cloud-provider-osc
+module github.com/outscale/cloud-provider-osc
 
 go 1.22.5
 
@@ -155,5 +155,4 @@ replace (
 	k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.30.2
 	k8s.io/metrics => k8s.io/metrics v0.30.2
 	k8s.io/pod-security-admission => k8s.io/pod-security-admission v0.30.2
-
 )

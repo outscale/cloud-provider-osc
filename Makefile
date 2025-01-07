@@ -24,7 +24,7 @@ DEPLOY_NAME := "k8s-osc-ccm"
 SOURCES := $(shell find ./cloud-controller-manager -name '*.go')
 GOOS ?= $(shell go env GOOS)
 VERSION ?= $(shell git describe --tags --always --dirty)
-LDFLAGS   := "-w -s -X 'github.com/outscale-dev/cloud-provider-osc/cloud-controller-manager/utils.version=$(VERSION)'"
+LDFLAGS   := "-w -s -X 'github.com/outscale/cloud-provider-osc/cloud-controller-manager/utils.version=$(VERSION)'"
 
 # Full log with  -v -x
 #GO_ADD_OPTIONS := -v -x

@@ -29,7 +29,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/elb"
 
-	"github.com/outscale-dev/cloud-provider-osc/cloud-controller-manager/utils"
+	"github.com/outscale/cloud-provider-osc/cloud-controller-manager/utils"
 
 	"context"
 
