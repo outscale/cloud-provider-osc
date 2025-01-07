@@ -114,8 +114,9 @@ make build-image image-tag image-push helm_deploy test-e2e
 3.  Update cloud-provider-osc version in [values.yaml](../deploy/k8s-osc-ccm/values.yaml)
 4.  Update prerequisites section in [deploy/README.md](../deploy/README.md)
 5.  Generate helm doc `make helm-docs`
-6.  Commit version with `git commit -am "cloud-controller-manager vX.Y.Z"`
-7.  Create PR and merge it to OSC-MIGRATION
-8.  Create Tag with `git tag vX.Y.Z` on OSC-MIGRATION
-9.  Push tag on Github
-10. Publish the release on Github
+6.  Update version in [deploy/osc-ccm-manifest.yml](../deploy/osc-ccm-manifest.yml)
+7.  Commit version with `git commit -am "cloud-controller-manager vX.Y.Z"`
+8.  Create PR and merge it to OSC-MIGRATION
+9.  Create Tag with `git tag vX.Y.Z` on OSC-MIGRATION
+10. Push tag on Github
+11. Publish the release on Github
