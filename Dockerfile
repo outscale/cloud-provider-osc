@@ -14,7 +14,7 @@
 ##                               BUILD ARGS                                   ##
 ################################################################################
 # This build arg allows the specification of a custom Golang image.
-ARG GOLANG_IMAGE=golang:1.22.5
+ARG GOLANG_IMAGE=golang:1.23.4
 
 # The distroless image on which the CPI manager image is built.
 #
@@ -23,7 +23,7 @@ ARG GOLANG_IMAGE=golang:1.22.5
 # the fully-qualified image can be obtained by entering
 # "gcr.io/distroless/static:latest" in a browser and then copying the
 # fully-qualified image from the web page.
-ARG DISTROLESS_IMAGE=gcr.io/distroless/static@sha256:c6d5981545ce1406d33e61434c61e9452dad93ecd8397c41e89036ef977a88f4
+ARG DISTROLESS_IMAGE=gcr.io/distroless/static@sha256:5c7e2b465ac6a2a4e5f4f7f722ce43b147dabe87cb21ac6c4007ae5178a1fa58
 
 ################################################################################
 ##                              BUILD STAGE                                   ##
