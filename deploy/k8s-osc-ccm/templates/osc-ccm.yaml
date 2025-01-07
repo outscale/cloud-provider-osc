@@ -147,6 +147,8 @@ spec:
             - --configure-cloud-routes=false
             - --cloud-provider=osc
             - -v={{ .Values.verbose }}
+          resources:
+          {{- toYaml .Values.resources | nindent 12 }}
           {{- if .Values.caBundle.name }}
           volumeMounts:
             - name: ca-bundle

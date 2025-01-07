@@ -1,5 +1,14 @@
 # Changelog
 
+## [v0.2.6]
+### Bugfixes
+* add resource handlers in chart ([#381](https://github.com/outscale/cloud-provider-osc/pull/381))
+
+## [v0.2.5]
+### Bugfixes
+* fix recommended k8s versions based on the version in the go.mod ([#379](https://github.com/outscale/cloud-provider-osc/pull/379))
+* Clean way to set imagePullSecrets and respect list([#370]( https://github.com/outscale/cloud-provider-osc/pull/370))
+
 ## [v0.2.4]
 ### Bugfixes
 * use buildx and wait more time lb to be up ([#327](https://github.com/outscale/cloud-provider-osc/pull/327))

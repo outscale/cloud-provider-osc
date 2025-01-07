@@ -1,6 +1,6 @@
 # osc-cloud-controller-manager
 
-![Version: 0.3.0](https://img.shields.io/badge/Version-0.3.0-informational?style=flat-square) ![AppVersion: 0.2.4](https://img.shields.io/badge/AppVersion-0.2.4-informational?style=flat-square)
+![Version: 0.3.1](https://img.shields.io/badge/Version-0.3.1-informational?style=flat-square) ![AppVersion: 0.2.6](https://img.shields.io/badge/AppVersion-0.2.6-informational?style=flat-square)
 
 A Helm chart for OSC CCM cloud provider
 
@@ -40,6 +40,7 @@ Kubernetes: `>=1.20.0-0`
 | oscSecretName | string | `"osc-secret"` | Secret name containing cloud credentials |
 | podLabels | object | `{}` | Labels for pod |
 | replicaCount | int | `1` | Number of replicas to deploy |
+| resources | object | `{}` | Pod resource requests and limits. |
 | tolerations | list | `[]` | Pod tolerations (see [kubernetes doc](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)) |
 | verbose | int | `5` | Verbosity level of the plugin |
 

@@ -45,7 +45,7 @@ func elbSession() (*session.Session, error) {
 	return sess, nil
 }
 
-// ElbAPI instanciate elb service
+// ElbAPI instantiate elb service
 func ElbAPI() (osc.LoadBalancer, error) {
 	sess, err := elbSession()
 	if err != nil {

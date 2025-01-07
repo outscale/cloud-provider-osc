@@ -44,3 +44,6 @@ caBundle:
 httpsProxy: ''
 # -- Value used to create environment variable NO_PROXY
 noProxy: ''
+
+# resources -- Pod resource requests and limits.
+resources: {}
