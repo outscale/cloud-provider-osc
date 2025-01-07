@@ -13,12 +13,12 @@ import (
 // getAnnotations return Annotations
 func getAnnotations() map[string]string {
 	return map[string]string{
-		//Tags
+		// Tags
 		"service.beta.kubernetes.io/aws-load-balancer-additional-resource-tags": "testKey1=Val1,testKey2=Val2",
-		//ConnectionDraining
+		// ConnectionDraining
 		"service.beta.kubernetes.io/aws-load-balancer-connection-draining-enabled": "true",
 		"service.beta.kubernetes.io/aws-load-balancer-connection-draining-timeout": "30",
-		//ConnectionSettings
+		// ConnectionSettings
 		"service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout": "65",
 	}
 }
@@ -70,7 +70,7 @@ func UpdateSvcPorts(client clientset.Interface, namespace *v1.Namespace, service
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("Udpated SVC %q.\n", result.GetObjectMeta().GetName())
+	fmt.Printf("Updated SVC %q.\n", result.GetObjectMeta().GetName())
 	return result
 }
 
