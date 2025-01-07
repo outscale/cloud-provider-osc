@@ -4,13 +4,12 @@ This documentation explains how to deploy Outscale Cloud Controller Manager.
 
 You will need a Kubernetes cluster on 3DS Outscale cloud. The next sections details prerequisites on some cloud resources.
 
-| Plugin Version | Minimal Kubernetes Version | Recommended Kubernetes Version |
-| -------------- | -------------------------- | ------------------------------ |
-| <= v0.0.10beta | 1.20                       | 1.23                           |
-|    v0.2.1      | 1.20                       | 1.25                           |
-|    v0.2.3      | 1.20                       | 1.25                           |
-|    v0.2.4      | 1.20                       | 1.30                           |
-|    v0.2.6      | 1.20                       | 1.30                           |
+| Plugin Version  | Minimal Kubernetes Version | Recommended Kubernetes Version |
+| --------------- | -------------------------- | ------------------------------ |
+|  <= v0.0.10beta | 1.20                       | 1.23                           |
+| v0.2.1 - v0.2.3 | 1.20                       | 1.25                           |
+|    >= v0.2.4    | 1.20                       | 1.30                           |
+
 # Configuration
 
 ## Cluster Resource Tagging
