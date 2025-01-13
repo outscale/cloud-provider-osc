@@ -11,32 +11,21 @@ on:
       - "go.*"
       - ".github/workflows/build.yml"
       - "!tests/**"
-  push:
-    branches: [ OSC-MIGRATION ]
-    paths:
-      - "**.go"
-      - "Dockerfile"
-      - "Makefile"
-      - "go.*"
-      - ".github/workflows/build.yml"
-      - "!tests/**"
-  schedule:
-    - cron: '0 0 * * *'
   workflow_dispatch:
     
 jobs:
   Build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-go@v3
-      with:
-        go-version-file: 'go.mod'
-        cache: true
+    - uses: actions/checkout@v4
     - name: Docker Lint
       run: bash -c "make dockerlint"
-    - name: Check
-      run: bash -c "make verify"
+    - name: golangci-lint
+      uses: golangci/golangci-lint-action@v6
+      with:
+        version: v1.63
+        args: --timeout=300s
+        only-new-issues: true
     - name: Test
       run: bash -c "make test"
     - name: Image
