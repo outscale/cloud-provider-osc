@@ -3,7 +3,7 @@ module github.com/outscale/cloud-provider-osc
 go 1.22.5
 
 require (
-	github.com/aws/aws-sdk-go v1.44.116
+	github.com/aws/aws-sdk-go v1.55.6
 	github.com/onsi/ginkgo/v2 v2.19.0
 	github.com/onsi/gomega v1.33.1
 	github.com/outscale/osc-sdk-go/v2 v2.21.0
@@ -16,6 +16,7 @@ require (
 	k8s.io/cloud-provider v0.30.2
 	k8s.io/component-base v0.30.2
 	k8s.io/klog/v2 v2.130.1
+	k8s.io/kubectl v0.0.0
 	k8s.io/kubernetes v1.30.2
 	k8s.io/pod-security-admission v0.0.0
 )
@@ -119,7 +120,6 @@ require (
 	k8s.io/controller-manager v0.30.2 // indirect
 	k8s.io/kms v0.30.2 // indirect
 	k8s.io/kube-openapi v0.0.0-20240228011516-70dd3763d340 // indirect
-	k8s.io/kubectl v0.0.0 // indirect
 	k8s.io/kubelet v0.0.0 // indirect
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.29.0 // indirect
