@@ -23,17 +23,16 @@ on:
     
 jobs:
   create_cluster:
-    runs-on: [self-hosted, linux]
+    runs-on: [self-hosted, linux, us-east-2]
     steps:
-    # Retrieve the code from the repo (UNSAFE)
-    - uses: actions/checkout@v2
+    - name: ⬇️ Checkout repository
+      uses: actions/checkout@v4
+    - name: ⬇️ Install kubectl
+      uses: azure/setup-kubectl@v4
       with:
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-          ref: ${{ github.event.pull_request.head.ref }}
-    - uses: azure/setup-kubectl@v3.0
-    - uses: azure/setup-helm@v3
-      with:
-        version: v3.10.1
+        version: v1.30.7
+    - name: ⬇️ Install helm
+      uses: azure/setup-helm@v4
     - uses: actions/setup-python@v2
     - uses: outscale-dev/frieza-github-actions/frieza-clean@master
       with:
@@ -65,7 +64,7 @@ jobs:
         osc_secret_key: ${{ secrets.OSC_SECRET_KEY }}
         osc_region: ${{ secrets.OSC_REGION }}
         public_cloud: "false"
-        image_id: ${{ secrets.OMI_ID }}
+        image_id: ${{ vars.OMI_ID }}
         version: ${{ format('{0}.{1}', github.sha, github.run_attempt) }}
     ## Create Public Cloud Cluster
     - name: Test on Public cluster
@@ -75,7 +74,7 @@ jobs:
         osc_secret_key: ${{ secrets.OSC_SECRET_KEY }}
         osc_region: ${{ secrets.OSC_REGION }}
         public_cloud: "true"
-        image_id: ${{ secrets.OMI_ID }}
+        image_id: ${{ vars.OMI_ID }}
         version: ${{ format('{0}.{1}', github.sha, github.run_attempt) }}
     - name: Clean images
       run: |

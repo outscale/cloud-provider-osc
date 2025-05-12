@@ -121,8 +121,8 @@ func newCloud(cfg CloudConfig, awsServices Services) (*Cloud, error) {
 		}
 		awsCloud.selfAWSInstance = selfAWSInstance
 		awsCloud.vpcID = selfAWSInstance.vpcID
-		klog.Infof("OSC CCM Instance (%v)", selfAWSInstance)
-		klog.Infof("OSC CCM vpcID (%v)", selfAWSInstance.vpcID)
+		klog.Infof("OSC CCM Instance (%s)", selfAWSInstance.vmID)
+		klog.Infof("OSC CCM vpcID (%s)", selfAWSInstance.vpcID)
 
 	}
 
@@ -147,8 +147,6 @@ func newCloud(cfg CloudConfig, awsServices Services) (*Cloud, error) {
 	}
 
 	awsCloud.instances = instances
-
-	klog.Infof("OSC CCM awsCloud %v", awsCloud)
 	return awsCloud, nil
 }
 

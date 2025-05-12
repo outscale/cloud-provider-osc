@@ -23,7 +23,7 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
       with:
         repository: 'outscale-dev/osc-k8s-rke-cluster'
         path: "set-up-rke-cluster"
@@ -35,18 +35,18 @@ runs:
         osc_secret_key: ${{ inputs.osc_secret_key }}
         osc_region: ${{ inputs.osc_region }}
         will_install_ccm: "true"
-        rke_version: "v1.4.12"
-        kubernetes_version: "v1.26.11-rancher2-1"
-        bastion_vm_type: "tinav5.c4r8p1"
+        rke_version: "v1.6.9"
+        kubernetes_version: "v1.30.11-rancher1-1"
+        bastion_vm_type: "tinav6.c1r1p2"
         bastion_volume_type: "gp2"
         bastion_volume_size: 30
         #bastion_iops: 1500
-        control_plane_vm_type: "tinav5.c4r8p1"
+        control_plane_vm_type: "tinav6.c4r8p2"
         control_plane_count: 1
         control_plane_volume_type: "gp2"
         control_plane_volume_size: 30
         #control_plane_iops: 1500
-        worker_vm_type: "tinav5.c4r8p1"
+        worker_vm_type: "tinav6.c4r8p2"
         worker_count: 1
         worker_volume_type: "gp2"
         worker_volume_size: 30
