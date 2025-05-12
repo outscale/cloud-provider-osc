@@ -144,8 +144,6 @@ spec:
         app: osc-cloud-controller-manager
     spec:
       serviceAccountName: cloud-controller-manager
-      imagePullSecrets:
-        - name: registry-dockerconfigjson
       containers:
         - name: osc-cloud-controller-manager
           image: outscale/cloud-provider-osc:v0.2.7
@@ -155,6 +153,8 @@ spec:
             - --configure-cloud-routes=false
             - --cloud-provider=osc
             - -v=5
+          resources:
+            {}
           env:
             - name: OSC_ACCOUNT_ID
               valueFrom:
