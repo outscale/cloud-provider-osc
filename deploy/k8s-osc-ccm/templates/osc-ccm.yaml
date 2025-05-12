@@ -248,21 +248,5 @@ spec:
                 path: ca-certificates.crt
       {{- end }}
       hostNetwork: true
-      {{- if .Values.nodeSelector }}
-      nodeSelector: {{- toYaml .Values.nodeSelector | nindent 8}}
-      {{- end }}
-      tolerations:
-        # this taint is set by all kubelets running `--cloud-provider=external`
-        # so we should tolerate it to schedule the osc ccm
-        # this is required so CCM can bootstrap itself
-        - key: node.cloudprovider.kubernetes.io/uninitialized
-          value: "true"
-          effect: NoSchedule
-        # cloud controller manages should be able to run on masters
-        # this is to have the daemonset runnable on master nodes
-        # the taint may vary depending on your cluster setup
-        - key: node-role.kubernetes.io/control-plane
-          effect: NoSchedule
-        {{- with .Values.tolerations }}
-          {{- toYaml . | nindent 8 }}
-        {{- end }}
+      nodeSelector: {{ toYaml .Values.nodeSelector | nindent 8}}
+      tolerations: {{ toYaml .Values.tolerations | nindent 8}}

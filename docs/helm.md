@@ -1,6 +1,6 @@
 # osc-cloud-controller-manager
 
-![Version: 0.3.2](https://img.shields.io/badge/Version-0.3.2-informational?style=flat-square) ![AppVersion: 0.2.7](https://img.shields.io/badge/AppVersion-0.2.7-informational?style=flat-square)
+![Version: 0.3.3](https://img.shields.io/badge/Version-0.3.3-informational?style=flat-square) ![AppVersion: 0.2.8](https://img.shields.io/badge/AppVersion-0.2.8-informational?style=flat-square)
 
 A Helm chart for OSC CCM cloud provider
 
@@ -36,12 +36,12 @@ Kubernetes: `>=1.20.0-0`
 | image.tag | string | `"v0.2.7"` | Container image tag to deploy |
 | imagePullSecrets | list | `[]` | Specify image pull secrets |
 | noProxy | string | `""` | Value used to create environment variable NO_PROXY |
-| nodeSelector | object | `{}` | Assign Pod to Nodes (see [kubernetes doc](https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes/)) |
+| nodeSelector | object | `{"node-role.kubernetes.io/control-plane":""}` | Assign Pod to Nodes (see [kubernetes doc](https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes/)) |
 | oscSecretName | string | `"osc-secret"` | Secret name containing cloud credentials |
 | podLabels | object | `{}` | Labels for pod |
 | replicaCount | int | `1` | Number of replicas to deploy |
 | resources | object | `{}` | Pod resource requests and limits. |
-| tolerations | list | `[]` | Pod tolerations (see [kubernetes doc](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)) |
+| tolerations | list | `[{"effect":"NoSchedule","key":"node.cloudprovider.kubernetes.io/uninitialized","value":"true"},{"effect":"NoSchedule","key":"node-role.kubernetes.io/control-plane"}]` | Pod tolerations (see [kubernetes doc](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)) |
 | verbose | int | `5` | Verbosity level of the plugin |
 
 ----------------------------------------------

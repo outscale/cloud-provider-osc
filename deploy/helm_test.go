@@ -59,6 +59,30 @@ func TestHelmTemplate(t *testing.T) {
 		assert.IsType(t, &appsv1.DaemonSet{}, specs[4])
 	})
 
+	t.Run("By default, the right nodeSelector is configured", func(t *testing.T) {
+		specs := getHelmSpecs(t, nil)
+		require.IsType(t, &appsv1.DaemonSet{}, specs[4])
+		ds := specs[4].(*appsv1.DaemonSet)
+		assert.Equal(t, map[string]string{
+			"node-role.kubernetes.io/control-plane": "",
+		}, ds.Spec.Template.Spec.NodeSelector)
+	})
+	t.Run("By default, the right tolerations are configured", func(t *testing.T) {
+		specs := getHelmSpecs(t, nil)
+		require.IsType(t, &appsv1.DaemonSet{}, specs[4])
+		ds := specs[4].(*appsv1.DaemonSet)
+		assert.Equal(t, []corev1.Toleration{
+			{
+				Key:    "node.cloudprovider.kubernetes.io/uninitialized",
+				Value:  "true",
+				Effect: corev1.TaintEffectNoSchedule,
+			},
+			{
+				Key:    "node-role.kubernetes.io/control-plane",
+				Effect: corev1.TaintEffectNoSchedule,
+			},
+		}, ds.Spec.Template.Spec.Tolerations)
+	})
 	t.Run("By default, the OSC_ENDPOINT_API env var is not set", func(t *testing.T) {
 		specs := getHelmSpecs(t, nil)
 		require.IsType(t, &appsv1.DaemonSet{}, specs[4])
@@ -280,7 +304,14 @@ func TestHelmTemplate(t *testing.T) {
 		require.IsType(t, &appsv1.DaemonSet{}, specs[4])
 		ds := specs[4].(*appsv1.DaemonSet)
 		require.Len(t, ds.Spec.Template.Spec.Containers, 1)
-		require.Len(t, ds.Spec.Template.Spec.Containers[0].Env, 4)
-		assert.Equal(t, "-v=42", ds.Spec.Template.Spec.Containers[0].Command[3])
+		count := 0
+		for _, e := range ds.Spec.Template.Spec.Containers[0].Env {
+			if e.ValueFrom == nil || e.ValueFrom.SecretKeyRef == nil {
+				continue
+			}
+			assert.Equal(t, "foo", e.ValueFrom.SecretKeyRef.Name)
+			count++
+		}
+		assert.Equal(t, 10, count)
 	})
 }
