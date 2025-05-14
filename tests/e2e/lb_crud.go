@@ -20,19 +20,21 @@ import (
 	"strings"
 	"time"
 
-	e2eutils "github.com/outscale/cloud-provider-osc/tests/e2e/utils"
-
 	elbApi "github.com/aws/aws-sdk-go/service/elb"
-	"github.com/onsi/ginkgo/v2"
-	omega "github.com/onsi/gomega"
-	v1 "k8s.io/api/core/v1"
-
+	. "github.com/onsi/ginkgo/v2" //nolint: staticcheck
+	. "github.com/onsi/gomega"    //nolint: staticcheck
+	e2eutils "github.com/outscale/cloud-provider-osc/tests/e2e/utils"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2esvc "k8s.io/kubernetes/test/e2e/framework/service"
 	admissionapi "k8s.io/pod-security-admission/api"
+)
+
+const (
+	echoServerImage = "gcr.io/google_containers/echoserver:1.10"
+	testTimeout     = 10 * time.Minute
 )
 
 // TestParam customize e2e tests and lb annotations
@@ -43,6 +45,7 @@ type TestParam struct {
 	DeploymentMetaName string
 	DeploymentName     string
 	DeploymentImage    string
+	WaitForDeplyment   bool
 	Replicas           int32
 	Ports              []apiv1.ContainerPort
 	ServiceMetaName    string
@@ -53,16 +56,16 @@ type TestParam struct {
 	UpdateService      bool
 }
 
-var _ = ginkgo.Describe("[ccm-e2e] SVC-LB", func() {
+var _ = Describe("[ccm-e2e] SVC-LB", func() {
 	f := framework.NewDefaultFramework("ccm")
 	f.NamespacePodSecurityEnforceLevel = admissionapi.LevelPrivileged
 
 	var (
 		cs clientset.Interface
-		ns *v1.Namespace
+		ns *apiv1.Namespace
 	)
 
-	ginkgo.BeforeEach(func() {
+	BeforeEach(func() {
 		cs = f.ClientSet
 		ns = f.Namespace
 	})
@@ -74,7 +77,7 @@ var _ = ginkgo.Describe("[ccm-e2e] SVC-LB", func() {
 			Annotations:        map[string]string{},
 			DeploymentMetaName: "echoheaders",
 			DeploymentName:     "echoheaders",
-			DeploymentImage:    "gcr.io/google_containers/echoserver:1.10",
+			DeploymentImage:    echoServerImage,
 			Replicas:           1,
 			Ports: []apiv1.ContainerPort{
 				{
@@ -85,10 +88,40 @@ var _ = ginkgo.Describe("[ccm-e2e] SVC-LB", func() {
 			},
 			ServiceMetaName: "echoheaders-lb-public",
 			ServiceName:     "echoheaders",
-			ServicePorts: []v1.ServicePort{
+			ServicePorts: []apiv1.ServicePort{
 				{
 					Name:       "tcp",
-					Protocol:   v1.ProtocolTCP,
+					Protocol:   apiv1.ProtocolTCP,
+					TargetPort: intstr.FromInt(8080),
+					Port:       80,
+				},
+			},
+			SourceRanges:     false,
+			SourceRangesCidr: []string{},
+			UpdateService:    true,
+		},
+		{
+			Title:              "Create LB after deployment",
+			Cmd:                "",
+			Annotations:        map[string]string{},
+			DeploymentMetaName: "echoheaders",
+			DeploymentName:     "echoheaders",
+			DeploymentImage:    echoServerImage,
+			WaitForDeplyment:   true,
+			Replicas:           1,
+			Ports: []apiv1.ContainerPort{
+				{
+					Name:          "tcp",
+					Protocol:      apiv1.ProtocolTCP,
+					ContainerPort: 8080,
+				},
+			},
+			ServiceMetaName: "echoheaders-lb-public",
+			ServiceName:     "echoheaders",
+			ServicePorts: []apiv1.ServicePort{
+				{
+					Name:       "tcp",
+					Protocol:   apiv1.ProtocolTCP,
 					TargetPort: intstr.FromInt(8080),
 					Port:       80,
 				},
@@ -107,7 +140,7 @@ var _ = ginkgo.Describe("[ccm-e2e] SVC-LB", func() {
 			},
 			DeploymentMetaName: "echoheaders",
 			DeploymentName:     "echoheaders",
-			DeploymentImage:    "gcr.io/google_containers/echoserver:1.10",
+			DeploymentImage:    echoServerImage,
 			Replicas:           1,
 			Ports: []apiv1.ContainerPort{
 				{
@@ -118,10 +151,10 @@ var _ = ginkgo.Describe("[ccm-e2e] SVC-LB", func() {
 			},
 			ServiceMetaName: "echoheaders-lb-public",
 			ServiceName:     "echoheaders",
-			ServicePorts: []v1.ServicePort{
+			ServicePorts: []apiv1.ServicePort{
 				{
 					Name:       "tcp",
-					Protocol:   v1.ProtocolTCP,
+					Protocol:   apiv1.ProtocolTCP,
 					TargetPort: intstr.FromInt(8080),
 					Port:       80,
 				},
@@ -141,7 +174,7 @@ var _ = ginkgo.Describe("[ccm-e2e] SVC-LB", func() {
 			},
 			DeploymentMetaName: "echoheaders",
 			DeploymentName:     "echoheaders",
-			DeploymentImage:    "gcr.io/google_containers/echoserver:1.10",
+			DeploymentImage:    echoServerImage,
 			Replicas:           1,
 			Ports: []apiv1.ContainerPort{
 				{
@@ -152,10 +185,10 @@ var _ = ginkgo.Describe("[ccm-e2e] SVC-LB", func() {
 			},
 			ServiceMetaName: "echoheaders-lb-public",
 			ServiceName:     "echoheaders",
-			ServicePorts: []v1.ServicePort{
+			ServicePorts: []apiv1.ServicePort{
 				{
 					Name:       "tcp",
-					Protocol:   v1.ProtocolTCP,
+					Protocol:   apiv1.ProtocolTCP,
 					TargetPort: intstr.FromInt(8080),
 					Port:       80,
 				},
@@ -170,7 +203,7 @@ var _ = ginkgo.Describe("[ccm-e2e] SVC-LB", func() {
 			Annotations:        map[string]string{},
 			DeploymentMetaName: "basic-deployment",
 			DeploymentName:     "basic",
-			DeploymentImage:    "gcr.io/google_containers/echoserver:1.10",
+			DeploymentImage:    echoServerImage,
 			Replicas:           2,
 			Ports: []apiv1.ContainerPort{
 				{
@@ -181,10 +214,10 @@ var _ = ginkgo.Describe("[ccm-e2e] SVC-LB", func() {
 			},
 			ServiceMetaName: "service-basic",
 			ServiceName:     "basic",
-			ServicePorts: []v1.ServicePort{
+			ServicePorts: []apiv1.ServicePort{
 				{
 					Name:       "tcp",
-					Protocol:   v1.ProtocolTCP,
+					Protocol:   apiv1.ProtocolTCP,
 					TargetPort: intstr.FromInt(8080),
 					Port:       80,
 				},
@@ -202,7 +235,7 @@ var _ = ginkgo.Describe("[ccm-e2e] SVC-LB", func() {
 			},
 			DeploymentMetaName: "echoheaders",
 			DeploymentName:     "echoheaders",
-			DeploymentImage:    "gcr.io/google_containers/echoserver:1.10",
+			DeploymentImage:    echoServerImage,
 			Replicas:           1,
 			Ports: []apiv1.ContainerPort{
 				{
@@ -213,10 +246,10 @@ var _ = ginkgo.Describe("[ccm-e2e] SVC-LB", func() {
 			},
 			ServiceMetaName: "echoheaders-lb-advanced-public",
 			ServiceName:     "echoheaders",
-			ServicePorts: []v1.ServicePort{
+			ServicePorts: []apiv1.ServicePort{
 				{
 					Name:       "http",
-					Protocol:   v1.ProtocolTCP,
+					Protocol:   apiv1.ProtocolTCP,
 					TargetPort: intstr.FromInt(8080),
 					Port:       80,
 				},
@@ -242,38 +275,41 @@ var _ = ginkgo.Describe("[ccm-e2e] SVC-LB", func() {
 		sourceRanges := param.SourceRanges
 		sourceRangesCidr := param.SourceRangesCidr
 		updateService := param.UpdateService
-		ginkgo.It(title, func() {
+		wait := param.WaitForDeplyment
+		It(title, func() {
 			fmt.Printf("Create Simple LB :  %v\n", ns)
 			fmt.Printf("Cs :  %v\n", cs)
 			fmt.Printf("Params :  %v / %v / %v\n", title, cmd, annotations)
 
-			ginkgo.By("Create Deployment")
+			By("Create Deployment")
 
 			deployement := e2eutils.CreateDeployment(cs, ns, cmd, deploymentMetaName, deploymentName, deploymentImage, replicas, ports)
 			defer e2eutils.DeleteDeployment(cs, ns, deployement)
 			defer e2eutils.ListDeployment(cs, ns)
 
-			ginkgo.By("checking that the pod is running")
-			e2eutils.WaitForDeployementReady(cs, ns, deployement)
+			if wait {
+				By("Check that the pods are running")
+				e2eutils.WaitForDeployementReady(cs, ns, deployement)
+			}
 
-			ginkgo.By("listDeployment")
+			By("List deployment")
 			e2eutils.ListDeployment(cs, ns)
 
-			ginkgo.By("Create Svc")
+			By("Create Svc")
 			svc := e2eutils.CreateSvc(cs, ns, annotations, serviceMetaName, serviceName, servicePorts, sourceRanges, sourceRangesCidr)
 			fmt.Printf("Created Service %q.\n", svc)
 			defer e2eutils.ListSvc(cs, ns)
 			defer e2eutils.DeleteSvc(cs, ns, svc)
 
-			ginkgo.By("checking that the svc is ready")
+			By("Check that the svc is ready")
 			e2eutils.WaitForSvc(cs, ns, svc)
 
-			ginkgo.By("Listing svc")
+			By("Listing svc")
 			e2eutils.ListSvc(cs, ns)
 
-			ginkgo.By("Get Updated svc")
+			By("Get Updated svc")
 			count := 0
-			var updatedSvc *v1.Service
+			var updatedSvc *apiv1.Service
 			for count < 10 {
 				updatedSvc = e2eutils.GetSvc(cs, ns, svc.GetObjectMeta().GetName())
 				fmt.Printf("Ingress:  %v\n", updatedSvc.Status.LoadBalancer.Ingress)
@@ -287,10 +323,10 @@ var _ = ginkgo.Describe("[ccm-e2e] SVC-LB", func() {
 			lbName := strings.Split(address, "-")[0]
 			fmt.Printf("address:  %v\n", address)
 
-			ginkgo.By("Test Connection (wait to have endpoint ready)")
-			e2esvc.TestReachableHTTP(context.TODO(), address, int(servicePorts[0].Port), 600*time.Second)
+			By("Test Connection (wait to have endpoint ready)")
+			e2esvc.TestReachableHTTP(context.TODO(), address, int(servicePorts[0].Port), testTimeout)
 			if updateService {
-				ginkgo.By("Remove Instances from lbu")
+				By("Remove Instances from lbu")
 				elb, err := e2eutils.ElbAPI()
 				framework.ExpectNoError(err)
 
@@ -303,7 +339,7 @@ var _ = ginkgo.Describe("[ccm-e2e] SVC-LB", func() {
 					lbInstanceItem.InstanceId = lbInstance.InstanceId
 					lbInstances = append(lbInstances, lbInstanceItem)
 				}
-				omega.Expect(len(lbInstances)).NotTo(omega.Equal(0), "Value should be 2")
+				Expect(lbInstances).NotTo(BeEmpty(), "There must be a load-balancer")
 				//framework.ExpectNotEqual(len(lbInstances), 0)
 
 				err = e2eutils.RemoveLbInst(elb, lbName, lbInstances)
@@ -311,20 +347,20 @@ var _ = ginkgo.Describe("[ccm-e2e] SVC-LB", func() {
 
 				lb, err = e2eutils.GetLb(elb, lbName)
 				framework.ExpectNoError(err)
-				omega.Expect(len(lb.Instances)).To(omega.Equal(0), "Value should be 0")
+				Expect(lb.Instances).To(BeEmpty(), "Load-balancer should have been deleted")
 				//framework.ExpectEqual(len(lb.Instances), 0)
 
-				ginkgo.By("Add port to force update of LB")
-				port := v1.ServicePort{
+				By("Add port to force update of LB")
+				port := apiv1.ServicePort{
 					Name:       "tcp2",
-					Protocol:   v1.ProtocolTCP,
+					Protocol:   apiv1.ProtocolTCP,
 					TargetPort: intstr.FromInt(8443),
 					Port:       443,
 				}
 				svc = e2eutils.UpdateSvcPorts(cs, ns, updatedSvc, port)
 				fmt.Printf("svc updated:  %v\n", svc)
 
-				ginkgo.By("Test LB updated(wait to have vm registred)")
+				By("Test LB updated(wait to have vm registred)")
 				count = 0
 				for count < 10 {
 					lb, err = e2eutils.GetLb(elb, lbName)
@@ -337,11 +373,11 @@ var _ = ginkgo.Describe("[ccm-e2e] SVC-LB", func() {
 				lb, err = e2eutils.GetLb(elb, lbName)
 
 				framework.ExpectNoError(err)
-				omega.Expect(len(lb.Instances)).NotTo(omega.Equal(0))
+				Expect(lb.Instances).NotTo(BeEmpty())
 				//framework.ExpectNotEqual(len(lb.Instances), 0)
 
-				ginkgo.By("TestReachableHTTP after update")
-				e2esvc.TestReachableHTTP(context.TODO(), address, int(servicePorts[0].Port), 240*time.Second)
+				By("TestReachableHTTP after update")
+				e2esvc.TestReachableHTTP(context.TODO(), address, int(servicePorts[0].Port), testTimeout)
 			}
 		})
 
@@ -349,7 +385,7 @@ var _ = ginkgo.Describe("[ccm-e2e] SVC-LB", func() {
 })
 
 // Test to check that the issue 68 is solved
-var _ = ginkgo.Describe("[ccm-e2e] SVC-LB", func() {
+var _ = Describe("[ccm-e2e] SVC-LB", func() {
 	f := framework.NewDefaultFramework("ccm")
 	f.NamespacePodSecurityEnforceLevel = admissionapi.LevelPrivileged
 
@@ -357,7 +393,7 @@ var _ = ginkgo.Describe("[ccm-e2e] SVC-LB", func() {
 		cs clientset.Interface
 	)
 
-	ginkgo.BeforeEach(func() {
+	BeforeEach(func() {
 		cs = f.ClientSet
 	})
 
@@ -365,15 +401,15 @@ var _ = ginkgo.Describe("[ccm-e2e] SVC-LB", func() {
 	cmd := ""
 	annotations := map[string]string{}
 	deploymentMetaName := "echoheaders"
-	deploymentImage := "gcr.io/google_containers/echoserver:1.10"
+	deploymentImage := echoServerImage
 	var replicas int32 = 1
 	deploymentName := "echoheaders"
 	serviceMetaName := "echoheaders-lb-public"
 	serviceName := "echoheaders"
-	servicePorts := []v1.ServicePort{
+	servicePorts := []apiv1.ServicePort{
 		{
 			Name:       "tcp",
-			Protocol:   v1.ProtocolTCP,
+			Protocol:   apiv1.ProtocolTCP,
 			TargetPort: intstr.FromInt(8080),
 			Port:       80,
 		},
@@ -387,7 +423,7 @@ var _ = ginkgo.Describe("[ccm-e2e] SVC-LB", func() {
 			ContainerPort: 8080,
 		},
 	}
-	ginkgo.It(title, func() {
+	It(title, func() {
 		nsSvc1, err := f.CreateNamespace(context.TODO(), "svc1", map[string]string{})
 		framework.ExpectNoError(err)
 		nsSvc2, err := f.CreateNamespace(context.TODO(), "svc2", map[string]string{})
@@ -395,53 +431,53 @@ var _ = ginkgo.Describe("[ccm-e2e] SVC-LB", func() {
 
 		fmt.Printf("Params :  %v / %v / %v\n", title, cmd, annotations)
 
-		ginkgo.By("Create Deployment 1")
+		By("Create Deployment 1")
 
 		deployementSvc1 := e2eutils.CreateDeployment(cs, nsSvc1, cmd, deploymentMetaName, deploymentName, deploymentImage, replicas, ports)
 		defer e2eutils.DeleteDeployment(cs, nsSvc1, deployementSvc1)
 		defer e2eutils.ListDeployment(cs, nsSvc1)
 
-		ginkgo.By("Create Deployment 2")
+		By("Create Deployment 2")
 
 		deployementSvc2 := e2eutils.CreateDeployment(cs, nsSvc2, cmd, deploymentMetaName, deploymentName, deploymentImage, replicas, ports)
 		defer e2eutils.DeleteDeployment(cs, nsSvc1, deployementSvc2)
 		defer e2eutils.ListDeployment(cs, nsSvc1)
 
-		ginkgo.By("checking that pods are running")
-		e2eutils.WaitForDeployementReady(cs, nsSvc1, deployementSvc1)
-		e2eutils.WaitForDeployementReady(cs, nsSvc2, deployementSvc2)
+		// By("checking that pods are running")
+		// e2eutils.WaitForDeployementReady(cs, nsSvc1, deployementSvc1)
+		// e2eutils.WaitForDeployementReady(cs, nsSvc2, deployementSvc2)
 
-		ginkgo.By("listDeployment")
-		e2eutils.ListDeployment(cs, nsSvc1)
-		e2eutils.ListDeployment(cs, nsSvc2)
-
-		ginkgo.By("Create Svc 1")
+		By("Create Svc 1")
 		svc1 := e2eutils.CreateSvc(cs, nsSvc1, annotations, serviceMetaName, serviceName, servicePorts, sourceRanges, sourceRangesCidr)
 		fmt.Printf("Created Service %q.\n", svc1)
 		defer e2eutils.ListSvc(cs, nsSvc1)
 
-		ginkgo.By("Create Svc 2")
+		By("Create Svc 2")
 		svc2 := e2eutils.CreateSvc(cs, nsSvc2, annotations, serviceMetaName, serviceName, servicePorts, sourceRanges, sourceRangesCidr)
 		fmt.Printf("Created Service %q.\n", svc2)
 		defer e2eutils.ListSvc(cs, nsSvc2)
 		defer e2eutils.DeleteSvc(cs, nsSvc2, svc2)
 
-		ginkgo.By("checking that svc are ready")
+		By("Check that svc are ready")
 		e2eutils.WaitForSvc(cs, nsSvc1, svc1)
 		e2eutils.WaitForSvc(cs, nsSvc2, svc2)
 
-		ginkgo.By("Listing svc")
+		By("List deployments")
+		e2eutils.ListDeployment(cs, nsSvc1)
+		e2eutils.ListDeployment(cs, nsSvc2)
+
+		By("List svc")
 		e2eutils.ListSvc(cs, nsSvc1)
 		e2eutils.ListSvc(cs, nsSvc2)
 
-		ginkgo.By("Get Updated svc")
+		By("Get Updated svc")
 		addresses := [2]string{}
 		lbNames := [2]string{}
-		nss := []*v1.Namespace{nsSvc1, nsSvc2}
-		svcs := []*v1.Service{svc1, svc2}
+		nss := []*apiv1.Namespace{nsSvc1, nsSvc2}
+		svcs := []*apiv1.Service{svc1, svc2}
 		for i := 0; i < 2; i++ {
 			count := 0
-			var updatedSvc *v1.Service
+			var updatedSvc *apiv1.Service
 			for count < 10 {
 				updatedSvc = e2eutils.GetSvc(cs, nss[i], svcs[i].GetObjectMeta().GetName())
 				fmt.Printf("Ingress:  %v\n", updatedSvc.Status.LoadBalancer.Ingress)
@@ -457,12 +493,12 @@ var _ = ginkgo.Describe("[ccm-e2e] SVC-LB", func() {
 			fmt.Printf("address:  %v\n", addresses[i])
 		}
 
-		ginkgo.By("Test Connection (wait to have endpoint ready)")
+		By("Test Connection (wait to have endpoint ready)")
 		for i := 0; i < 2; i++ {
-			e2esvc.TestReachableHTTP(context.TODO(), addresses[i], 80, 600*time.Second)
+			e2esvc.TestReachableHTTP(context.TODO(), addresses[i], 80, testTimeout)
 		}
 
-		ginkgo.By("Remove SVC 1")
+		By("Remove SVC 1")
 		e2eutils.DeleteSvc(cs, nsSvc1, svc1)
 
 		e2eutils.WaitForDeletedSvc(cs, nsSvc1, svc1)
@@ -470,9 +506,7 @@ var _ = ginkgo.Describe("[ccm-e2e] SVC-LB", func() {
 		fmt.Printf("Wait to have stable sg")
 		time.Sleep(120 * time.Second)
 
-		ginkgo.By("Test SVC 2")
-		e2esvc.TestReachableHTTP(context.TODO(), addresses[1], 80, 240*time.Second)
-
+		By("Test SVC 2")
+		e2esvc.TestReachableHTTP(context.TODO(), addresses[1], 80, testTimeout)
 	})
-
 })

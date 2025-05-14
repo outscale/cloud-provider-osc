@@ -10,6 +10,15 @@ inputs:
   osc_region:
     description: 'Region'
     required: true
+  oks_access_key:
+    description: 'ACCESS KEY'
+    required: true
+  oks_secret_key:
+    description: 'SECRET KEY'
+    required: true
+  oks_region:
+    description: 'Region'
+    required: true
   public_cloud:
     description: 'Create cluster in public cloud'
     required: true
@@ -20,112 +29,68 @@ inputs:
   version:
     description: 'version of the image'
     required: true
+  registry:
+    description: 'registry host'
+    required: true
 runs:
   using: "composite"
   steps:
-    - uses: actions/checkout@v4
+    - name: ⬇️ Checkout CAPOSC
+      uses: actions/checkout@v4
       with:
-        repository: 'outscale-dev/osc-k8s-rke-cluster'
-        path: "set-up-rke-cluster"
-    - name: Deploy Cluster (VPC)
-      uses: outscale-dev/osc-k8s-rke-cluster/github_actions/deploy_cluster@master
+        repository: 'outscale/cluster-api-provider-outscale'
+        path: "cluster-api-provider-outscale"
+    - name: 👷 Deploy Cluster (VPC)
+      id: caposc
+      uses: outscale/cluster-api-provider-outscale/github_actions/deploy_cluster@main
       with:
-        repository_folder: "set-up-rke-cluster"
-        osc_access_key: ${{ inputs.osc_access_key }}
-        osc_secret_key: ${{ inputs.osc_secret_key }}
-        osc_region: ${{ inputs.osc_region }}
-        will_install_ccm: "true"
-        rke_version: "v1.6.9"
-        kubernetes_version: "v1.30.11-rancher1-1"
-        bastion_vm_type: "tinav6.c1r1p2"
-        bastion_volume_type: "gp2"
-        bastion_volume_size: 30
-        #bastion_iops: 1500
-        control_plane_vm_type: "tinav6.c4r8p2"
-        control_plane_count: 1
-        control_plane_volume_type: "gp2"
-        control_plane_volume_size: 30
-        #control_plane_iops: 1500
-        worker_vm_type: "tinav6.c4r8p2"
-        worker_count: 1
-        worker_volume_type: "gp2"
-        worker_volume_size: 30
-        #worker_iops: 1500
-        public_cloud: ${{ inputs.public_cloud }}
-        image_id: ${{ inputs.image_id }}
-    - name: Wait to access the cluster
-      uses: nick-invision/retry@v2
-      with:
-        timeout_seconds: 60
-        max_attempts: 10
-        command: kubectl get nodes
-      env:
-        KUBECONFIG: set-up-rke-cluster/rke/kube_config_cluster.yml
-    - name: Deploy Docker-registry into cluster
-      shell: bash
-      id: docker
-      run: |
-        ansible-playbook addons/docker-registry/playbook.yaml
-        ./addons/docker-registry/start_port_forwarding.sh &
-        echo "::set-output name=FORWARDING_PID::$!"
-      env:
-        KUBECONFIG: rke/kube_config_cluster.yml
-        ANSIBLE_CONFIG: ansible.cfg
-      working-directory: set-up-rke-cluster
-    - name: Wait until the service docker-registry is deployed by pushing
-      uses: nick-invision/retry@v2
-      with:
-        timeout_seconds: 60
-        max_attempts: 20
-        command: |
-          docker push localhost:4242/osc/cloud-provider-osc:$VERSION
-      env:
-        VERSION: ${{ inputs.version }}
-    - name: Kill Port forwarding
-      shell: bash
-      run: |
-        pkill -P ${{ steps.docker.outputs.FORWARDING_PID }}
-    - name: Retrieve NodePort Ip and NodePort
-      shell: bash
-      run: |
-        echo nodeport_port=$(kubectl get --namespace default -o jsonpath="{.spec.ports[0].nodePort}" services docker-registry) >> $GITHUB_ENV
-        echo nodeport_ip=$(kubectl get nodes --namespace default -o jsonpath="{.items[0].status.addresses[0].address}")  >> $GITHUB_ENV
-      env:
-        KUBECONFIG: set-up-rke-cluster/rke/kube_config_cluster.yml
-    - name: Install CCM
-      shell: bash
-      run: |
-        kubectl apply -f set-up-rke-cluster/addons/ccm/secrets.yaml
-        helm install --wait --wait-for-jobs k8s-osc-ccm deploy/k8s-osc-ccm --set oscSecretName=osc-secret --set image.repository=${nodeport_ip}:${nodeport_port}/osc/cloud-provider-osc --set image.tag=${VERSION}
-      env:
-        KUBECONFIG: set-up-rke-cluster/rke/kube_config_cluster.yml
-        VERSION: ${{ inputs.version }}
-    - name: Run e2e tests
-      shell: bash
-      env:
+        RUNNER_NAME: ${{ runner.name }}
+        OKS_ACCESS_KEY: ${{ inputs.oks_access_key }}
+        OKS_SECRET_KEY: ${{ inputs.oks_secret_key }}
+        OKS_REGION: ${{ inputs.oks_region }}
         OSC_ACCESS_KEY: ${{ inputs.osc_access_key }}
         OSC_SECRET_KEY: ${{ inputs.osc_secret_key }}
         OSC_REGION: ${{ inputs.osc_region }}
-      run: bash -c "KC=$(base64 -w 0 set-up-rke-cluster/rke/kube_config_cluster.yml) make test-e2e"
-    - name: Wait that all resources have been released (for ex SG ELB)
-      uses: nick-invision/retry@v2
-      with:
-        timeout_seconds: 60
-        max_attempts: 20
-        command: |
-          test "$(osc-cli api ReadSecurityGroups --Filters "{\"TagKeys\": [\"OscK8sClusterID/$cluster_name\"]}" | jq -r '.SecurityGroups | length')" = "1"
-    - name: Uninstall CCM
-      shell: bash
+        CLUSTER_NAME: "ccm"
+        IMAGE_NAME: "ubuntu-2204-2204-kubernetes-v1.28.5-2024-01-10"
+        CCM: "false"
+    - name: 👷 Install CCM
       run: |
-        kubectl delete -f set-up-rke-cluster/addons/ccm/secrets.yaml
-        helm uninstall --wait k8s-osc-ccm
+        kubectl create secret generic osc-secret --from-literal=key_id=${{ inputs.osc_access_key }} --from-literal=access_key=${{ inputs.osc_secret_key }} --from-literal=aws_default_region=${{ inputs.osc_region }} \
+          --from-literal=aws_availability_zones=MY_AWS_AVAILABILITY_ZONES --from-literal=osc_account_id=MY_OSC_ACCOUNT_ID --from-literal=osc_account_iam=MY_OSC_ACCOUNT_IAM --from-literal=osc_user_id=MY_OSC_USER_ID --from-literal=osc_arn=MY_OSC_ARN \
+          -n kube-system
+        echo "installing CCM"
+        helm install --wait k8s-osc-ccm deploy/k8s-osc-ccm --set oscSecretName=osc-secret --set image.repository=${{ inputs.registry }}/outscale/cloud-provider-osc --set image.tag=${{ inputs.version }}
+        echo "waiting for worker nodes"
+        kubectl wait --for=condition=Ready nodes --all --timeout=900s
+        kubectl get nodes -o wide
+        echo "waiting for pods"
+        kubectl wait --for=condition=Ready po --all -A --timeout=900s
+        kubectl get po -A
+      shell: bash
       env:
-        KUBECONFIG: set-up-rke-cluster/rke/kube_config_cluster.yml
-    - name: Destroy Cluster
-      uses: outscale-dev/osc-k8s-rke-cluster/github_actions/destroy_cluster@master
-      if: ${{ always() }}
-      with:
-        repository_folder: "set-up-rke-cluster"
-        osc_access_key: ${{ inputs.osc_access_key }}
-        osc_secret_key: ${{ inputs.osc_secret_key }}
-        osc_region: ${{ inputs.osc_region }}
+        KUBECONFIG: "${{ github.workspace }}/${{ steps.caposc.outputs.KUBECONFIG }}"
+        OSC_ACCESS_KEY: ${{ inputs.osc_access_key }}
+        OSC_SECRET_KEY: ${{ inputs.osc_secret_key }}
+        OSC_REGION: ${{ inputs.osc_region }}
+    - name: 🧪 Run e2e tests
+      id: e2etest
+      run: |
+        make e2etest
+      shell: bash
+      env:
+        KUBECONFIG: "${{ github.workspace }}/${{ steps.caposc.outputs.KUBECONFIG }}"
+        OSC_ACCESS_KEY: ${{ inputs.osc_access_key }}
+        OSC_SECRET_KEY: ${{ inputs.osc_secret_key }}
+        OSC_REGION: ${{ inputs.osc_region }}
+        AWS_ACCESS_KEY_ID: ${{ inputs.osc_access_key }}
+        AWS_SECRET_ACCESS_KEY: ${{ inputs.osc_secret_key }}
+        AWS_DEFAULT_REGION: ${{ inputs.osc_region }}
+        AWS_AVAILABILITY_ZONES: "${{ inputs.osc_region }}a"
+    - name: 📝 Get CCM logs
+      run: |
+        kubectl logs -l app=osc-cloud-controller-manager -n kube-system --tail=-1
+      if: ${{ failure() && steps.e2etest.conclusion == 'failure' }}
+      shell: bash
+      env:
+        KUBECONFIG: "${{ github.workspace }}/${{ steps.caposc.outputs.KUBECONFIG }}"

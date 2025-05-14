@@ -24,10 +24,10 @@ func elbSession() (*session.Session, error) {
 	}
 
 	awsConfig := &aws.Config{
-		Region:                        aws.String(os.Getenv("AWS_DEFAULT_REGION")),
+		Region:                        aws.String(os.Getenv("OSC_REGION")),
 		Credentials:                   credentials.NewChainCredentials(provider),
 		CredentialsChainVerboseErrors: aws.Bool(true),
-		EndpointResolver:              endpoints.ResolverFunc(osc.SetupServiceResolver(os.Getenv("AWS_DEFAULT_REGION"))),
+		EndpointResolver:              endpoints.ResolverFunc(osc.SetupServiceResolver(os.Getenv("OSC_REGION"))),
 	}
 	awsConfig.WithLogLevel(aws.LogDebugWithSigning | aws.LogDebugWithHTTPBody | aws.LogDebugWithRequestRetries | aws.LogDebugWithRequestErrors)
 	sess, err := session.NewSession(awsConfig)

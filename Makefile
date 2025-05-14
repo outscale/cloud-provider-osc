@@ -26,6 +26,10 @@ GOOS ?= $(shell go env GOOS)
 VERSION ?= $(shell git describe --tags --always --dirty)
 LDFLAGS   := "-w -s -X 'github.com/outscale/cloud-provider-osc/cloud-controller-manager/utils.version=$(VERSION)'"
 
+ARTIFACTS ?= ./single_az_test_e2e_report
+GINGKO_VERSION ?= v2.23.4
+GOPATH ?= $(shell go env GOPATH)
+
 # Full log with  -v -x
 #GO_ADD_OPTIONS := -v -x
 
@@ -101,6 +105,11 @@ test-e2e:
 		-e AWS_AVAILABILITY_ZONES="${OSC_REGION}a" \
 		-e KC="$${KC}" \
 		--name $(E2E_ENV_RUN) $(E2E_ENV):latest tests/e2e/docker/run_e2e_single_az.sh
+
+.PHONY: e2etest
+e2etest:
+	mkdir -p ${ARTIFACTS}
+	go test -v -coverprofile=covers.out  ./tests/e2e -test.timeout 180m -ginkgo.timeout 180m -ginkgo.v -ginkgo.show-node-events -test.v
 
 .PHONY: trivy-scan
 trivy-scan:
