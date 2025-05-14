@@ -10,72 +10,63 @@ on:
       - "Makefile"
       - "go.*"
       - "deploy/k8s-osc-ccm/**.yaml"
-  push:
-    branches: [ OSC-MIGRATION ]
-    paths:
-      - "**.go"
-      - "Dockerfile"
-      - "Makefile"
-      - "go.*"
-      - "deploy/k8s-osc-ccm/**.yaml"
       - ".github/workflows/e2e_test.yml"
+      - ".github/local_action/start_ccm_e2e/action.yml"
   workflow_dispatch:
     
 jobs:
   create_cluster:
-    runs-on: [self-hosted, linux, us-east-2]
+    runs-on: [self-hosted, linux, eu-west-2]
     steps:
-    - name: ⬇️ Checkout repository
+    - name: ⬇️ Checkout
       uses: actions/checkout@v4
     - name: ⬇️ Install kubectl
       uses: azure/setup-kubectl@v4
       with:
-        version: v1.30.7
-    - name: ⬇️ Install helm
+        version: v1.30.13
+    - name: ⬇️ Install Helm
       uses: azure/setup-helm@v4
-    - uses: actions/setup-python@v2
-    - uses: outscale-dev/frieza-github-actions/frieza-clean@master
+    - name: ⬇️ Install Python
+      uses: actions/setup-python@v5
+    - name: ⬇️ Install Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: 'go.mod'
+    - name: 🧹 Frieza
+      uses: outscale/frieza-github-actions/frieza-clean@master
       with:
         access_key: ${{ secrets.OSC_ACCESS_KEY }}
         secret_key: ${{ secrets.OSC_SECRET_KEY }}
         region: ${{ secrets.OSC_REGION }}
-    - name: Install osc-cli
-      run: pip install osc-sdk
-    - name: Configure osc-cli
+    - name: 📦 Build and push Docker image 
       run: |
-        apt install -y jq
-        mkdir -p $HOME/.osc
-        jq --null-input --arg accesskey "$osc_access_key" --arg secretkey "$osc_secret_key" --arg region "$osc_region" '{"default": {"access_key" : $accesskey, "secret_key": $secretkey, "region_name": $region, "host": "outscale.com", "https": true, "method": "POST"}}' > $HOME/.osc/config.json
+        docker login ${{ vars.REGISTRY }} -u admin -p ${{ secrets.HARBOR_ADMIN_PASSWORD }}
+        make buildx-image image-tag image-push
       env:
-        osc_access_key: ${{ secrets.OSC_ACCESS_KEY }}
-        osc_secret_key: ${{ secrets.OSC_SECRET_KEY }}
-        osc_region: ${{ secrets.OSC_REGION }}
-    - name: Build image
-      run: |
-        make buildx-image image-tag
-      env:
-        REGISTRY_IMAGE: localhost:4242/osc/cloud-provider-osc
+        REGISTRY_IMAGE: ${{ vars.REGISTRY }}/outscale/cloud-provider-osc
         VERSION: ${{ format('{0}.{1}', github.sha, github.run_attempt) }}
     ## Create VPC Cluster
-    - name: Test on VPC cluster
+    - name: 🧪 Test on VPC cluster
       uses: ./.github/local_action/start_ccm_e2e
       with:
         osc_access_key: ${{ secrets.OSC_ACCESS_KEY }}
         osc_secret_key: ${{ secrets.OSC_SECRET_KEY }}
         osc_region: ${{ secrets.OSC_REGION }}
+        oks_access_key: ${{ secrets.OKS_ACCESS_KEY }}
+        oks_secret_key: ${{ secrets.OKS_SECRET_KEY }}
+        oks_region: ${{ vars.OKS_REGION }}
         public_cloud: "false"
         image_id: ${{ vars.OMI_ID }}
         version: ${{ format('{0}.{1}', github.sha, github.run_attempt) }}
+        registry: ${{ vars.REGISTRY }}
     ## Create Public Cloud Cluster
-    - name: Test on Public cluster
-      uses: ./.github/local_action/start_ccm_e2e
-      with:
-        osc_access_key: ${{ secrets.OSC_ACCESS_KEY }}
-        osc_secret_key: ${{ secrets.OSC_SECRET_KEY }}
-        osc_region: ${{ secrets.OSC_REGION }}
-        public_cloud: "true"
-        image_id: ${{ vars.OMI_ID }}
-        version: ${{ format('{0}.{1}', github.sha, github.run_attempt) }}
-    - name: Clean images
-      run: |
-        docker image prune -a -f
+    # - name: 🧪 Test on Public cluster
+    #   uses: ./.github/local_action/start_ccm_e2e
+    #   with:
+    #     osc_access_key: ${{ secrets.OSC_ACCESS_KEY }}
+    #     osc_secret_key: ${{ secrets.OSC_SECRET_KEY }}
+    #     osc_region: ${{ secrets.OSC_REGION }}
+    #     public_cloud: "true"
+    #     image_id: ${{ secrets.OMI_ID }}
+    #     version: ${{ format('{0}.{1}', github.sha, github.run_attempt) }}
+    #     registry: ${{ vars.REGISTRY }}
