@@ -40,7 +40,7 @@ Note that using LBU has some limitation (see issue [#68](https://github.com/outs
 
 ## Networking
 
-Node controller is deployed as a daemon set and will need to access [metadata server](https://docs.outscale.com/en/userguide/Accessing-the-Metadata-and-User-Data-of-an-Instance.html) in order to get information about its node (cpu, memory, addresses, hostname).
+Node controller is deployed as a daemon set on control-plane nodes and will need to access [metadata server](https://docs.outscale.com/en/userguide/Accessing-the-Metadata-and-User-Data-of-an-Instance.html) in order to get information about its node (cpu, memory, addresses, hostname).
 To do this, node controller need to be able to access `169.254.169.254/32` through TCP port 80 (http).
 
 If you want more details about network configuration with OpenShift, check [openshift documentation](https://docs.openshift.com/container-platform/4.10/networking/understanding-networking.html).
@@ -51,7 +51,7 @@ Kubelet must be run with `--cloud-provider=external`, (more details in [Cloud Co
 
 ## Configuring Cloud Credentials
 
-Outscale Cloud Controller Manager needs API access in order to create resources (like Load Balancer Units) or fetch some data.
+Outscale Cloud Controller Manager needs to access the Outscale API.
 
 It is recommended to use a specific [Access Key](https://docs.outscale.com/en/userguide/About-Access-Keys.html) and create an [EIM user](https://docs.outscale.com/en/userguide/About-EIM-Users.html) with limited access. Check [EIM policy example](eim-policy.example.json) to apply to such EIM user.
 
@@ -63,7 +63,7 @@ cp deploy/secrets.example.yml deploy/secrets.yml
 
 ## Add Secret
 
-Make sure to have kubectl configured and deploy the Secret Resource containing your cloud crendentials:
+Create a secret with your cloud credentials:
 ```
 kubectl apply -f deploy/secrets.yaml
 ```
@@ -79,7 +79,7 @@ kubectl apply -f deploy/osc-ccm-manifest.yml
 
 Alternatively, you can deploy using Helm:
 ```
-helm upgrade --install --wait --wait-for-jobs k8s-osc-ccm deploy/k8s-osc-ccm --set oscSecretName=osc-secret
+helm upgrade --install --wait --wait-for-jobs k8s-osc-ccm oci://registry-1.docker.io/outscalehelm/osc-cloud-controller-manager --set oscSecretName=osc-secret
 ```
 More [helm options are available](../docs/helm.md)
 
