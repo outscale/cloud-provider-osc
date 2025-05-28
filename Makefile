@@ -40,7 +40,7 @@ E2E_ENV := "build-e2e-cloud-provider"
 
 OSC_REGION ?= eu-west-2
 
-TRIVY_IMAGE := aquasec/trivy:0.30.0
+TRIVY_IMAGE := aquasec/trivy:0.62.1
 
 .PHONY: help
 help:

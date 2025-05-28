@@ -12,6 +12,8 @@ on:
       - ".github/workflows/build.yml"
       - "!tests/**"
   workflow_dispatch:
+  schedule:
+    - cron: "28 17 * * 0"
     
 jobs:
   Build:
@@ -36,9 +38,9 @@ jobs:
       run: bash -c "make check-helm-manifest"
     - name: Trivy-Scan
       id: trivyscan
-      run: bash -c "make trivy-scan"
-    - name: Upload Scan if errors
-      if: ${{ failure() && github.event_name != 'pull_request' && steps.trivyscan.outcome == 'failure' }}
+      run: make trivy-scan
+    - name: Upload Trivy results
+      if: ${{ github.event_name != 'pull_request' }}
       uses: github/codeql-action/upload-sarif@v2
       with:
         sarif_file: './.trivyscan/report.sarif'
