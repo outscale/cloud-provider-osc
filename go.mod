@@ -20,7 +20,7 @@ require (
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/kubectl v0.30.13
 	k8s.io/kubernetes v1.30.13
-	k8s.io/pod-security-admission v0.30.12
+	k8s.io/pod-security-admission v0.30.13
 )
 
 require (
@@ -115,10 +115,10 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/apiextensions-apiserver v0.30.12 // indirect
-	k8s.io/apiserver v0.30.12 // indirect
+	k8s.io/apiserver v0.30.13 // indirect
 	k8s.io/component-helpers v0.30.13 // indirect
 	k8s.io/controller-manager v0.30.12 // indirect
-	k8s.io/kms v0.30.12 // indirect
+	k8s.io/kms v0.30.13 // indirect
 	k8s.io/kube-openapi v0.0.0-20240228011516-70dd3763d340 // indirect
 	k8s.io/kubelet v0.30.12 // indirect
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b // indirect
