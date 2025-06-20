@@ -18,7 +18,7 @@ require (
 	k8s.io/cloud-provider v0.30.14
 	k8s.io/component-base v0.30.14
 	k8s.io/klog/v2 v2.130.1
-	k8s.io/kubectl v0.30.13
+	k8s.io/kubectl v0.30.14
 	k8s.io/kubernetes v1.30.13
 	k8s.io/pod-security-admission v0.30.13
 )
