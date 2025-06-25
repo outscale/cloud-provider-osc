@@ -1,5 +1,28 @@
 # Changelog
 
+## [v0.2.8]
+### ✨ Added
+* 🔧 helm: add control-plane nodeSelector by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/415
+### 🛠️ Changed
+* 🚀 deploy: fix image version in osc-ccm-manifest.yml by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/392
+* 👷 ci: add golangci-lint by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/396
+* 👷 ci: update cred-scan workflow by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/411
+* ⬆️ deps: bump Go SDK to v2.26.0, Kube to v1.30.12 by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/416
+* 📝 doc: deploy using the published Helm chart by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/418
+* Bump k8s.io/kubectl from 0.30.12 to 0.30.13 by @dependabot in https://github.com/outscale/cloud-provider-osc/pull/423
+* Bump k8s.io/kubernetes from 1.30.12 to 1.30.13 by @dependabot in https://github.com/outscale/cloud-provider-osc/pull/425
+* Bump k8s.io/pod-security-admission from 0.30.12 to 0.30.13 by @dependabot in https://github.com/outscale/cloud-provider-osc/pull/424
+* Bump k8s.io/cloud-provider from 0.30.12 to 0.30.13 by @dependabot in https://github.com/outscale/cloud-provider-osc/pull/426
+* 👷 ci: fix trivy reporting by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/422
+* 👷 ci: use cluster-api to build test cluster by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/417
+* Bump k8s.io/cloud-provider from 0.30.13 to 0.30.14 by @dependabot in https://github.com/outscale/cloud-provider-osc/pull/431
+* Bump k8s.io/kubectl from 0.30.13 to 0.30.14 by @dependabot in https://github.com/outscale/cloud-provider-osc/pull/430
+* Bump github.com/prometheus/client_golang from 1.19.0 to 1.22.0 by @dependabot in https://github.com/outscale/cloud-provider-osc/pull/421
+* Bump k8s.io/kubernetes from 1.30.13 to 1.30.14 by @dependabot in https://github.com/outscale/cloud-provider-osc/pull/429
+* Bump k8s.io/pod-security-admission from 0.30.13 to 0.30.14 by @dependabot in https://github.com/outscale/cloud-provider-osc/pull/432
+* 🚀 preparation for v0.2.8 by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/433
+
+
 ## [v0.2.7]
 ### Changes
 * Build: bump Go to 1.23.4 & distroless image ([#388](https://github.com/outscale/cloud-provider-osc/pull/388))
