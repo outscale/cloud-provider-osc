@@ -30,8 +30,15 @@ imagePullSecrets: []
 podLabels: {}
 
 # -- Assign Pod to Nodes (see [kubernetes doc](https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes/))
-nodeSelector:
-  node-role.kubernetes.io/control-plane: ""
+nodeSelector: {}
+# -- Assign Pod to Nodes (see [kubernetes doc](https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes/))
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
 # -- Pod tolerations (see [kubernetes doc](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/))
 tolerations:
 # this taint is set by all kubelets running `--cloud-provider=external`

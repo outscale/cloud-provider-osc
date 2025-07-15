@@ -248,5 +248,6 @@ spec:
                 path: ca-certificates.crt
       {{- end }}
       hostNetwork: true
+      affinity: {{ toYaml .Values.affinity | nindent 8}}
       nodeSelector: {{ toYaml .Values.nodeSelector | nindent 8}}
       tolerations: {{ toYaml .Values.tolerations | nindent 8}}

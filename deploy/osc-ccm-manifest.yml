@@ -217,8 +217,15 @@ spec:
                   key: key_id
                   optional: false
       hostNetwork: true
+      affinity: 
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node-role.kubernetes.io/control-plane
+                operator: Exists
       nodeSelector: 
-        node-role.kubernetes.io/control-plane: ""
+        {}
       tolerations: 
         - effect: NoSchedule
           key: node.cloudprovider.kubernetes.io/uninitialized
