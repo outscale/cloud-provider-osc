@@ -52,7 +52,7 @@ runs:
         OSC_SECRET_KEY: ${{ inputs.osc_secret_key }}
         OSC_REGION: ${{ inputs.osc_region }}
         CLUSTER_NAME: "ccm"
-        IMAGE_NAME: "ubuntu-2204-2204-kubernetes-v1.28.5-2024-01-10"
+        IMAGE_NAME: "ubuntu-2204-kubernetes-v1.30.14-2025-06-26"
         CCM: "false"
     - name: 👷 Install CCM
       run: |

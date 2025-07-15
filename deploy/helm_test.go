@@ -59,13 +59,28 @@ func TestHelmTemplate(t *testing.T) {
 		assert.IsType(t, &appsv1.DaemonSet{}, specs[4])
 	})
 
-	t.Run("By default, the right nodeSelector is configured", func(t *testing.T) {
+	t.Run("By default, no nodeSelector is configured", func(t *testing.T) {
 		specs := getHelmSpecs(t, nil)
 		require.IsType(t, &appsv1.DaemonSet{}, specs[4])
 		ds := specs[4].(*appsv1.DaemonSet)
-		assert.Equal(t, map[string]string{
-			"node-role.kubernetes.io/control-plane": "",
-		}, ds.Spec.Template.Spec.NodeSelector)
+		assert.Equal(t, map[string]string{}, ds.Spec.Template.Spec.NodeSelector)
+	})
+	t.Run("By default, affinity is configured", func(t *testing.T) {
+		specs := getHelmSpecs(t, nil)
+		require.IsType(t, &appsv1.DaemonSet{}, specs[4])
+		ds := specs[4].(*appsv1.DaemonSet)
+		assert.Equal(t, &corev1.Affinity{
+			NodeAffinity: &corev1.NodeAffinity{
+				RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+					NodeSelectorTerms: []corev1.NodeSelectorTerm{{
+						MatchExpressions: []corev1.NodeSelectorRequirement{{
+							Key:      "node-role.kubernetes.io/control-plane",
+							Operator: corev1.NodeSelectorOpExists,
+						}},
+					}},
+				},
+			},
+		}, ds.Spec.Template.Spec.Affinity)
 	})
 	t.Run("By default, the right tolerations are configured", func(t *testing.T) {
 		specs := getHelmSpecs(t, nil)
