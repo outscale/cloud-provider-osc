@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - OSC-MIGRATION
+      - main
     paths:
       - "**.go"
       - "Dockerfile"

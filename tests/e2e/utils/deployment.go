@@ -4,26 +4,23 @@ import (
 	"context"
 	"fmt"
 
-	apps "k8s.io/api/apps/v1"
+	"github.com/onsi/ginkgo/v2"
 	appsv1 "k8s.io/api/apps/v1"
-	apiv1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2edeployment "k8s.io/kubernetes/test/e2e/framework/deployment"
 	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
+	imageutils "k8s.io/kubernetes/test/utils/image"
+	"k8s.io/utils/ptr"
 )
 
-func int32Ptr(i int32) *int32 {
-	return &i
-}
-
 // ListDeployment list deployement
-func ListDeployment(client clientset.Interface, namespace *v1.Namespace) {
+func ListDeployment(ctx context.Context, client clientset.Interface, namespace *v1.Namespace) {
 	deploymentsClient := client.AppsV1().Deployments(namespace.Name)
 	fmt.Printf("Listing deployments in namespace %q:\n", namespace.Name)
-	list, err := deploymentsClient.List(context.TODO(), metav1.ListOptions{})
+	list, err := deploymentsClient.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		panic(err)
 	}
@@ -33,31 +30,34 @@ func ListDeployment(client clientset.Interface, namespace *v1.Namespace) {
 }
 
 // CreateDeployment create a deployement
-func CreateDeployment(client clientset.Interface, namespace *v1.Namespace, cmd, metaName, name, image string, replicas int32, ports []apiv1.ContainerPort) *apps.Deployment {
+func CreateDeployment(ctx context.Context, client clientset.Interface, namespace *v1.Namespace, replicas int32, ports []v1.ContainerPort) *appsv1.Deployment {
+	imageName := imageutils.GetE2EImage(imageutils.Agnhost)
+	name := "echoserver"
+	ginkgo.By(fmt.Sprintf("Creating deployment %q", name))
 	deploymentsClient := client.AppsV1().Deployments(namespace.Name)
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: metaName,
+			Name: name,
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: int32Ptr(replicas),
+			Replicas: ptr.To(replicas),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"app": name,
 				},
 			},
-			Template: apiv1.PodTemplateSpec{
+			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
 						"app": name,
 					},
 				},
-				Spec: apiv1.PodSpec{
-					Containers: []apiv1.Container{
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
 						{
 							Name:            name,
-							ImagePullPolicy: apiv1.PullIfNotPresent,
-							Image:           image,
+							ImagePullPolicy: v1.PullIfNotPresent,
+							Image:           imageName,
 							Ports:           ports,
 						},
 					},
@@ -65,43 +65,82 @@ func CreateDeployment(client clientset.Interface, namespace *v1.Namespace, cmd, 
 			},
 		},
 	}
-	if len(cmd) > 0 {
-		deployment.Spec.Template.Spec.Containers[0].Command = []string{"/bin/sh"}
-		deployment.Spec.Template.Spec.Containers[0].Args = []string{"-c", cmd}
+	deployment.Spec.Template.Spec.Containers[0].Args = []string{"netexec", "--http-port=8080"}
+
+	// Create Deployment
+	result, err := deploymentsClient.Create(ctx, deployment, metav1.CreateOptions{})
+	framework.ExpectNoError(err)
+	return result
+}
+
+// CreateProxyProtocolDeployment create a deployement
+func CreateProxyProtocolDeployment(ctx context.Context, client clientset.Interface, namespace *v1.Namespace, replicas int32, ports []v1.ContainerPort) *appsv1.Deployment {
+	imageName := "gcr.io/google_containers/echoserver:1.10"
+	name := "echoserver"
+	ginkgo.By(fmt.Sprintf("Creating deployment %q", name))
+	deploymentsClient := client.AppsV1().Deployments(namespace.Name)
+	deployment := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Replicas: ptr.To(replicas),
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app": name,
+				},
+			},
+			Template: v1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"app": name,
+					},
+				},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Name:            name,
+							ImagePullPolicy: v1.PullIfNotPresent,
+							Image:           imageName,
+							Ports:           ports,
+							Command:         []string{"/bin/sh"},
+							Args: []string{"-c", "sed -i 's/listen 8080 default_server reuseport/listen 8080 default_server reuseport proxy_protocol/g' /etc/nginx/nginx.conf; " +
+								"sed -i 's/listen 8443 default_server ssl http2 reuseport/listen 8443 default_server ssl http2 reuseport proxy_protocol/g' /etc/nginx/nginx.conf ; " +
+								"/usr/local/bin/run.sh"},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	// Create Deployment
-	fmt.Printf("Creating deployment...\n")
-	result, err := deploymentsClient.Create(context.TODO(), deployment, metav1.CreateOptions{})
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Created deployment %q.\n", result.GetObjectMeta().GetName())
+	result, err := deploymentsClient.Create(ctx, deployment, metav1.CreateOptions{})
+	framework.ExpectNoError(err)
 	return result
 }
 
 // DeleteDeployment delete a Deployment
-func DeleteDeployment(client clientset.Interface, namespace *v1.Namespace, deployment *apps.Deployment) {
-	deploymentsClient := client.AppsV1().Deployments(namespace.Name)
+func DeleteDeployment(ctx context.Context, client clientset.Interface, deployment *appsv1.Deployment) {
+	ginkgo.By(fmt.Sprintf("Deleting deployment %q", deployment.Name))
+	deploymentsClient := client.AppsV1().Deployments(deployment.Namespace)
 	deletePolicy := metav1.DeletePropagationForeground
-	if err := deploymentsClient.Delete(context.TODO(), deployment.GetObjectMeta().GetName(), metav1.DeleteOptions{
+	err := deploymentsClient.Delete(ctx, deployment.Name, metav1.DeleteOptions{
 		PropagationPolicy: &deletePolicy,
-	}); err != nil {
-		panic(err)
-	}
-	fmt.Printf("Deleted deployment.\n")
+	})
+	framework.ExpectNoError(err)
 }
 
-// WaitForDeployementReady wait for a Deployement
-func WaitForDeployementReady(client clientset.Interface, namespace *v1.Namespace, deployment *apps.Deployment) {
+// WaitForDeploymentReady wait for a Deployement
+func WaitForDeploymentReady(ctx context.Context, client clientset.Interface, deployment *appsv1.Deployment) {
 	err := e2edeployment.WaitForDeploymentComplete(client, deployment)
 	framework.ExpectNoError(err)
 
-	pods, err := e2edeployment.GetPodsForDeployment(context.TODO(), client, deployment)
+	pods, err := e2edeployment.GetPodsForDeployment(ctx, client, deployment)
 	framework.ExpectNoError(err)
-	fmt.Printf("pods:  %v\n", len(pods.Items))
-	// always get first pod as there should only be one
-	pod := pods.Items[0]
-	err = e2epod.WaitForPodRunningInNamespace(context.TODO(), client, &pod)
-	framework.ExpectNoError(err)
+	for _, pod := range pods.Items {
+		ginkgo.By(fmt.Sprintf("Waiting for pod %q", pod.Name))
+		err = e2epod.WaitForPodRunningInNamespace(ctx, client, &pod)
+		framework.ExpectNoError(err)
+	}
 }
