@@ -1,9 +1,13 @@
-package osc
+package utils
 
-func Map[E, F any](in []E, fn func(item E) F) []F {
+func Map[E, F any](in []E, fn func(item E) (F, bool)) []F {
 	out := make([]F, 0, len(in))
 	for i := range in {
-		out = append(out, fn(in[i]))
+		add, ok := fn(in[i])
+		if !ok {
+			continue
+		}
+		out = append(out, add)
 	}
 	return out
 }

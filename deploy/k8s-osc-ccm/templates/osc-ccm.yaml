@@ -156,65 +156,17 @@ spec:
               readOnly: true
           {{- end }}
           env:
-            - name: OSC_ACCOUNT_ID
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.oscSecretName | default "osc-secret" }}
-                  key: osc_account_id
-                  optional: false
-            - name: OSC_ACCOUNT_IAM
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.oscSecretName | default "osc-secret" }}
-                  key: osc_account_iam
-                  optional: false
-            - name: OSC_USER_ID
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.oscSecretName | default "osc-secret" }}
-                  key: osc_user_id
-                  optional: false
-            - name: OSC_ARN
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.oscSecretName | default "osc-secret" }}
-                  key: osc_arn
-                  optional: false
-            - name: AWS_ACCESS_KEY_ID
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.oscSecretName | default "osc-secret" }}
-                  key: key_id
-                  optional: false
-            - name: AWS_SECRET_ACCESS_KEY
+            - name: OSC_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.oscSecretName | default "osc-secret" }}
                   key: access_key
-                  optional: false
-            - name: AWS_DEFAULT_REGION
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.oscSecretName | default "osc-secret" }}
-                  key: aws_default_region
-                  optional: false
-            - name: AWS_AVAILABILITY_ZONES
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.oscSecretName | default "osc-secret" }}
-                  key: aws_availability_zones
                   optional: false
             - name: OSC_SECRET_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.oscSecretName | default "osc-secret" }}
-                  key: access_key
-                  optional: false
-            - name: OSC_ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.oscSecretName | default "osc-secret" }}
-                  key: key_id
+                  key: secret_key
                   optional: false
             {{- if .Values.customEndpoint }}
             - name: OSC_ENDPOINT_API
@@ -223,14 +175,6 @@ spec:
             {{- if .Values.customEndpointLbu }}
             - name: OSC_ENDPOINT_LBU
               value: {{ .Values.customEndpointLbu }}
-            {{- end }}
-            {{- if .Values.customEndpointFcu }}
-            - name: OSC_ENDPOINT_FCU
-              value: {{ .Values.customEndpointFcu }}
-            {{- end }}
-            {{- if .Values.customEndpointEim }}
-            - name: OSC_ENDPOINT_EIM
-              value: {{ .Values.customEndpointEim }}
             {{- end }}
             {{- if .Values.httpsProxy }}
             - name: HTTPS_PROXY

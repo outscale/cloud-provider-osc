@@ -53,11 +53,11 @@ runs:
         OSC_REGION: ${{ inputs.osc_region }}
         CLUSTER_NAME: "ccm"
         IMAGE_NAME: "ubuntu-2204-kubernetes-v1.30.14-2025-06-26"
+        WORKER_COUNT: 2
         CCM: "false"
     - name: 👷 Install CCM
       run: |
-        kubectl create secret generic osc-secret --from-literal=key_id=${{ inputs.osc_access_key }} --from-literal=access_key=${{ inputs.osc_secret_key }} --from-literal=aws_default_region=${{ inputs.osc_region }} \
-          --from-literal=aws_availability_zones=MY_AWS_AVAILABILITY_ZONES --from-literal=osc_account_id=MY_OSC_ACCOUNT_ID --from-literal=osc_account_iam=MY_OSC_ACCOUNT_IAM --from-literal=osc_user_id=MY_OSC_USER_ID --from-literal=osc_arn=MY_OSC_ARN \
+        kubectl create secret generic osc-secret --from-literal=access_key=${{ inputs.osc_access_key }} --from-literal=secret_key=${{ inputs.osc_secret_key }} --from-literal=region=${{ inputs.osc_region }} \
           -n kube-system
         echo "installing CCM"
         helm install --wait k8s-osc-ccm deploy/k8s-osc-ccm --set oscSecretName=osc-secret --set image.repository=${{ inputs.registry }}/outscale/cloud-provider-osc --set image.tag=${{ inputs.version }}

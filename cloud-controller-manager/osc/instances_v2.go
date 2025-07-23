@@ -15,267 +15,49 @@ package osc
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	"strings"
-
-	"k8s.io/klog/v2"
-
-	"github.com/outscale/osc-sdk-go/v2"
 
 	v1 "k8s.io/api/core/v1"
 	cloudprovider "k8s.io/cloud-provider"
 )
 
-// newInstances returns an implementation of cloudprovider.InstancesV2
-func newInstancesV2(az string, tagging *resourceTagging) (cloudprovider.InstancesV2, error) {
-
-	region, err := azToRegion(az)
-	if err != nil {
-		return nil, err
-	}
-	ctx, client, err := NewOscClient(region)
-	if err != nil {
-		return nil, err
-	}
-	return &instancesV2{
-		availabilityZone: az,
-		region:           region,
-		client:           client,
-		ctx:              ctx,
-		tags:             tagging,
-	}, nil
-}
-
-// instances is an implementation of cloudprovider.InstancesV2
-type instancesV2 struct {
-	availabilityZone string
-	client           *osc.APIClient
-	ctx              context.Context
-	region           string
-	tags             *resourceTagging
-}
-
 // InstanceExists indicates whether a given node exists according to the cloud provider
-func (i *instancesV2) InstanceExists(ctx context.Context, node *v1.Node) (bool, error) {
-	_, err := i.getInstance(ctx, node)
+func (c *Provider) InstanceExists(ctx context.Context, node *v1.Node) (bool, error) {
+	_, err := c.getVmByNodeName(ctx, node.Name)
 
-	if err == cloudprovider.InstanceNotFound {
-		klog.V(6).Infof("instance not found for node: %s", node.Name)
+	switch {
+	case err == cloudprovider.InstanceNotFound:
 		return false, nil
-	}
-
-	if err != nil {
+	case err != nil:
 		return false, err
+	default:
+		return true, nil
 	}
-
-	return true, nil
 }
 
 // InstanceShutdown returns true if the instance is shutdown according to the cloud provider.
-func (i *instancesV2) InstanceShutdown(ctx context.Context, node *v1.Node) (bool, error) {
-	ec2Instance, err := i.getInstance(ctx, node)
-	if err != nil {
+func (c *Provider) InstanceShutdown(ctx context.Context, node *v1.Node) (bool, error) {
+	vm, err := c.getVmByNodeName(ctx, node.Name)
+	switch {
+	case err != nil:
 		return false, err
+	default:
+		return vm.IsStopped(), nil
 	}
-
-	if ec2Instance.State != nil {
-		state := ec2Instance.GetState()
-		// valid state for detaching volumes
-		if state == "stopped" {
-			return true, nil
-		}
-	}
-
-	return false, nil
 }
 
 // InstanceMetadata returns the instance's metadata.
-func (i *instancesV2) InstanceMetadata(ctx context.Context, node *v1.Node) (*cloudprovider.InstanceMetadata, error) {
-	var err error
-	var oscInstance *osc.Vm
-
-	//  TODO: support node name policy other than private DNS names
-	oscInstance, err = i.getInstance(ctx, node)
+func (c *Provider) InstanceMetadata(ctx context.Context, node *v1.Node) (*cloudprovider.InstanceMetadata, error) {
+	vm, err := c.getVmByNodeName(ctx, node.Name)
 	if err != nil {
 		return nil, err
 	}
-
-	nodeAddresses, err := extractNodeAddresses(oscInstance)
-	if err != nil {
-		return nil, err
-	}
-
-	providerID, err := getInstanceProviderIDV2(oscInstance)
-	if err != nil {
-		return nil, err
-	}
-
-	zone := oscInstance.Placement.GetSubregionName()
-	region, err := azToRegion(zone)
-	if err != nil {
-		return nil, err
-	}
-
-	metadata := &cloudprovider.InstanceMetadata{
-		ProviderID:    providerID,
-		InstanceType:  oscInstance.GetVmType(),
-		NodeAddresses: nodeAddresses,
-		Zone:          zone,
-		Region:        region,
-	}
-
-	klog.Warningf("InstanceMetadata is %+v", metadata)
-	return metadata, nil
+	return &cloudprovider.InstanceMetadata{
+		ProviderID:    vm.ProviderID(),
+		InstanceType:  vm.VmType,
+		NodeAddresses: vm.NodeAddresses(),
+		Zone:          vm.AvailabilityZone,
+		Region:        vm.Region,
+	}, nil
 }
 
-// getInstance returns the instance if the instance with the given node info still exists.
-// If false an error will be returned, the instance will be immediately deleted by the cloud controller manager.
-func (i *instancesV2) getInstance(ctx context.Context, node *v1.Node) (*osc.Vm, error) {
-	var request *osc.ReadVmsRequest
-	if node.Spec.ProviderID == "" {
-		// get Instance by private DNS name
-		request = &osc.ReadVmsRequest{
-			Filters: &osc.FiltersVm{
-				VmStateNames: &[]string{
-					"pending",
-					"running",
-					"stopping",
-					"stopped",
-					"shutting-down",
-				},
-			},
-		}
-		klog.V(4).Infof("looking for node by private DNS name %v", node.Name)
-	} else {
-		// get Instance by provider ID
-		instanceID, err := parseInstanceIDFromProviderIDV2(node.Spec.ProviderID)
-		if err != nil {
-			return nil, err
-		}
-
-		request = &osc.ReadVmsRequest{
-			Filters: &osc.FiltersVm{
-				VmIds: &[]string{instanceID},
-			},
-		}
-		klog.V(4).Infof("looking for node by provider ID %v", node.Spec.ProviderID)
-	}
-
-	// Add cluster tagging to reduce the search and possible collisions
-	if request.Filters == nil {
-		request.Filters = &osc.FiltersVm{}
-	}
-	request.Filters.TagKeys = &[]string{i.tags.clusterTagKey()}
-
-	response, httpRes, err := i.client.VmApi.ReadVms(i.ctx).ReadVmsRequest(*request).Execute()
-	klog.V(4).Infof("Get Response from Describe Instances  %v", response)
-
-	if err != nil {
-		if httpRes != nil {
-			return nil, fmt.Errorf("error describing ec2 instances: %v (Status:%v)", err, httpRes.Status)
-		}
-		return nil, fmt.Errorf("error describing ec2 instances: %v", err)
-	}
-
-	if !response.HasVms() {
-		return nil, fmt.Errorf("error describing ec2 instances: %v", err)
-	}
-
-	instances := []osc.Vm{}
-
-	if node.Spec.ProviderID == "" {
-		// Match NodeName with the privateDNS
-		for _, instance := range response.GetVms() {
-			if instance.GetPrivateDnsName() == node.Name {
-				instances = append(instances, instance)
-			}
-		}
-		// Fallback to NodeName
-		if len(instances) == 0 {
-			klog.V(4).Infof("looking for node by tag %v", TagNameClusterNode)
-			for _, instance := range response.GetVms() {
-				tags, ok := instance.GetTagsOk()
-				if !ok {
-					continue
-				}
-
-				for _, tag := range *tags {
-					if tag.GetKey() == TagNameClusterNode && tag.GetValue() == node.Name {
-						instances = append(instances, instance)
-					}
-				}
-			}
-		}
-	} else {
-		instances = response.GetVms()
-	}
-
-	if len(instances) == 0 {
-		return nil, cloudprovider.InstanceNotFound
-	}
-
-	if len(instances) > 1 {
-		return nil, errors.New("getInstance: multiple instances found")
-	}
-
-	state := instances[0].State
-	if *state == "terminated" {
-		return nil, cloudprovider.InstanceNotFound
-	}
-
-	return &instances[0], nil
-}
-
-// getInstanceProviderID returns the provider ID of an instance which is ultimately set in the node.Spec.ProviderID field.
-// The well-known format for a node's providerID is:
-//   - aws:///<availability-zone>/<instance-id>
-func getInstanceProviderIDV2(instance *osc.Vm) (string, error) {
-	if instance.Placement.GetSubregionName() == "" {
-		return "", errors.New("instance availability zone was not set")
-	}
-
-	if instance.GetVmId() == "" {
-		return "", errors.New("instance ID was not set")
-	}
-
-	// TODO: Check the impact of changing this ?
-	return "aws:///" + instance.Placement.GetSubregionName() + "/" + instance.GetVmId(), nil
-}
-
-// parseInstanceIDFromProviderID parses the node's instance ID based on the following formats:
-//   - aws://<availability-zone>/<instance-id>
-//   - aws:///<instance-id>
-//   - <instance-id>
-//
-// This function always assumes a valid providerID format was provided.
-func parseInstanceIDFromProviderIDV2(providerID string) (string, error) {
-	// trim the provider name prefix 'aws://', renaming providerID should contain metadata in one of the following formats:
-	// * <availability-zone>/<instance-id>
-	// * /<availability-zone>/<instance-id>
-	// * <instance-id>
-	instanceID := ""
-	if !strings.HasPrefix(providerID, "i-") && !strings.HasPrefix(providerID, "aws://") {
-	// providerID does not have the expected prefix
-		return "", errors.New("invalid providerID format: missing 'aws://' prefix or 'i-' prefix")
-	}
-
-	metadata := strings.Split(strings.TrimPrefix(providerID, "aws://"), "/")
-	if len(metadata) == 1 {
-		// instance-id
-		instanceID = metadata[0]
-	} else if len(metadata) == 2 {
-		// az/instance-id
-		instanceID = metadata[1]
-	} else if len(metadata) == 3 {
-		// /az/instance-id
-		instanceID = metadata[2]
-	} else {
-		return "", errors.New("invalid providerID format")
-	}
-	if !strings.HasPrefix(instanceID, "i-") {
-		return "", errors.New("instance ID not found in providerID or it's wrong format")
-	}
-
-	return instanceID, nil
-}
+var _ cloudprovider.InstancesV2 = (*Provider)(nil)
