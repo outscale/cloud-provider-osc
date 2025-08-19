@@ -1,10 +1,8 @@
-# https://help.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
-
 version: 2
 updates:
   - package-ecosystem: "gomod"
     directory: "/"
-    target-branch: "OSC-MIGRATION"
+    target-branch: "main"
     schedule:
       interval: "daily"
     ignore:
@@ -14,3 +12,5 @@ updates:
         update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
       - dependency-name: github.com/container-storage-interface/spec
         update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
+    commit-message:
+      prefix: "⬆️ deps: "
