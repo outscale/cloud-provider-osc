@@ -19,7 +19,7 @@ require (
 	k8s.io/component-base v0.32.8
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/kubectl v0.32.3
-	k8s.io/kubernetes v1.32.3
+	k8s.io/kubernetes v1.32.6
 	k8s.io/pod-security-admission v0.32.3
 )
 
