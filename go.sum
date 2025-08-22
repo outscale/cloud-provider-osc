@@ -388,8 +388,8 @@ k8s.io/kube-openapi v0.0.0-20241105132330-32ad38e42d3f h1:GA7//TjRY9yWGy1poLzYYJ
 k8s.io/kube-openapi v0.0.0-20241105132330-32ad38e42d3f/go.mod h1:R/HEjbvWI0qdfb8viZUeVZm0X6IZnxAydC7YU42CMw4=
 k8s.io/kube-scheduler v0.32.3 h1:DAd1w9Vuj0VxQVIe6XErHKrF1RS7Jyu9Hgu9yHyTknI=
 k8s.io/kube-scheduler v0.32.3/go.mod h1:aHEWAFq7bc85PInPB88nX3ZLwQGjVn+v4y8f66xVXD0=
-k8s.io/kubectl v0.32.3 h1:VMi584rbboso+yjfv0d8uBHwwxbC438LKq+dXd5tOAI=
-k8s.io/kubectl v0.32.3/go.mod h1:6Euv2aso5GKzo/UVMacV6C7miuyevpfI91SvBvV9Zdg=
+k8s.io/kubectl v0.32.8 h1:X6I2Rmd+RZvtu+BRplREUTkIYgUc87s87m/kZsbKC7s=
+k8s.io/kubectl v0.32.8/go.mod h1:RbwOkKZdxIFzhFIxXY3on/n6aaSXCc353iJ0IXb4DvU=
 k8s.io/kubelet v0.32.3 h1:B9HzW4yB67flx8tN2FYuDwZvxnmK3v5EjxxFvOYjmc8=
 k8s.io/kubelet v0.32.3/go.mod h1:yyAQSCKC+tjSlaFw4HQG7Jein+vo+GeKBGdXdQGvL1U=
 k8s.io/kubernetes v1.32.8 h1:NePHsWPIT9NQZ9w5QT/chJMuwjFFGGZxalvD6FlOjlw=
