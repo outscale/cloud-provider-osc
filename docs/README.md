@@ -13,7 +13,15 @@ More details on [cloud-controller role](https://kubernetes.io/docs/concepts/arch
 - Service controller: allows cluster user to expose Kubernetes Services using Outscale Load Balancer Unit (LBU) 
 
 # Installation
-See [deploy documentation](../deploy/README.md)
+See the [deployment documentation](../deploy/README.md)
+
+# Upgrading to v1.0
+
+The secret has now the same format as the CSI driver. You need to rename:
+* `key_id` to `access_key`,
+* `access_key` to `secret_key`.
+
+All other entries can be deleted.
 
 # Usage
 

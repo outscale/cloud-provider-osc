@@ -1,6 +1,3 @@
-//go:build !providerless
-// +build !providerless
-
 /*
 Copyright 2014 The Kubernetes Authors.
 
@@ -17,32 +14,23 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package osc
+package oapi
 
 import (
-	"github.com/aws/aws-sdk-go/aws"
+	"testing"
 
-	"k8s.io/apimachinery/pkg/util/sets"
+	"github.com/aws/aws-sdk-go/service/elb"
+	"github.com/stretchr/testify/assert"
+	"k8s.io/utils/ptr"
 )
 
-func stringSetToPointers(in sets.String) []*string {
-	if in == nil {
-		return nil
+func TestCleanAWS(t *testing.T) {
+	src := &elb.RegisterInstancesWithLoadBalancerInput{
+		LoadBalancerName: ptr.To("lb-foo"),
+		Instances: []*elb.Instance{{
+			InstanceId: ptr.To("i-foo"),
+		}},
 	}
-	out := make([]*string, 0, len(in))
-	for k := range in {
-		out = append(out, aws.String(k))
-	}
-	return out
-}
-
-func stringSetFromPointers(in []*string) sets.String {
-	if in == nil {
-		return nil
-	}
-	out := sets.NewString()
-	for i := range in {
-		out.Insert(aws.StringValue(in[i]))
-	}
-	return out
+	cleaned := cleanAws(src)
+	assert.Equal(t, "{Instances:[{InstanceId:i-foo}],LoadBalancerName:lb-foo}", cleaned)
 }

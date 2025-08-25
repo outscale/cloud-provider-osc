@@ -75,6 +75,10 @@ verify-fmt:
 vet:
 	go vet ./...
 
+.PHONY: mock-generate
+mock-generate:
+	./hack/update-gomock
+
 .PHONY: test
 test:
 	CGO_ENABLED=0 OSC_ACCESS_KEY=test OSC_SECRET_KEY=test go test -count=1  -v ./cloud-controller-manager/... ./deploy/...
@@ -124,8 +128,8 @@ trivy-scan:
 			--severity="HIGH,CRITICAL" \
 			--ignorefile /root/.trivyignore \
 			--security-checks vuln \
-			--format sarif -o /root/.trivyscan/report.sarif \
 			$(IMAGE):$(IMAGE_TAG)
+# 			--format sarif -o /root/.trivyscan/report.sarif \
 
 REGISTRY_IMAGE ?= $(IMAGE)
 REGISTRY_TAG ?= $(IMAGE_TAG)

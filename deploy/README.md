@@ -10,40 +10,71 @@ You will need a Kubernetes cluster on 3DS Outscale cloud. The next sections deta
 | v0.2.1 - v0.2.3 | 1.20                       | 1.25                           |
 |    >= v0.2.4    | 1.20                       | 1.30                           |
 
-# Configuration
+# Tagging
 
 ## Cluster Resource Tagging
 
-You must tag some cloud resources with a cluster identifier in order to allow Cloud Controller Manager to identify which resources are part of the cluster.
+The CCM expects resources to be tagged as being part of the cluster.
 This includes:
-- [VPC and Subnets](https://docs.outscale.com/en/userguide/About-VPCs.html)
+- [Subnets](https://docs.outscale.com/en/userguide/About-VPCs.html)
 - [Instances](https://docs.outscale.com/en/userguide/About-Instances.html)
 - [Security Groups](https://docs.outscale.com/en/userguide/About-Security-Groups-(Concepts).html)
-- [Route Tables](https://docs.outscale.com/en/userguide/About-Route-Tables.html)
 
-The tag key must be `OscK8sClusterID/my-cluster-id` (adapt `my-cluster-id`) and tag value can be one of the following values:
-- `shared`: resource is shared between multiple clusters, and should not be destroyed
-- `owned`: the resource is considered owned and managed by the cluster
+The tag key must be `OscK8sClusterID/[mcluster-id]` (`[cluster-id]` being the ID of a cluster) and tag value can be one of the following values:
+- `shared`: resource is shared between multiple clusters, and should not be destroyed,
+- `owned`: the resource is considered owned and managed by the cluster.
+
+The CCM will fetch the `OscK8sClusterID` tag of the node it is running on and will expect to find the other resources with matching tag keys.
+
+The Cluster API Provider for Outscale (CAPOSC) sets the tag, no need to do anything.
 
 ## Instances Tagging
 
-Additionally, instances must be tagged with their node name.
+The CCM is usually able to find instances.
 
-Tag key is `OscK8sNodeName` and tag value `my-kybernetes-host-name` (`my-kybernetes-host-name` should be the same as `kubernetes.io/hostname` computed).
+In some rare cases, the CCM needs a `OscK8sNodeName` tag on the VM, with the node name as a value.
 
-## Security Groups Tagging
+The Cluster API Provider for Outscale (CAPOSC) sets the tag, no need to do anything.
+
+# Creating load-balancers
+
+## Subnets
+
+The CCM will look for a subnet having one of the following tags:
+* `OscK8sRole/service.internal` is service is internal,
+* `OscK8sRole/service` is service is not internal of if no `OscK8sRole/service.internal` subnet is found,
+* `OscK8sRole/loadbalancer` if no subnet found.
+
+The Cluster API Provider for Outscale (CAPOSC) automatically sets the `OscK8sRole/loadbalancer` tag to the subnet where the Kubernetes API load-balancer is configured.
+
+## Security Groups
+
+### Ingress
 
 By default, the service controller will automatically create a Security Group for each Load Balancer Unit (LBU) and will attach it to nodes in a VPC setup.
 
-If you want to use a pre-created Security Group to be applied to be attached/associated to the LBU, you must tag it with key `OscK8sMainSG/my-cluster-id` and value `True`.
-Note that using LBU has some limitation (see issue [#68](https://github.com/outscale/cloud-provider-osc/issues/68)).
+If you want to use a pre-created Security Group to be used, you can set the `service.beta.kubernetes.io/osc-load-balancer-security-group` annotation with the id of the security group to use.
+
+You can also add additional security groups using the `service.beta.kubernetes.io/osc-load-balancer-extra-security-groups` annotation.
+
+The CCM will automatically add manage ingress rules to allow traffic to the load-balancer.
+
+You can set `service.Spec.LoadBalancerSourceRanges` to restrict trafic to a list of IP ranges.
+
+### Load-balancer to nodes
+
+The CCM will add rules to allow trafic from the load-balancer to nodes.
+
+Within node security groups, it will search for a security group having one of the following tags:
+* `OscK8sRole/[role]`, with role being set with de `service.beta.kubernetes.io/osc-load-balancer-target-role` annotation (`worker` by default)
+* `OscK8sMainSG/[cluster id]`.
+
+The Cluster API Provider for Outscale (CAPOSC) sets a `OscK8sRole/worker` tag on all worker nodes, and allows you to add custom roles if needed.
 
 ## Networking
 
 Node controller is deployed as a daemon set on control-plane nodes and will need to access [metadata server](https://docs.outscale.com/en/userguide/Accessing-the-Metadata-and-User-Data-of-an-Instance.html) in order to get information about its node (cpu, memory, addresses, hostname).
 To do this, node controller need to be able to access `169.254.169.254/32` through TCP port 80 (http).
-
-If you want more details about network configuration with OpenShift, check [openshift documentation](https://docs.openshift.com/container-platform/4.10/networking/understanding-networking.html).
 
 ## Kubelet
 
@@ -55,20 +86,16 @@ Outscale Cloud Controller Manager needs to access the Outscale API.
 
 It is recommended to use a specific [Access Key](https://docs.outscale.com/en/userguide/About-Access-Keys.html) and create an [EIM user](https://docs.outscale.com/en/userguide/About-EIM-Users.html) with limited access. Check [EIM policy example](eim-policy.example.json) to apply to such EIM user.
 
-To Avoid commiting any secret, just copy [secrets.example.yml](secrets.example.yml) resource and edit it:
-```bash
-cp deploy/secrets.example.yml deploy/secrets.yml
-```
 # Deploy
 
 ## Add Secret
 
 Create a secret with your cloud credentials:
 ```
-kubectl apply -f deploy/secrets.yaml
+  kubectl create secret generic osc-secret \
+    --from-literal=access_key=$OSC_ACCESS_KEY --from-literal=secret_key=$OSC_SECRET_KEY \
+    -n kube-system
 ```
-
-**Replace only MY_AWS_ACCESS_KEY_ID with your outscale access key, MY_AWS_SECRET_ACCESS_KEY with your outscale secret key and MY_AWS_DEFAULT_REGION with your outscale region.**
 
 ## Add Cloud Controller Manager
 

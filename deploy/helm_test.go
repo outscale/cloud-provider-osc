@@ -127,16 +127,6 @@ func TestHelmTemplate(t *testing.T) {
 			assert.NotEqual(t, "OSC_ENDPOINT_FCU", env.Name)
 		}
 	})
-	t.Run("OSC_ENDPOINT_FCU can by set with customEndpointFcu", func(t *testing.T) {
-		specs := getHelmSpecs(t, []string{"customEndpointFcu=https://fcu.example.com"})
-		require.IsType(t, &appsv1.DaemonSet{}, specs[4])
-		ds := specs[4].(*appsv1.DaemonSet)
-		require.Len(t, ds.Spec.Template.Spec.Containers, 1)
-		assert.Contains(t, ds.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
-			Name:  "OSC_ENDPOINT_FCU",
-			Value: "https://fcu.example.com",
-		})
-	})
 
 	t.Run("By default, the OSC_ENDPOINT_LBU env var is not set", func(t *testing.T) {
 		specs := getHelmSpecs(t, nil)
@@ -155,26 +145,6 @@ func TestHelmTemplate(t *testing.T) {
 		assert.Contains(t, ds.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
 			Name:  "OSC_ENDPOINT_LBU",
 			Value: "https://lbu.example.com",
-		})
-	})
-
-	t.Run("By default, the OSC_ENDPOINT_EIM env var is not set", func(t *testing.T) {
-		specs := getHelmSpecs(t, nil)
-		require.IsType(t, &appsv1.DaemonSet{}, specs[4])
-		ds := specs[4].(*appsv1.DaemonSet)
-		require.Len(t, ds.Spec.Template.Spec.Containers, 1)
-		for _, env := range ds.Spec.Template.Spec.Containers[0].Env {
-			assert.NotEqual(t, "OSC_ENDPOINT_EIM", env.Name)
-		}
-	})
-	t.Run("OSC_ENDPOINT_EIM can by set with customEndpointEim", func(t *testing.T) {
-		specs := getHelmSpecs(t, []string{"customEndpointEim=https://eim.example.com"})
-		require.IsType(t, &appsv1.DaemonSet{}, specs[4])
-		ds := specs[4].(*appsv1.DaemonSet)
-		require.Len(t, ds.Spec.Template.Spec.Containers, 1)
-		assert.Contains(t, ds.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
-			Name:  "OSC_ENDPOINT_EIM",
-			Value: "https://eim.example.com",
 		})
 	})
 
@@ -327,6 +297,6 @@ func TestHelmTemplate(t *testing.T) {
 			assert.Equal(t, "foo", e.ValueFrom.SecretKeyRef.Name)
 			count++
 		}
-		assert.Equal(t, 10, count)
+		assert.Equal(t, 2, count)
 	})
 }
