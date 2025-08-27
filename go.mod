@@ -6,11 +6,11 @@ toolchain go1.24.2
 
 require (
 	dario.cat/mergo v1.0.2
-	github.com/aws/aws-sdk-go v1.55.7
+	github.com/aws/aws-sdk-go v1.55.8
 	github.com/go-viper/mapstructure/v2 v2.4.0
 	github.com/onsi/ginkgo/v2 v2.23.4
 	github.com/onsi/gomega v1.36.3
-	github.com/outscale/osc-sdk-go/v2 v2.27.0
+	github.com/outscale/osc-sdk-go/v2 v2.29.0
 	github.com/rs/xid v1.6.0
 	github.com/stretchr/testify v1.11.0
 	go.uber.org/mock v0.5.2
