@@ -21,7 +21,6 @@ import (
 	"fmt"
 
 	"github.com/aws/aws-sdk-go/service/elb"
-	osc "github.com/outscale/osc-sdk-go/v2"
 )
 
 // Clienter is the interface for Client.
@@ -38,7 +37,10 @@ type Client struct {
 
 // NewClient builds a Client.
 func NewClient(region string) (*Client, error) {
-	configEnv := osc.NewConfigEnv()
+	configEnv, err := LoadConfig()
+	if err != nil {
+		return nil, fmt.Errorf("load config: %w", err)
+	}
 	if configEnv.AccessKey == nil || configEnv.SecretKey == nil {
 		return nil, errors.New(("OSC_ACCESS_KEY/OSC_SECRET_KEY are required"))
 	}

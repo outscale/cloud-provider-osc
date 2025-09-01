@@ -115,6 +115,7 @@ type LoadBalancer struct {
 	Name                     string `annotation:"osc-load-balancer-name"`
 	ServiceName              string
 	Internal                 bool              `annotation:"osc-load-balancer-internal"`
+	IPPool                   string            `annotation:"osc-load-balancer-ip-pool"`
 	SubnetID                 string            `annotation:"osc-load-balancer-subnet-id"`
 	SecurityGroups           []string          `annotation:"osc-load-balancer-security-group"`
 	AdditionalSecurityGroups []string          `annotation:"osc-load-balancer-extra-security-groups"`

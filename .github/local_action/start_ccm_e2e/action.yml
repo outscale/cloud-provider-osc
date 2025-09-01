@@ -52,7 +52,7 @@ runs:
         OSC_SECRET_KEY: ${{ inputs.osc_secret_key }}
         OSC_REGION: ${{ inputs.osc_region }}
         CLUSTER_NAME: "ccm"
-        IMAGE_NAME: "ubuntu-2204-kubernetes-v1.30.14-2025-06-26"
+        IMAGE_NAME: "ubuntu-2204-kubernetes-v1.31.12-2025-08-27"
         WORKER_COUNT: 2
         CCM: "false"
     - name: 👷 Install CCM
@@ -83,14 +83,42 @@ runs:
         OSC_ACCESS_KEY: ${{ inputs.osc_access_key }}
         OSC_SECRET_KEY: ${{ inputs.osc_secret_key }}
         OSC_REGION: ${{ inputs.osc_region }}
-        AWS_ACCESS_KEY_ID: ${{ inputs.osc_access_key }}
-        AWS_SECRET_ACCESS_KEY: ${{ inputs.osc_secret_key }}
-        AWS_DEFAULT_REGION: ${{ inputs.osc_region }}
-        AWS_AVAILABILITY_ZONES: "${{ inputs.osc_region }}a"
     - name: 📝 Get CCM logs
       run: |
         kubectl logs -l app=osc-cloud-controller-manager -n kube-system --tail=-1
       if: ${{ failure() && steps.e2etest.conclusion == 'failure' }}
+      shell: bash
+      env:
+        KUBECONFIG: "${{ github.workspace }}/${{ steps.caposc.outputs.KUBECONFIG }}"
+    - name: 👷 Reconfigure CCM with credentials in profile file
+      run: |
+        profile="{\"default\":{\"access_key\":\"${{ inputs.osc_access_key }}\",\"secret_key\":\"${{ inputs.osc_secret_key }}\"}}"
+        kubectl create secret generic osc-secret-file --from-literal=config.json=$profile -n kube-system
+        echo "updating CCM config"
+        helm upgrade --wait k8s-osc-ccm deploy/k8s-osc-ccm --set oscSecretName=osc-secret-file --set oscCredentialsFromFile=true --set image.repository=${{ inputs.registry }}/outscale/cloud-provider-osc --set image.tag=${{ inputs.version }}
+        echo "waiting for pods"
+        kubectl wait --for=condition=Ready po --all -A --timeout=900s
+        kubectl get po -A
+      shell: bash
+      env:
+        KUBECONFIG: "${{ github.workspace }}/${{ steps.caposc.outputs.KUBECONFIG }}"
+        OSC_ACCESS_KEY: ${{ inputs.osc_access_key }}
+        OSC_SECRET_KEY: ${{ inputs.osc_secret_key }}
+        OSC_REGION: ${{ inputs.osc_region }}
+    - name: 🧪 Run e2e tests with credentials in profile file
+      id: e2efast
+      run: |
+        E2E_FOCUS=fast make e2etest
+      shell: bash
+      env:
+        KUBECONFIG: "${{ github.workspace }}/${{ steps.caposc.outputs.KUBECONFIG }}"
+        OSC_ACCESS_KEY: ${{ inputs.osc_access_key }}
+        OSC_SECRET_KEY: ${{ inputs.osc_secret_key }}
+        OSC_REGION: ${{ inputs.osc_region }}
+    - name: 📝 Get CCM logs
+      run: |
+        kubectl logs -l app=osc-cloud-controller-manager -n kube-system --tail=-1
+      if: ${{ failure() && steps.e2efast.conclusion == 'failure' }}
       shell: bash
       env:
         KUBECONFIG: "${{ github.workspace }}/${{ steps.caposc.outputs.KUBECONFIG }}"

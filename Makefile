@@ -41,6 +41,7 @@ export GO111MODULE=on
 
 E2E_ENV_RUN := "e2e-cloud-provider"
 E2E_ENV := "build-e2e-cloud-provider"
+E2E_FOCUS ?= e2e
 
 OSC_REGION ?= eu-west-2
 
@@ -113,7 +114,7 @@ test-e2e:
 .PHONY: e2etest
 e2etest:
 	mkdir -p ${ARTIFACTS}
-	go test -v -coverprofile=covers.out  ./tests/e2e -test.timeout 180m -ginkgo.timeout 180m -ginkgo.v -ginkgo.show-node-events -test.v
+	go test -v -coverprofile=covers.out  ./tests/e2e -test.timeout 180m -ginkgo.timeout 180m -ginkgo.v -ginkgo.show-node-events -ginkgo.focus="${E2E_FOCUS}" -test.v
 
 .PHONY: trivy-scan
 trivy-scan:
