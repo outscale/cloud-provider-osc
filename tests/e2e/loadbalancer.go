@@ -38,7 +38,7 @@ const (
 	echoServerImage = "gcr.io/google_containers/echoserver:1.10"
 )
 
-var _ = Describe("[loadbalancer] Creating a load-balancer", func() {
+var _ = Describe("[e2e][loadbalancer][fast] Creating a load-balancer", func() {
 	f := framework.NewDefaultFramework("ccm")
 	f.NamespacePodSecurityEnforceLevel = admissionapi.LevelPrivileged
 
@@ -110,7 +110,7 @@ var _ = Describe("[loadbalancer] Creating a load-balancer", func() {
 	})
 })
 
-var _ = Describe("[loadbalancer] Checking proxy-protocol", func() {
+var _ = Describe("[e2e][loadbalancer] Checking proxy-protocol", func() {
 	f := framework.NewDefaultFramework("ccm")
 	f.NamespacePodSecurityEnforceLevel = admissionapi.LevelPrivileged
 
@@ -164,7 +164,7 @@ var _ = Describe("[loadbalancer] Checking proxy-protocol", func() {
 	})
 })
 
-var _ = Describe("[loadbalancer] Checking cleanup of resources", func() {
+var _ = Describe("[e2e][loadbalancer] Checking cleanup of resources", func() {
 	f := framework.NewDefaultFramework("ccm")
 	f.NamespacePodSecurityEnforceLevel = admissionapi.LevelPrivileged
 
@@ -218,7 +218,7 @@ var _ = Describe("[loadbalancer] Checking cleanup of resources", func() {
 	})
 })
 
-var _ = Describe("[loadbalancer] Updating backends", func() {
+var _ = Describe("[e2e][loadbalancer] Updating backends", func() {
 	f := framework.NewDefaultFramework("ccm")
 	f.NamespacePodSecurityEnforceLevel = admissionapi.LevelPrivileged
 

@@ -38,6 +38,7 @@ Kubernetes: `>=1.20.0-0`
 | imagePullSecrets | list | `[]` | Specify image pull secrets |
 | noProxy | string | `""` | Value used to create environment variable NO_PROXY |
 | nodeSelector | object | `{}` | Assign Pod to Nodes (see [kubernetes doc](https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes/)) |
+| oscCredentialsFromFile | bool | `false` | Set if credentials are read from a [profile file](https://docs.outscale.com/en/userguide/Installing-and-Configuring-oapi-cli.html#_configuring_oapi_cli) stored in `/root/.osc/config.json`. If `oscSecretName` is set, the secret is mounted as `/root/.osc` and is expected to have a `config.json` key. |
 | oscSecretName | string | `"osc-secret"` | Secret name containing cloud credentials |
 | podLabels | object | `{}` | Labels for pod |
 | replicaCount | int | `1` | Number of replicas to deploy |

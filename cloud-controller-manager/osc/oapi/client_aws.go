@@ -30,6 +30,10 @@ import (
 
 // NewSession create a new AWS client session, using OSC credentials.
 func NewSession(region string, config *osc.ConfigEnv) (*session.Session, error) {
+	cfg, err := config.Configuration()
+	if err != nil {
+		return nil, fmt.Errorf("configuration: %w", err)
+	}
 	awsConfig := &aws.Config{
 		Region: aws.String(region),
 		Credentials: credentials.NewCredentials(&credentials.StaticProvider{
@@ -41,8 +45,8 @@ func NewSession(region string, config *osc.ConfigEnv) (*session.Session, error) 
 		}),
 		CredentialsChainVerboseErrors: aws.Bool(true),
 		EndpointResolver:              ServiceResolver(region),
+		HTTPClient:                    cfg.HTTPClient,
 	}
-	// awsConfig.WithLogLevel(aws.LogDebugWithSigning | aws.LogDebugWithHTTPBody | aws.LogDebugWithRequestRetries | aws.LogDebugWithRequestErrors)
 	sess, err := session.NewSession(awsConfig)
 	if err != nil {
 		return nil, fmt.Errorf("unable to initialize NewSession session: %w", err)

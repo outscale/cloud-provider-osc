@@ -149,13 +149,19 @@ spec:
             - -v={{ .Values.verbose }}
           resources:
           {{- toYaml .Values.resources | nindent 12 }}
-          {{- if .Values.caBundle.name }}
           volumeMounts:
+          {{- if .Values.caBundle.name }}
             - name: ca-bundle
               mountPath: /etc/ssl/certs
               readOnly: true
           {{- end }}
+          {{- if and .Values.oscCredentialsFromFile .Values.oscSecretName }}
+            - name: credentials
+              mountPath: /root/.osc
+              readOnly: true
+          {{- end }}
           env:
+            {{- if not .Values.oscCredentialsFromFile }}
             - name: OSC_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
@@ -176,20 +182,26 @@ spec:
             - name: OSC_ENDPOINT_LBU
               value: {{ .Values.customEndpointLbu }}
             {{- end }}
+            {{- end }}
             {{- if .Values.httpsProxy }}
             - name: HTTPS_PROXY
               value: {{ .Values.httpsProxy }}
             - name: NO_PROXY
               value: {{ .Values.noProxy }}
             {{- end }}
-      {{- if .Values.caBundle.name }}
       volumes:
+      {{- if .Values.caBundle.name }}
         - name: ca-bundle
           secret:
             secretName: {{ .Values.caBundle.name }}
             items:
               - key: {{ .Values.caBundle.key }}
                 path: ca-certificates.crt
+      {{- end }}
+      {{- if and .Values.oscCredentialsFromFile .Values.oscSecretName }}
+        - name: credentials
+          secret:
+            secretName: {{ .Values.oscSecretName }}
       {{- end }}
       hostNetwork: true
       affinity: {{ toYaml .Values.affinity | nindent 8}}

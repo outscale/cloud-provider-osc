@@ -98,6 +98,39 @@ func TestHelmTemplate(t *testing.T) {
 			},
 		}, ds.Spec.Template.Spec.Tolerations)
 	})
+	t.Run("By default, auth is based on env", func(t *testing.T) {
+		specs := getHelmSpecs(t, nil)
+		require.IsType(t, &appsv1.DaemonSet{}, specs[4])
+		ds := specs[4].(*appsv1.DaemonSet)
+		require.Len(t, ds.Spec.Template.Spec.Containers, 1)
+		assert.Equal(t, "OSC_ACCESS_KEY", ds.Spec.Template.Spec.Containers[0].Env[0].Name)
+		assert.Equal(t, "OSC_SECRET_KEY", ds.Spec.Template.Spec.Containers[0].Env[1].Name)
+	})
+	t.Run("Using auth from a profile file mounted from a secret", func(t *testing.T) {
+		specs := getHelmSpecs(t, []string{"oscCredentialsFromFile=true"})
+		require.IsType(t, &appsv1.DaemonSet{}, specs[4])
+		ds := specs[4].(*appsv1.DaemonSet)
+		require.Len(t, ds.Spec.Template.Spec.Containers, 1)
+		for _, env := range ds.Spec.Template.Spec.Containers[0].Env {
+			assert.NotEqual(t, "OSC_ACCESS_KEY", env.Name)
+			assert.NotEqual(t, "OSC_SECRET_KEY", env.Name)
+		}
+		assert.Len(t, ds.Spec.Template.Spec.Containers[0].VolumeMounts, 1)
+		assert.Len(t, ds.Spec.Template.Spec.Volumes, 1)
+	})
+	t.Run("Using auth from a profile file not mounted from a secret", func(t *testing.T) {
+		specs := getHelmSpecs(t, []string{"oscCredentialsFromFile=true", "oscSecretName="})
+		require.IsType(t, &appsv1.DaemonSet{}, specs[4])
+		ds := specs[4].(*appsv1.DaemonSet)
+		require.Len(t, ds.Spec.Template.Spec.Containers, 1)
+		for _, env := range ds.Spec.Template.Spec.Containers[0].Env {
+			assert.NotEqual(t, "OSC_ACCESS_KEY", env.Name)
+			assert.NotEqual(t, "OSC_SECRET_KEY", env.Name)
+		}
+		assert.Empty(t, ds.Spec.Template.Spec.Containers[0].VolumeMounts)
+		assert.Empty(t, ds.Spec.Template.Spec.Volumes)
+	})
+
 	t.Run("By default, the OSC_ENDPOINT_API env var is not set", func(t *testing.T) {
 		specs := getHelmSpecs(t, nil)
 		require.IsType(t, &appsv1.DaemonSet{}, specs[4])
