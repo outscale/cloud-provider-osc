@@ -65,6 +65,8 @@ func TestNewLoadBalancer(t *testing.T) {
 				Annotations: map[string]string{
 					"service.beta.kubernetes.io/osc-load-balancer-name":                            "name-foo",
 					"service.beta.kubernetes.io/osc-load-balancer-internal":                        "true",
+					"service.beta.kubernetes.io/osc-load-balancer-ip-pool":                         "pool-foo",
+					"service.beta.kubernetes.io/osc-load-balancer-ip-id":                           "ip-foo",
 					"service.beta.kubernetes.io/osc-load-balancer-subnet-id":                       "subnet-foo",
 					"service.beta.kubernetes.io/osc-load-balancer-security-group":                  "sg-foo",
 					"service.beta.kubernetes.io/osc-load-balancer-extra-security-groups":           "sg-bar,sg-baz",
@@ -100,6 +102,8 @@ func TestNewLoadBalancer(t *testing.T) {
 			Name:                     "name-foo",
 			ServiceName:              "foo",
 			Internal:                 true,
+			PublicIPPool:             "pool-foo",
+			PublicIPID:               "ip-foo",
 			SubnetID:                 "subnet-foo",
 			SecurityGroups:           []string{"sg-foo"},
 			AdditionalSecurityGroups: []string{"sg-bar", "sg-baz"},

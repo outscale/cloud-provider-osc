@@ -53,7 +53,7 @@ var _ = Describe("[e2e][loadbalancer][fast] Creating a load-balancer", func() {
 		cs = f.ClientSet
 		ns = f.Namespace
 		ctx = context.Background()
-		lbName = "foobar-" + xid.New().String()
+		lbName = "ccm-simple-" + xid.New().String()
 	})
 
 	Context("When creating a simple service", func() {
@@ -115,11 +115,10 @@ var _ = Describe("[e2e][loadbalancer] Checking proxy-protocol", func() {
 	f.NamespacePodSecurityEnforceLevel = admissionapi.LevelPrivileged
 
 	var (
-		cs     clientset.Interface
-		ns     *v1.Namespace
-		ctx    context.Context
-		oapi   *oapi.Client
-		lbName string
+		cs   clientset.Interface
+		ns   *v1.Namespace
+		ctx  context.Context
+		oapi *oapi.Client
 	)
 
 	BeforeEach(func() {
@@ -129,7 +128,6 @@ var _ = Describe("[e2e][loadbalancer] Checking proxy-protocol", func() {
 		var err error
 		oapi, err = e2eutils.OAPI()
 		framework.ExpectNoError(err)
-		lbName = "foobar-" + xid.New().String()
 	})
 
 	It("can create a service using proxy protocol", func() {
@@ -143,6 +141,7 @@ var _ = Describe("[e2e][loadbalancer] Checking proxy-protocol", func() {
 		defer e2eutils.DeleteDeployment(ctx, cs, deployment)
 		e2eutils.WaitForDeploymentReady(ctx, cs, deployment)
 
+		lbName := "ccm-proxyprotocol-" + xid.New().String()
 		svc := e2eutils.CreateSvc(ctx, cs, ns, map[string]string{
 			"service.beta.kubernetes.io/osc-load-balancer-proxy-protocol":   "*",
 			"service.beta.kubernetes.io/osc-load-balancer-backend-protocol": "http",
@@ -194,7 +193,7 @@ var _ = Describe("[e2e][loadbalancer] Checking cleanup of resources", func() {
 		})
 		e2eutils.WaitForDeploymentReady(ctx, cs, deployment)
 
-		lbName := "foobar-" + xid.New().String()
+		lbName := "ccm-cleanup-" + xid.New().String()
 		svc := e2eutils.CreateSvc(ctx, cs, ns, map[string]string{
 			"service.beta.kubernetes.io/osc-load-balancer-name": lbName,
 		}, []v1.ServicePort{
@@ -250,7 +249,7 @@ var _ = Describe("[e2e][loadbalancer] Updating backends", func() {
 		defer e2eutils.DeleteDeployment(ctx, cs, deployment)
 		e2eutils.WaitForDeploymentReady(ctx, cs, deployment)
 
-		lbName := "foobar-" + xid.New().String()
+		lbName := "ccm-backends-" + xid.New().String()
 		svc := e2eutils.CreateSvc(ctx, cs, ns, map[string]string{
 			"service.beta.kubernetes.io/osc-load-balancer-name": lbName,
 		}, []v1.ServicePort{

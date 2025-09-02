@@ -26,7 +26,7 @@ import (
 // Clienter is the interface for Client.
 type Clienter interface {
 	OAPI() OAPI
-	LoadBalancing() LoadBalancer
+	LBU() LBU
 }
 
 // Client wraps both OAPI ans AWS clients.
@@ -59,12 +59,12 @@ func NewClient(region string) (*Client, error) {
 	}, nil
 }
 
-// OAPI returns an OAPI instance.
+// OAPI returns an OAPI client.
 func (c *Client) OAPI() OAPI {
 	return c.oapi
 }
 
-// LoadBalancing returns an ELB client.
-func (c *Client) LoadBalancing() LoadBalancer {
+// LBU returns an LBU client.
+func (c *Client) LBU() LBU {
 	return c.elb
 }
