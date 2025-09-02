@@ -43,8 +43,8 @@ func testSvc() *v1.Service {
 func TestGetLoadBalancer(t *testing.T) {
 	t.Run("If the ingress is configured, it is returned", func(t *testing.T) {
 		svc := testSvc()
-		c, _, mock := newAPI(t, self, "foo")
-		expectLoadBalancerDescription(mock, func(desc *elb.LoadBalancerDescription) { desc.DNSName = ptr.To("bar.example.com") })
+		c, mock, _ := newAPI(t, self, "foo")
+		expectReadLoadBalancer(mock, func(desc *sdk.LoadBalancer) { desc.DnsName = ptr.To("bar.example.com") })
 		p := osc.NewProviderWith(c)
 		status, exists, err := p.GetLoadBalancer(context.TODO(), "foo", svc)
 		require.NoError(t, err)
@@ -53,8 +53,8 @@ func TestGetLoadBalancer(t *testing.T) {
 	})
 	t.Run("If no ingress is configured, status is empty", func(t *testing.T) {
 		svc := testSvc()
-		c, _, mock := newAPI(t, self, "foo")
-		expectLoadBalancerDescription(mock, func(desc *elb.LoadBalancerDescription) { desc.DNSName = nil })
+		c, mock, _ := newAPI(t, self, "foo")
+		expectReadLoadBalancer(mock, func(desc *sdk.LoadBalancer) { desc.DnsName = nil })
 		p := osc.NewProviderWith(c)
 		status, exists, err := p.GetLoadBalancer(context.TODO(), "foo", svc)
 		require.NoError(t, err)
@@ -63,8 +63,8 @@ func TestGetLoadBalancer(t *testing.T) {
 	})
 	t.Run("If no load-balancer exists, false is returned", func(t *testing.T) {
 		svc := testSvc()
-		c, _, mock := newAPI(t, self, "foo")
-		expectNoLoadBalancerDescription(mock)
+		c, mock, _ := newAPI(t, self, "foo")
+		expectReadLoadBalancerNoneFound(mock)
 		p := osc.NewProviderWith(c)
 		_, exists, err := p.GetLoadBalancer(context.TODO(), "foo", svc)
 		require.NoError(t, err)
@@ -83,18 +83,18 @@ func TestGetLoadBalancerName(t *testing.T) {
 func TestEnsureLoadBalancer_Create(t *testing.T) {
 	t.Run("Cannot create a load-balancer if a LBU with the same name already exists but from another cluster", func(t *testing.T) {
 		svc := testSvc()
-		c, _, lbmock := newAPI(t, self, "foo")
-		expectLoadbalancerExistsAndNotOwned(lbmock)
+		c, oapimock, _ := newAPI(t, self, "foo")
+		expectLoadbalancerExistsAndNotOwned(oapimock)
 		p := osc.NewProviderWith(c)
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.Error(t, err)
 	})
 	t.Run("Cannot create a load-balancer if a LBU with the same name already exists but from another service", func(t *testing.T) {
 		svc := testSvc()
-		c, _, lbmock := newAPI(t, self, "foo")
-		expectLoadbalancerExistsAndOwned(lbmock, func(tag *elb.Tag) {
-			if *tag.Key == cloud.ServiceNameTagKey {
-				tag.Value = ptr.To("baz")
+		c, oapimock, _ := newAPI(t, self, "foo")
+		expectLoadbalancerExistsAndOwned(oapimock, func(tag *sdk.ResourceTag) {
+			if tag.GetKey() == cloud.ServiceNameTagKey {
+				tag.Value = "baz"
 			}
 		})
 		p := osc.NewProviderWith(c)
@@ -105,38 +105,111 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		svc := testSvc()
 		c, oapimock, lbmock := newAPI(t, self, "foo")
 		expectVMs(oapimock, sdkSelf, sdkVM)
-		expectNoLoadbalancer(lbmock)
+		expectNoLoadbalancer(oapimock)
 		expectFindLBSubnet(oapimock)
 		expectCreateSecurityGroup(oapimock)
 		expectFindWorkerSGByRole(oapimock)
 		expectAddIngressSGRule(oapimock, []string{"0.0.0.0/0"}, "sg-foo")
 		expectAddInternalSGRule(oapimock, "sg-foo", "sg-worker")
-		expectCreateLoadBalancer(lbmock)
-		expectConfigureHealthCheck(lbmock)
+		expectCreateLoadBalancer(oapimock)
+		expectConfigureHealthCheck(oapimock)
+		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
-		expectRegisterInstances(lbmock, *sdkVM.VmId)
+		expectRegisterInstances(oapimock, *sdkVM.VmId)
 		p := osc.NewProviderWith(c)
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
+	})
+	t.Run("A public LB is created with a predefined public IP", func(t *testing.T) {
+		svc := testSvc()
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-ip-id"] = "ip-foo"
+		c, oapimock, lbmock := newAPI(t, self, "foo")
+		expectVMs(oapimock, sdkSelf, sdkVM)
+		expectNoLoadbalancer(oapimock)
+		expectFindLBSubnet(oapimock)
+		expectCreateSecurityGroup(oapimock)
+		expectFindWorkerSGByRole(oapimock)
+		expectAddIngressSGRule(oapimock, []string{"0.0.0.0/0"}, "sg-foo")
+		expectAddInternalSGRule(oapimock, "sg-foo", "sg-worker")
+		expectCreateLoadBalancer(oapimock, func(clbr *sdk.CreateLoadBalancerRequest) {
+			clbr.PublicIp = ptr.To("ip-foo")
+		})
+		expectConfigureHealthCheck(oapimock)
+		expectDescribeProxyProtocol(lbmock, false)
+		expectDescribeLoadBalancerAttributes(lbmock)
+		expectRegisterInstances(oapimock, *sdkVM.VmId)
+		p := osc.NewProviderWith(c)
+		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
+		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
+	})
+	t.Run("A public LB is created with a public IP from a pool", func(t *testing.T) {
+		svc := testSvc()
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-ip-pool"] = "pool-foo"
+		c, oapimock, lbmock := newAPI(t, self, "foo")
+		expectVMs(oapimock, sdkSelf, sdkVM)
+		expectNoLoadbalancer(oapimock)
+		expectPublicIPFromPool(oapimock, []sdk.PublicIp{
+			{PublicIpId: ptr.To("ip-foo")},
+		})
+		expectFindLBSubnet(oapimock)
+		expectCreateSecurityGroup(oapimock)
+		expectFindWorkerSGByRole(oapimock)
+		expectAddIngressSGRule(oapimock, []string{"0.0.0.0/0"}, "sg-foo")
+		expectAddInternalSGRule(oapimock, "sg-foo", "sg-worker")
+		expectCreateLoadBalancer(oapimock, func(clbr *sdk.CreateLoadBalancerRequest) {
+			clbr.PublicIp = ptr.To("ip-foo")
+		})
+		expectConfigureHealthCheck(oapimock)
+		expectDescribeProxyProtocol(lbmock, false)
+		expectDescribeLoadBalancerAttributes(lbmock)
+		expectRegisterInstances(oapimock, *sdkVM.VmId)
+		p := osc.NewProviderWith(c)
+		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
+		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
+	})
+	t.Run("If pool is empty, no LB is created", func(t *testing.T) {
+		svc := testSvc()
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-ip-pool"] = "pool-foo"
+		c, oapimock, _ := newAPI(t, self, "foo")
+		expectVMs(oapimock, sdkSelf, sdkVM)
+		expectNoLoadbalancer(oapimock)
+		expectPublicIPFromPool(oapimock, nil)
+		p := osc.NewProviderWith(c)
+		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
+		require.Error(t, err)
+	})
+	t.Run("If all IPs have been allocated, no LB is created", func(t *testing.T) {
+		svc := testSvc()
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-ip-pool"] = "pool-foo"
+		c, oapimock, _ := newAPI(t, self, "foo")
+		expectVMs(oapimock, sdkSelf, sdkVM)
+		expectNoLoadbalancer(oapimock)
+		expectPublicIPFromPool(oapimock, []sdk.PublicIp{
+			{PublicIpId: ptr.To("ip-foo"), LinkPublicIpId: ptr.To("ipassoc-foo")},
+		})
+		p := osc.NewProviderWith(c)
+		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
+		require.Error(t, err)
 	})
 	t.Run("An internal LB is created and a retryable error is returned when not ready", func(t *testing.T) {
 		svc := testSvc()
 		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-internal"] = "true"
 		c, oapimock, lbmock := newAPI(t, self, "foo")
 		expectVMs(oapimock, sdkSelf, sdkVM)
-		expectNoLoadbalancer(lbmock)
+		expectNoLoadbalancer(oapimock)
 		expectFindLBSubnet(oapimock)
 		expectCreateSecurityGroup(oapimock)
 		expectFindWorkerSGByRole(oapimock)
 		expectAddIngressSGRule(oapimock, []string{"0.0.0.0/0"}, "sg-foo")
 		expectAddInternalSGRule(oapimock, "sg-foo", "sg-worker")
-		expectCreateLoadBalancer(lbmock, func(req *elb.CreateLoadBalancerInput) {
-			req.Scheme = ptr.To("internal")
-			req.Subnets[0] = ptr.To("subnet-service.internal")
+		expectCreateLoadBalancer(oapimock, func(req *sdk.CreateLoadBalancerRequest) {
+			req.LoadBalancerType = ptr.To("internal")
+			req.Subnets = &[]string{"subnet-service.internal"}
 		})
-		expectConfigureHealthCheck(lbmock)
+		expectConfigureHealthCheck(oapimock)
+		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
-		expectRegisterInstances(lbmock, *sdkVM.VmId)
+		expectRegisterInstances(oapimock, *sdkVM.VmId)
 		p := osc.NewProviderWith(c)
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
@@ -146,16 +219,17 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		svc.Spec.LoadBalancerSourceRanges = []string{"198.51.100.0/24", "203.0.113.0/24"}
 		c, oapimock, lbmock := newAPI(t, self, "foo")
 		expectVMs(oapimock, sdkSelf, sdkVM)
-		expectNoLoadbalancer(lbmock)
+		expectNoLoadbalancer(oapimock)
 		expectFindLBSubnet(oapimock)
 		expectCreateSecurityGroup(oapimock)
 		expectFindWorkerSGByRole(oapimock)
 		expectAddIngressSGRule(oapimock, svc.Spec.LoadBalancerSourceRanges, "sg-foo")
 		expectAddInternalSGRule(oapimock, "sg-foo", "sg-worker")
-		expectCreateLoadBalancer(lbmock)
-		expectConfigureHealthCheck(lbmock)
+		expectCreateLoadBalancer(oapimock)
+		expectConfigureHealthCheck(oapimock)
+		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
-		expectRegisterInstances(lbmock, *sdkVM.VmId)
+		expectRegisterInstances(oapimock, *sdkVM.VmId)
 		p := osc.NewProviderWith(c)
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
@@ -165,18 +239,19 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-security-group"] = "sg-existing"
 		c, oapimock, lbmock := newAPI(t, self, "foo")
 		expectVMs(oapimock, sdkSelf, sdkVM)
-		expectNoLoadbalancer(lbmock)
+		expectNoLoadbalancer(oapimock)
 		expectFindLBSubnet(oapimock)
 		expectFindIngressSecurityGroup(oapimock, "sg-existing")
 		expectFindWorkerSGByRole(oapimock)
 		expectAddIngressSGRule(oapimock, []string{"0.0.0.0/0"}, "sg-existing")
 		expectAddInternalSGRule(oapimock, "sg-existing", "sg-worker")
-		expectCreateLoadBalancer(lbmock, func(req *elb.CreateLoadBalancerInput) {
-			req.SecurityGroups = []*string{ptr.To("sg-existing")}
+		expectCreateLoadBalancer(oapimock, func(req *sdk.CreateLoadBalancerRequest) {
+			req.SecurityGroups = &[]string{"sg-existing"}
 		})
-		expectConfigureHealthCheck(lbmock)
+		expectConfigureHealthCheck(oapimock)
+		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
-		expectRegisterInstances(lbmock, *sdkVM.VmId)
+		expectRegisterInstances(oapimock, *sdkVM.VmId)
 		p := osc.NewProviderWith(c)
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
@@ -186,16 +261,17 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-target-role"] = "controlplane"
 		c, oapimock, lbmock := newAPI(t, self, "foo")
 		expectVMs(oapimock, sdkSelf, sdkVM)
-		expectNoLoadbalancer(lbmock)
+		expectNoLoadbalancer(oapimock)
 		expectFindLBSubnet(oapimock)
 		expectCreateSecurityGroup(oapimock)
 		expectFindWorkerSGByRole(oapimock)
 		expectAddIngressSGRule(oapimock, []string{"0.0.0.0/0"}, "sg-foo")
 		expectAddInternalSGRule(oapimock, "sg-foo", "sg-controlplane")
-		expectCreateLoadBalancer(lbmock)
-		expectConfigureHealthCheck(lbmock)
+		expectCreateLoadBalancer(oapimock)
+		expectConfigureHealthCheck(oapimock)
+		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
-		expectRegisterInstances(lbmock, *sdkVM.VmId)
+		expectRegisterInstances(oapimock, *sdkVM.VmId)
 		p := osc.NewProviderWith(c)
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
@@ -205,17 +281,18 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-subnet-id"] = "subnet-existing"
 		c, oapimock, lbmock := newAPI(t, self, "foo")
 		expectVMs(oapimock, sdkSelf, sdkVM)
-		expectNoLoadbalancer(lbmock)
+		expectNoLoadbalancer(oapimock)
 		expectCreateSecurityGroup(oapimock)
 		expectFindWorkerSGByRole(oapimock)
 		expectAddIngressSGRule(oapimock, []string{"0.0.0.0/0"}, "sg-foo")
 		expectAddInternalSGRule(oapimock, "sg-foo", "sg-worker")
-		expectCreateLoadBalancer(lbmock, func(req *elb.CreateLoadBalancerInput) {
-			req.Subnets = []*string{ptr.To("subnet-existing")}
+		expectCreateLoadBalancer(oapimock, func(req *sdk.CreateLoadBalancerRequest) {
+			req.Subnets = &[]string{"subnet-existing"}
 		})
-		expectConfigureHealthCheck(lbmock)
+		expectConfigureHealthCheck(oapimock)
+		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
-		expectRegisterInstances(lbmock, *sdkVM.VmId)
+		expectRegisterInstances(oapimock, *sdkVM.VmId)
 		p := osc.NewProviderWith(c)
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
@@ -226,7 +303,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		svc.Spec.Ports[0].Port = 443
 		c, oapimock, lbmock := newAPI(t, self, "foo")
 		expectVMs(oapimock, sdkSelf, sdkVM)
-		expectNoLoadbalancer(lbmock)
+		expectNoLoadbalancer(oapimock)
 		expectFindLBSubnet(oapimock)
 		expectCreateSecurityGroup(oapimock)
 		expectFindWorkerSGByRole(oapimock)
@@ -235,15 +312,16 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 			req.GetRules()[0].ToPortRange = ptr.To[int32](443)
 		})
 		expectAddInternalSGRule(oapimock, "sg-foo", "sg-worker")
-		expectCreateLoadBalancer(lbmock, func(clbi *elb.CreateLoadBalancerInput) {
-			clbi.Listeners[0].LoadBalancerPort = ptr.To[int64](443)
-			clbi.Listeners[0].Protocol = ptr.To("HTTPS")
-			clbi.Listeners[0].InstanceProtocol = ptr.To("HTTP")
-			clbi.Listeners[0].SSLCertificateId = ptr.To("arn:aws:service:region:account:resource")
+		expectCreateLoadBalancer(oapimock, func(clbi *sdk.CreateLoadBalancerRequest) {
+			clbi.Listeners[0].LoadBalancerPort = 443
+			clbi.Listeners[0].LoadBalancerProtocol = "HTTPS"
+			clbi.Listeners[0].BackendProtocol = ptr.To("HTTP")
+			clbi.Listeners[0].ServerCertificateId = ptr.To("arn:aws:service:region:account:resource")
 		})
-		expectConfigureHealthCheck(lbmock)
+		expectConfigureHealthCheck(oapimock)
+		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
-		expectRegisterInstances(lbmock, *sdkVM.VmId)
+		expectRegisterInstances(oapimock, *sdkVM.VmId)
 		p := osc.NewProviderWith(c)
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
@@ -259,7 +337,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		})
 		c, oapimock, lbmock := newAPI(t, self, "foo")
 		expectVMs(oapimock, sdkSelf, sdkVM)
-		expectNoLoadbalancer(lbmock)
+		expectNoLoadbalancer(oapimock)
 		expectFindLBSubnet(oapimock)
 		expectCreateSecurityGroup(oapimock)
 		expectFindWorkerSGByRole(oapimock)
@@ -270,18 +348,19 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		})
 		expectAddInternalSGRule(oapimock, "sg-foo", "sg-worker")
 		expectAddInternalSGRule(oapimock, "sg-foo", "sg-worker")
-		expectCreateLoadBalancer(lbmock, func(req *elb.CreateLoadBalancerInput) {
-			req.Listeners = append(req.Listeners, &elb.Listener{
-				LoadBalancerPort: ptr.To[int64](443),
-				Protocol:         ptr.To("HTTPS"),
-				InstancePort:     ptr.To[int64](8080),
-				InstanceProtocol: ptr.To("HTTP"),
-				SSLCertificateId: ptr.To("arn:aws:service:region:account:resource"),
+		expectCreateLoadBalancer(oapimock, func(req *sdk.CreateLoadBalancerRequest) {
+			req.Listeners = append(req.Listeners, sdk.ListenerForCreation{
+				LoadBalancerPort:     443,
+				LoadBalancerProtocol: "HTTPS",
+				BackendPort:          8080,
+				BackendProtocol:      ptr.To("HTTP"),
+				ServerCertificateId:  ptr.To("arn:aws:service:region:account:resource"),
 			})
 		})
-		expectConfigureHealthCheck(lbmock)
+		expectConfigureHealthCheck(oapimock)
+		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
-		expectRegisterInstances(lbmock, *sdkVM.VmId)
+		expectRegisterInstances(oapimock, *sdkVM.VmId)
 		p := osc.NewProviderWith(c)
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
@@ -292,7 +371,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		svc.Spec.Ports[0].Port = 465
 		c, oapimock, lbmock := newAPI(t, self, "foo")
 		expectVMs(oapimock, sdkSelf, sdkVM)
-		expectNoLoadbalancer(lbmock)
+		expectNoLoadbalancer(oapimock)
 		expectFindLBSubnet(oapimock)
 		expectCreateSecurityGroup(oapimock)
 		expectFindWorkerSGByRole(oapimock)
@@ -301,15 +380,16 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 			req.GetRules()[0].ToPortRange = ptr.To[int32](465)
 		})
 		expectAddInternalSGRule(oapimock, "sg-foo", "sg-worker")
-		expectCreateLoadBalancer(lbmock, func(clbi *elb.CreateLoadBalancerInput) {
-			clbi.Listeners[0].LoadBalancerPort = ptr.To[int64](465)
-			clbi.Listeners[0].Protocol = ptr.To("SSL")
-			clbi.Listeners[0].InstanceProtocol = ptr.To("TCP")
-			clbi.Listeners[0].SSLCertificateId = ptr.To("arn:aws:service:region:account:resource")
+		expectCreateLoadBalancer(oapimock, func(clbi *sdk.CreateLoadBalancerRequest) {
+			clbi.Listeners[0].LoadBalancerPort = 465
+			clbi.Listeners[0].LoadBalancerProtocol = "SSL"
+			clbi.Listeners[0].BackendProtocol = ptr.To("TCP")
+			clbi.Listeners[0].ServerCertificateId = ptr.To("arn:aws:service:region:account:resource")
 		})
-		expectConfigureHealthCheck(lbmock)
+		expectConfigureHealthCheck(oapimock)
+		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
-		expectRegisterInstances(lbmock, *sdkVM.VmId)
+		expectRegisterInstances(oapimock, *sdkVM.VmId)
 		p := osc.NewProviderWith(c)
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
@@ -319,19 +399,20 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-backend-protocol"] = "tcp"
 		c, oapimock, lbmock := newAPI(t, self, "foo")
 		expectVMs(oapimock, sdkSelf, sdkVM)
-		expectNoLoadbalancer(lbmock)
+		expectNoLoadbalancer(oapimock)
 		expectFindLBSubnet(oapimock)
 		expectCreateSecurityGroup(oapimock)
 		expectFindWorkerSGByRole(oapimock)
 		expectAddIngressSGRule(oapimock, []string{"0.0.0.0/0"}, "sg-foo")
 		expectAddInternalSGRule(oapimock, "sg-foo", "sg-worker")
-		expectCreateLoadBalancer(lbmock, func(clbi *elb.CreateLoadBalancerInput) {
-			clbi.Listeners[0].Protocol = ptr.To("TCP")
-			clbi.Listeners[0].InstanceProtocol = ptr.To("TCP")
+		expectCreateLoadBalancer(oapimock, func(clbi *sdk.CreateLoadBalancerRequest) {
+			clbi.Listeners[0].LoadBalancerProtocol = "TCP"
+			clbi.Listeners[0].BackendProtocol = ptr.To("TCP")
 		})
-		expectConfigureHealthCheck(lbmock)
+		expectConfigureHealthCheck(oapimock)
+		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
-		expectRegisterInstances(lbmock, *sdkVM.VmId)
+		expectRegisterInstances(oapimock, *sdkVM.VmId)
 		p := osc.NewProviderWith(c)
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
@@ -346,7 +427,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		})
 		c, oapimock, lbmock := newAPI(t, self, "foo")
 		expectVMs(oapimock, sdkSelf, sdkVM)
-		expectNoLoadbalancer(lbmock)
+		expectNoLoadbalancer(oapimock)
 		expectFindLBSubnet(oapimock)
 		expectCreateSecurityGroup(oapimock)
 		expectFindWorkerSGByRole(oapimock)
@@ -360,18 +441,19 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 			req.GetRules()[0].FromPortRange = ptr.To[int32](8443)
 			req.GetRules()[0].ToPortRange = ptr.To[int32](8443)
 		})
-		expectCreateLoadBalancer(lbmock, func(req *elb.CreateLoadBalancerInput) {
-			req.Listeners = append(req.Listeners, &elb.Listener{
-				LoadBalancerPort: ptr.To[int64](443),
-				Protocol:         ptr.To("TCP"),
-				InstancePort:     ptr.To[int64](8443),
-				InstanceProtocol: ptr.To("TCP"),
+		expectCreateLoadBalancer(oapimock, func(req *sdk.CreateLoadBalancerRequest) {
+			req.Listeners = append(req.Listeners, sdk.ListenerForCreation{
+				LoadBalancerPort:     443,
+				LoadBalancerProtocol: "TCP",
+				BackendPort:          8443,
+				BackendProtocol:      ptr.To("TCP"),
 			})
 		})
-		expectConfigureHealthCheck(lbmock)
-		expectConfigureLoadBalancerPolicy(lbmock, 8080, 8443)
+		expectConfigureHealthCheck(oapimock)
+		expectDescribeProxyProtocol(lbmock, false, 8080, 8443)
+		expectConfigureProxyProtocol(lbmock, false, true, 8080, 8443)
 		expectDescribeLoadBalancerAttributes(lbmock)
-		expectRegisterInstances(lbmock, *sdkVM.VmId)
+		expectRegisterInstances(oapimock, *sdkVM.VmId)
 		p := osc.NewProviderWith(c)
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
@@ -386,7 +468,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		})
 		c, oapimock, lbmock := newAPI(t, self, "foo")
 		expectVMs(oapimock, sdkSelf, sdkVM)
-		expectNoLoadbalancer(lbmock)
+		expectNoLoadbalancer(oapimock)
 		expectFindLBSubnet(oapimock)
 		expectCreateSecurityGroup(oapimock)
 		expectFindWorkerSGByRole(oapimock)
@@ -400,18 +482,19 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 			req.GetRules()[0].FromPortRange = ptr.To[int32](8443)
 			req.GetRules()[0].ToPortRange = ptr.To[int32](8443)
 		})
-		expectCreateLoadBalancer(lbmock, func(req *elb.CreateLoadBalancerInput) {
-			req.Listeners = append(req.Listeners, &elb.Listener{
-				LoadBalancerPort: ptr.To[int64](443),
-				Protocol:         ptr.To("TCP"),
-				InstancePort:     ptr.To[int64](8443),
-				InstanceProtocol: ptr.To("TCP"),
+		expectCreateLoadBalancer(oapimock, func(req *sdk.CreateLoadBalancerRequest) {
+			req.Listeners = append(req.Listeners, sdk.ListenerForCreation{
+				LoadBalancerPort:     443,
+				LoadBalancerProtocol: "TCP",
+				BackendPort:          8443,
+				BackendProtocol:      ptr.To("TCP"),
 			})
 		})
-		expectConfigureHealthCheck(lbmock)
-		expectConfigureLoadBalancerPolicy(lbmock, 8080)
+		expectConfigureHealthCheck(oapimock)
+		expectDescribeProxyProtocol(lbmock, false)
+		expectConfigureProxyProtocol(lbmock, false, true)
 		expectDescribeLoadBalancerAttributes(lbmock)
-		expectRegisterInstances(lbmock, *sdkVM.VmId)
+		expectRegisterInstances(oapimock, *sdkVM.VmId)
 		p := osc.NewProviderWith(c)
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
@@ -424,14 +507,15 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-access-log-oos-bucket-prefix"] = "prefix"
 		c, oapimock, lbmock := newAPI(t, self, "foo")
 		expectVMs(oapimock, sdkSelf, sdkVM)
-		expectNoLoadbalancer(lbmock)
+		expectNoLoadbalancer(oapimock)
 		expectFindLBSubnet(oapimock)
 		expectCreateSecurityGroup(oapimock)
 		expectFindWorkerSGByRole(oapimock)
 		expectAddIngressSGRule(oapimock, []string{"0.0.0.0/0"}, "sg-foo")
 		expectAddInternalSGRule(oapimock, "sg-foo", "sg-worker")
-		expectCreateLoadBalancer(lbmock)
-		expectConfigureHealthCheck(lbmock)
+		expectCreateLoadBalancer(oapimock)
+		expectConfigureHealthCheck(oapimock)
+		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
 		expectModifyLoadBalancerAttributes(lbmock, &elb.LoadBalancerAttributes{
 			AccessLog: &elb.AccessLog{
@@ -441,7 +525,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 				S3BucketPrefix: ptr.To("prefix"),
 			},
 		})
-		expectRegisterInstances(lbmock, *sdkVM.VmId)
+		expectRegisterInstances(oapimock, *sdkVM.VmId)
 		p := osc.NewProviderWith(c)
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
@@ -452,12 +536,13 @@ func TestEnsureLoadBalancer_Update(t *testing.T) {
 	t.Run("When retrying creation, the status is properly returned when ready", func(t *testing.T) {
 		svc := testSvc()
 		c, oapimock, lbmock := newAPI(t, self, "foo")
-		expectLoadbalancerExistsAndOwned(lbmock)
+		expectLoadbalancerExistsAndOwned(oapimock)
 		expectVMs(oapimock, sdkSelf, sdkVM)
-		expectLoadBalancerDescription(lbmock, func(desc *elb.LoadBalancerDescription) {
-			desc.DNSName = ptr.To("foo.example.com")
-			desc.Instances = []*elb.Instance{{InstanceId: ptr.To("i-foo")}}
+		expectReadLoadBalancer(oapimock, func(desc *sdk.LoadBalancer) {
+			desc.DnsName = ptr.To("foo.example.com")
+			desc.BackendVmIds = &[]string{"i-foo"}
 		})
+		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
 		expectFindExistingIngressSecurityGroup(oapimock, "sg-foo")
 		expectFindExistingWorkerSG(oapimock)
@@ -471,14 +556,15 @@ func TestEnsureLoadBalancer_Update(t *testing.T) {
 		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-backend-protocol"] = "http"
 		svc.Spec.Ports[0].Port = 8080
 		c, oapimock, lbmock := newAPI(t, self, "foo")
-		expectLoadbalancerExistsAndOwned(lbmock)
+		expectLoadbalancerExistsAndOwned(oapimock)
 		expectVMs(oapimock, sdkSelf, sdkVM)
-		expectLoadBalancerDescription(lbmock, func(desc *elb.LoadBalancerDescription) {
-			desc.DNSName = ptr.To("foo.example.com")
-			desc.Instances = []*elb.Instance{{InstanceId: ptr.To("i-foo")}}
+		expectReadLoadBalancer(oapimock, func(desc *sdk.LoadBalancer) {
+			desc.DnsName = ptr.To("foo.example.com")
+			desc.BackendVmIds = &[]string{"i-foo"}
 		})
-		expectDeleteListener(lbmock)
-		expectCreateListener(lbmock, 8080)
+		expectDeleteListener(oapimock)
+		expectCreateListener(oapimock, 8080)
+		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
 		expectFindExistingIngressSecurityGroup(oapimock, "sg-foo")
 		expectFindExistingWorkerSG(oapimock)
@@ -491,6 +577,61 @@ func TestEnsureLoadBalancer_Update(t *testing.T) {
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.NoError(t, err)
 	})
+	t.Run("Proxy protocol can be set", func(t *testing.T) {
+		svc := testSvc()
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-proxy-protocol"] = "*"
+		c, oapimock, lbmock := newAPI(t, self, "foo")
+		expectLoadbalancerExistsAndOwned(oapimock)
+		expectVMs(oapimock, sdkSelf, sdkVM)
+		expectReadLoadBalancer(oapimock, func(desc *sdk.LoadBalancer) {
+			desc.DnsName = ptr.To("foo.example.com")
+			desc.BackendVmIds = &[]string{"i-foo"}
+		})
+		expectDescribeProxyProtocol(lbmock, false)
+		expectConfigureProxyProtocol(lbmock, false, true)
+		expectDescribeLoadBalancerAttributes(lbmock)
+		expectFindExistingIngressSecurityGroup(oapimock, "sg-foo")
+		expectFindExistingWorkerSG(oapimock)
+		p := osc.NewProviderWith(c)
+		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
+		require.NoError(t, err)
+	})
+	t.Run("Proxy protocol is not changed", func(t *testing.T) {
+		svc := testSvc()
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-proxy-protocol"] = "*"
+		c, oapimock, lbmock := newAPI(t, self, "foo")
+		expectLoadbalancerExistsAndOwned(oapimock)
+		expectVMs(oapimock, sdkSelf, sdkVM)
+		expectReadLoadBalancer(oapimock, func(desc *sdk.LoadBalancer) {
+			desc.DnsName = ptr.To("foo.example.com")
+			desc.BackendVmIds = &[]string{"i-foo"}
+		})
+		expectDescribeProxyProtocol(lbmock, true)
+		expectDescribeLoadBalancerAttributes(lbmock)
+		expectFindExistingIngressSecurityGroup(oapimock, "sg-foo")
+		expectFindExistingWorkerSG(oapimock)
+		p := osc.NewProviderWith(c)
+		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
+		require.NoError(t, err)
+	})
+	t.Run("Proxy protocol can be disabled", func(t *testing.T) {
+		svc := testSvc()
+		c, oapimock, lbmock := newAPI(t, self, "foo")
+		expectLoadbalancerExistsAndOwned(oapimock)
+		expectVMs(oapimock, sdkSelf, sdkVM)
+		expectReadLoadBalancer(oapimock, func(desc *sdk.LoadBalancer) {
+			desc.DnsName = ptr.To("foo.example.com")
+			desc.BackendVmIds = &[]string{"i-foo"}
+		})
+		expectDescribeProxyProtocol(lbmock, true)
+		expectConfigureProxyProtocol(lbmock, true, false)
+		expectDescribeLoadBalancerAttributes(lbmock)
+		expectFindExistingIngressSecurityGroup(oapimock, "sg-foo")
+		expectFindExistingWorkerSG(oapimock)
+		p := osc.NewProviderWith(c)
+		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
+		require.NoError(t, err)
+	})
 }
 
 func TestUpdateLoadBalancer(t *testing.T) {
@@ -499,14 +640,15 @@ func TestUpdateLoadBalancer(t *testing.T) {
 		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-backend-protocol"] = "http"
 		svc.Spec.Ports[0].Port = 8080
 		c, oapimock, lbmock := newAPI(t, self, "foo")
-		expectLoadbalancerExistsAndOwned(lbmock)
+		expectLoadbalancerExistsAndOwned(oapimock)
 		expectVMs(oapimock, sdkSelf, sdkVM)
-		expectLoadBalancerDescription(lbmock, func(desc *elb.LoadBalancerDescription) {
-			desc.DNSName = ptr.To("foo.example.com")
-			desc.Instances = []*elb.Instance{{InstanceId: ptr.To("i-foo")}}
+		expectReadLoadBalancer(oapimock, func(desc *sdk.LoadBalancer) {
+			desc.DnsName = ptr.To("foo.example.com")
+			desc.BackendVmIds = &[]string{"i-foo"}
 		})
-		expectDeleteListener(lbmock)
-		expectCreateListener(lbmock, 8080)
+		expectDeleteListener(oapimock)
+		expectCreateListener(oapimock, 8080)
+		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
 		expectFindExistingIngressSecurityGroup(oapimock, "sg-foo")
 		expectFindExistingWorkerSG(oapimock)
@@ -524,24 +666,25 @@ func TestUpdateLoadBalancer(t *testing.T) {
 		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-ssl-cert"] = "arn:aws:service:region:account:new_resource"
 		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-backend-protocol"] = "http"
 		c, oapimock, lbmock := newAPI(t, self, "foo")
-		expectLoadbalancerExistsAndOwned(lbmock)
+		expectLoadbalancerExistsAndOwned(oapimock)
 		expectVMs(oapimock, sdkSelf, sdkVM)
-		expectLoadBalancerDescription(lbmock, func(desc *elb.LoadBalancerDescription) {
-			desc.DNSName = ptr.To("foo.example.com")
-			desc.Instances = []*elb.Instance{{InstanceId: ptr.To("i-foo")}}
-			desc.ListenerDescriptions[0].Listener.Protocol = ptr.To("https")
-			desc.ListenerDescriptions[0].Listener.InstanceProtocol = ptr.To("http")
-			desc.ListenerDescriptions[0].Listener.SSLCertificateId = ptr.To("arn:aws:service:region:account:resource")
+		expectReadLoadBalancer(oapimock, func(desc *sdk.LoadBalancer) {
+			desc.DnsName = ptr.To("foo.example.com")
+			desc.BackendVmIds = &[]string{"i-foo"}
+			desc.GetListeners()[0].LoadBalancerProtocol = ptr.To("https")
+			desc.GetListeners()[0].BackendProtocol = ptr.To("http")
+			desc.GetListeners()[0].ServerCertificateId = ptr.To("arn:aws:service:region:account:resource")
 		})
+		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
 		expectFindExistingIngressSecurityGroup(oapimock, "sg-foo")
 		expectFindExistingWorkerSG(oapimock)
-		lbmock.EXPECT().
-			SetLoadBalancerListenerSSLCertificateWithContext(gomock.Any(), gomock.Eq(&elb.SetLoadBalancerListenerSSLCertificateInput{
-				LoadBalancerName: ptr.To("lb-foo"),
-				LoadBalancerPort: ptr.To[int64](80),
-				SSLCertificateId: ptr.To("arn:aws:service:region:account:new_resource"),
-			})).Return(&elb.SetLoadBalancerListenerSSLCertificateOutput{}, nil)
+		oapimock.EXPECT().
+			UpdateLoadBalancer(gomock.Any(), gomock.Eq(sdk.UpdateLoadBalancerRequest{
+				LoadBalancerName:    "lb-foo",
+				LoadBalancerPort:    ptr.To[int32](80),
+				ServerCertificateId: ptr.To("arn:aws:service:region:account:new_resource"),
+			})).Return(nil)
 		p := osc.NewProviderWith(c)
 		err := p.UpdateLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.NoError(t, err)
@@ -550,12 +693,13 @@ func TestUpdateLoadBalancer(t *testing.T) {
 		svc := testSvc()
 		svc.Spec.LoadBalancerSourceRanges = []string{"203.0.113.0/24", "198.51.100.0/24"}
 		c, oapimock, lbmock := newAPI(t, self, "foo")
-		expectLoadbalancerExistsAndOwned(lbmock)
+		expectLoadbalancerExistsAndOwned(oapimock)
 		expectVMs(oapimock, sdkSelf, sdkVM)
-		expectLoadBalancerDescription(lbmock, func(desc *elb.LoadBalancerDescription) {
-			desc.DNSName = ptr.To("foo.example.com")
-			desc.Instances = []*elb.Instance{{InstanceId: ptr.To("i-foo")}}
+		expectReadLoadBalancer(oapimock, func(desc *sdk.LoadBalancer) {
+			desc.DnsName = ptr.To("foo.example.com")
+			desc.BackendVmIds = &[]string{"i-foo"}
 		})
+		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
 		expectFindExistingIngressSecurityGroup(oapimock, "sg-foo")
 		expectFindExistingWorkerSG(oapimock)
@@ -567,10 +711,10 @@ func TestUpdateLoadBalancer(t *testing.T) {
 	})
 	t.Run("Cannot update a load-balancer if a LBU with the same name already exists but from another cluster", func(t *testing.T) {
 		svc := testSvc()
-		c, _, lbmock := newAPI(t, self, "foo")
-		expectLoadbalancerExistsAndOwned(lbmock, func(tag *elb.Tag) {
-			if strings.HasPrefix(*tag.Key, cloud.ClusterIDTagKeyPrefix) {
-				tag.Key = ptr.To(cloud.ClusterIDTagKeyPrefix + "bar")
+		c, oapimock, _ := newAPI(t, self, "foo")
+		expectLoadbalancerExistsAndOwned(oapimock, func(tag *sdk.ResourceTag) {
+			if strings.HasPrefix(tag.Key, cloud.ClusterIDTagKeyPrefix) {
+				tag.Key = cloud.ClusterIDTagKeyPrefix + "bar"
 			}
 		})
 		p := osc.NewProviderWith(c)
@@ -580,16 +724,17 @@ func TestUpdateLoadBalancer(t *testing.T) {
 	t.Run("Can update a load-balancer even if service tag is not set", func(t *testing.T) {
 		svc := testSvc()
 		c, oapimock, lbmock := newAPI(t, self, "foo")
-		expectLoadbalancerExistsAndOwned(lbmock, func(tag *elb.Tag) {
-			if *tag.Key == cloud.ServiceNameTagKey {
-				tag.Key = nil
+		expectLoadbalancerExistsAndOwned(oapimock, func(tag *sdk.ResourceTag) {
+			if tag.Key == cloud.ServiceNameTagKey {
+				tag.Key = ""
 			}
 		})
 		expectVMs(oapimock, sdkSelf, sdkVM)
-		expectLoadBalancerDescription(lbmock, func(desc *elb.LoadBalancerDescription) {
-			desc.DNSName = ptr.To("foo.example.com")
-			desc.Instances = []*elb.Instance{{InstanceId: ptr.To("i-foo")}}
+		expectReadLoadBalancer(oapimock, func(desc *sdk.LoadBalancer) {
+			desc.DnsName = ptr.To("foo.example.com")
+			desc.BackendVmIds = &[]string{"i-foo"}
 		})
+		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
 		expectFindExistingIngressSecurityGroup(oapimock, "sg-foo")
 		expectFindExistingWorkerSG(oapimock)
@@ -600,15 +745,16 @@ func TestUpdateLoadBalancer(t *testing.T) {
 	t.Run("Nodes are added", func(t *testing.T) {
 		svc := testSvc()
 		c, oapimock, lbmock := newAPI(t, self, "foo")
-		expectLoadbalancerExistsAndOwned(lbmock)
+		expectLoadbalancerExistsAndOwned(oapimock)
 		expectVMs(oapimock, sdkSelf, sdkVM)
-		expectLoadBalancerDescription(lbmock, func(desc *elb.LoadBalancerDescription) {
-			desc.DNSName = ptr.To("foo.example.com")
+		expectReadLoadBalancer(oapimock, func(desc *sdk.LoadBalancer) {
+			desc.DnsName = ptr.To("foo.example.com")
 		})
+		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
 		expectFindExistingIngressSecurityGroup(oapimock, "sg-foo")
 		expectFindExistingWorkerSG(oapimock)
-		expectRegisterInstances(lbmock, "i-foo")
+		expectRegisterInstances(oapimock, "i-foo")
 		p := osc.NewProviderWith(c)
 		err := p.UpdateLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.NoError(t, err)
@@ -616,16 +762,17 @@ func TestUpdateLoadBalancer(t *testing.T) {
 	t.Run("Nodes are removed", func(t *testing.T) {
 		svc := testSvc()
 		c, oapimock, lbmock := newAPI(t, self, "foo")
-		expectLoadbalancerExistsAndOwned(lbmock)
+		expectLoadbalancerExistsAndOwned(oapimock)
 		expectVMs(oapimock, sdkSelf, sdkVM)
-		expectLoadBalancerDescription(lbmock, func(desc *elb.LoadBalancerDescription) {
-			desc.DNSName = ptr.To("foo.example.com")
-			desc.Instances = []*elb.Instance{{InstanceId: ptr.To("i-foo")}, {InstanceId: ptr.To("i-bar")}}
+		expectReadLoadBalancer(oapimock, func(desc *sdk.LoadBalancer) {
+			desc.DnsName = ptr.To("foo.example.com")
+			desc.BackendVmIds = &[]string{"i-foo", "i-bar"}
 		})
+		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
 		expectFindExistingIngressSecurityGroup(oapimock, "sg-foo")
 		expectFindExistingWorkerSG(oapimock)
-		expectDeregisterInstances(lbmock, "i-bar")
+		expectDeregisterInstances(oapimock, "i-bar")
 		p := osc.NewProviderWith(c)
 		err := p.UpdateLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.NoError(t, err)
@@ -635,23 +782,31 @@ func TestUpdateLoadBalancer(t *testing.T) {
 func TestEnsureLoadBalancerDeleted(t *testing.T) {
 	t.Run("If the load-balancer exists, delete it", func(t *testing.T) {
 		svc := testSvc()
-		c, oapimock, lbmock := newAPI(t, self, "foo")
-		expectLoadbalancerExistsAndOwned(lbmock)
-		expectLoadBalancerDescription(lbmock, func(desc *elb.LoadBalancerDescription) {
-			desc.DNSName = ptr.To("foo.example.com")
-			desc.Instances = []*elb.Instance{{InstanceId: ptr.To("i-foo")}}
+		c, oapimock, _ := newAPI(t, self, "foo")
+		expectLoadbalancerExistsAndOwned(oapimock)
+		expectReadLoadBalancer(oapimock, func(desc *sdk.LoadBalancer) {
+			desc.DnsName = ptr.To("foo.example.com")
+			desc.BackendVmIds = &[]string{"i-foo"}
 		})
-		expectDeregisterInstances(lbmock, "i-foo")
+		expectDeregisterInstances(oapimock, "i-foo")
 		expectCreateTag(oapimock, "sg-foo", sdk.ResourceTag{Key: cloud.SGToDeleteTagKey})
-		expectDeleteLoadBalancer(lbmock)
+		expectDeleteLoadBalancer(oapimock)
 		p := osc.NewProviderWith(c)
 		err := p.EnsureLoadBalancerDeleted(context.TODO(), "foo", svc)
 		require.NoError(t, err)
 	})
 	t.Run("If the load-balancer has already been deleted, do nothing", func(t *testing.T) {
 		svc := testSvc()
-		c, _, lbmock := newAPI(t, self, "foo")
-		expectNoLoadbalancer(lbmock)
+		c, oapimock, _ := newAPI(t, self, "foo")
+		expectNoLoadbalancer(oapimock)
+		p := osc.NewProviderWith(c)
+		err := p.EnsureLoadBalancerDeleted(context.TODO(), "foo", svc)
+		require.NoError(t, err)
+	})
+	t.Run("If the load-balancer belongs to someone else, do nothing", func(t *testing.T) {
+		svc := testSvc()
+		c, oapimock, _ := newAPI(t, self, "foo")
+		expectLoadbalancerExistsAndNotOwned(oapimock)
 		p := osc.NewProviderWith(c)
 		err := p.EnsureLoadBalancerDeleted(context.TODO(), "foo", svc)
 		require.NoError(t, err)

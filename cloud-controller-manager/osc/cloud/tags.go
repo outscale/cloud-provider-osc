@@ -3,7 +3,7 @@ package cloud
 import (
 	"strings"
 
-	"github.com/aws/aws-sdk-go/service/elb"
+	"github.com/outscale/osc-sdk-go/v2"
 )
 
 const (
@@ -41,23 +41,19 @@ const (
 	ResourceLifecycleShared = "shared"
 )
 
-func getLBUClusterID(lbus *elb.DescribeTagsOutput) string {
-	for _, lbu := range lbus.TagDescriptions {
-		for _, t := range lbu.Tags {
-			if t.Key != nil && strings.HasPrefix(*t.Key, ClusterIDTagKeyPrefix) {
-				return strings.TrimPrefix(*t.Key, ClusterIDTagKeyPrefix)
-			}
+func getLBUClusterID(tags []osc.ResourceTag) string {
+	for _, t := range tags {
+		if strings.HasPrefix(t.GetKey(), ClusterIDTagKeyPrefix) {
+			return strings.TrimPrefix(t.GetKey(), ClusterIDTagKeyPrefix)
 		}
 	}
 	return ""
 }
 
-func getLBUServiceName(lbus *elb.DescribeTagsOutput) string {
-	for _, lbu := range lbus.TagDescriptions {
-		for _, t := range lbu.Tags {
-			if t.Key != nil && *t.Key == ServiceNameTagKey && t.Value != nil {
-				return *t.Value
-			}
+func getLBUServiceName(tags []osc.ResourceTag) string {
+	for _, t := range tags {
+		if t.GetKey() == ServiceNameTagKey {
+			return t.GetValue()
 		}
 	}
 	return ""

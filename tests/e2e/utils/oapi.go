@@ -13,6 +13,7 @@ import (
 	"github.com/outscale/cloud-provider-osc/cloud-controller-manager/osc/oapi"
 	"github.com/outscale/osc-sdk-go/v2"
 	"k8s.io/kubernetes/test/e2e/framework"
+	"k8s.io/utils/ptr"
 )
 
 func OAPI() (*oapi.Client, error) {
@@ -21,26 +22,24 @@ func OAPI() (*oapi.Client, error) {
 
 // GetLoadBalancer describe an LB
 func GetLoadBalancer(ctx context.Context, api *oapi.Client, name string) (*elb.LoadBalancerDescription, error) {
-	request := &elb.DescribeLoadBalancersInput{}
-	request.LoadBalancerNames = []*string{&name}
-
-	response, err := api.LoadBalancing().DescribeLoadBalancersWithContext(ctx, request)
+	if len(name) > 32 {
+		name = name[:32]
+	}
+	response, err := api.LBU().DescribeLoadBalancersWithContext(ctx, &elb.DescribeLoadBalancersInput{
+		LoadBalancerNames: []*string{&name},
+	})
 	if err != nil {
-		if oapi.AWSErrorCode(err) == elb.ErrCodeAccessPointNotFoundException {
-			return nil, nil
-		}
 		return nil, err
 	}
 
-	var ret *elb.LoadBalancerDescription
-	for _, loadBalancer := range response.LoadBalancerDescriptions {
-		if ret != nil {
-			return nil, fmt.Errorf("found multiple load balancers with name: %s", name)
-		}
-		ret = loadBalancer
+	switch len(response.LoadBalancerDescriptions) {
+	case 0:
+		return nil, nil
+	case 1:
+		return response.LoadBalancerDescriptions[0], nil
+	default:
+		return nil, fmt.Errorf("found multiple load balancers with name: %s", name)
 	}
-
-	return ret, nil
 }
 
 func ExpectLoadBalancer(ctx context.Context, api *oapi.Client, name string, matcher types.GomegaMatcher) {
@@ -61,10 +60,9 @@ func ExpectNoLoadBalancer(ctx context.Context, api *oapi.Client, name string) {
 }
 
 func GetSecurityGroups(ctx context.Context, api *oapi.Client, lb *elb.LoadBalancerDescription) ([]osc.SecurityGroup, error) {
-	sgIds := aws.StringValueSlice(lb.SecurityGroups)
 	return api.OAPI().ReadSecurityGroups(ctx, osc.ReadSecurityGroupsRequest{
 		Filters: &osc.FiltersSecurityGroup{
-			SecurityGroupIds: &sgIds,
+			SecurityGroupIds: ptr.To(aws.StringValueSlice(lb.SecurityGroups)),
 		},
 	})
 }

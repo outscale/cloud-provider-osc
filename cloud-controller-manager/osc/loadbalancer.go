@@ -103,6 +103,8 @@ func (c *Provider) EnsureLoadBalancerDeleted(ctx context.Context, clusterName st
 	}
 	exists, err := c.cloud.LoadBalancerExists(ctx, lb)
 	switch {
+	case errors.Is(err, cloud.ErrBelongsToSomeoneElse):
+		return nil
 	case err != nil:
 		return fmt.Errorf("unable to check LB: %w", err)
 	case !exists:

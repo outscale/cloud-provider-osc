@@ -8,6 +8,7 @@ The supported Service annotations are:
 | service.beta.kubernetes.io/osc-load-balancer-internal | `false` | No | Is it an internal LBU or a public one ?
 | service.beta.kubernetes.io/osc-load-balancer-subnet-id | n/a | No | The subnet in which to create the load balancer.
 | service.beta.kubernetes.io/osc-load-balancer-ip-pool | n/a | No | The pool from which a public IP will be fetched (public IPs tagged with a `OscK8sIPPool:<pool name>` tag).
+| service.beta.kubernetes.io/osc-load-balancer-ip-id | n/a | No | The ID of the public IP to use.
 | service.beta.kubernetes.io/osc-load-balancer-security-group | n/a | No | The main security group of the load balancer, if not set, a new SG will be created.
 | service.beta.kubernetes.io/osc-load-balancer-extra-security-groups | n/a | No | Additional security groups to be added
 | service.beta.kubernetes.io/osc-load-balancer-additional-resource-tags | n/a | No | A comma-separated list of key=value pairs which to be added as additional tags in the LBU. For example: `Key1=Val1,Key2=Val2,KeyNoVal1=,KeyNoVal2`

@@ -3,9 +3,7 @@ package osc_test
 import (
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/elb"
-	"github.com/outscale/cloud-provider-osc/cloud-controller-manager/osc"
 	"github.com/outscale/cloud-provider-osc/cloud-controller-manager/osc/cloud"
 	"github.com/outscale/cloud-provider-osc/cloud-controller-manager/osc/oapi"
 	oapimocks "github.com/outscale/cloud-provider-osc/cloud-controller-manager/osc/oapi/mocks"
@@ -18,38 +16,23 @@ import (
 
 type MockOAPIClient struct {
 	oapi *oapimocks.MockOAPI
-	lb   *oapimocks.MockLoadBalancer
+	lb   *oapimocks.MockLBU
 }
 
 func (m MockOAPIClient) OAPI() oapi.OAPI {
 	return m.oapi
 }
 
-func (m MockOAPIClient) LoadBalancing() oapi.LoadBalancer {
+func (m MockOAPIClient) LBU() oapi.LBU {
 	return m.lb
 }
 
-func newAPI(t *testing.T, self *cloud.VM, clusterID string) (*cloud.Cloud, *oapimocks.MockOAPI, *oapimocks.MockLoadBalancer) {
+func newAPI(t *testing.T, self *cloud.VM, clusterID string) (*cloud.Cloud, *oapimocks.MockOAPI, *oapimocks.MockLBU) {
 	ctrl := gomock.NewController(t)
 	oa := oapimocks.NewMockOAPI(ctrl)
-	lb := oapimocks.NewMockLoadBalancer(ctrl)
+	lb := oapimocks.NewMockLBU(ctrl)
 	c := cloud.NewWith(MockOAPIClient{oapi: oa, lb: lb}, self, clusterID)
 	return c, oa, lb
-}
-
-type awsErrorInterface awserr.Error
-
-type awsError struct {
-	awsErrorInterface
-	code string
-}
-
-func (e *awsError) Error() string {
-	return e.code
-}
-
-func (e *awsError) Code() string {
-	return e.code
 }
 
 var (
@@ -115,163 +98,202 @@ var (
 	svcName = "svc-foo"
 )
 
-func expectNoLoadbalancer(mock *oapimocks.MockLoadBalancer) {
+func expectNoLoadbalancer(mock *oapimocks.MockOAPI) {
 	mock.EXPECT().
-		DescribeTagsWithContext(gomock.Any(), gomock.Eq(&elb.DescribeTagsInput{
-			LoadBalancerNames: []*string{&lbName},
+		ReadLoadBalancers(gomock.Any(), gomock.Eq(sdk.ReadLoadBalancersRequest{
+			Filters: &sdk.FiltersLoadBalancer{
+				LoadBalancerNames: &[]string{lbName},
+			},
 		})).
-		Return(nil, &awsError{code: elb.ErrCodeAccessPointNotFoundException})
+		Return(nil, nil)
 }
 
-func expectLoadbalancerExistsAndOwned(mock *oapimocks.MockLoadBalancer, updates ...func(tag *elb.Tag)) {
-	tags := []*elb.Tag{{
-		Key: ptr.To(cloud.ClusterIDTagKeyPrefix + "foo"),
+func expectLoadbalancerExistsAndOwned(mock *oapimocks.MockOAPI, updates ...func(tag *sdk.ResourceTag)) {
+	tags := []sdk.ResourceTag{{
+		Key: cloud.ClusterIDTagKeyPrefix + "foo",
 	}, {
-		Key:   ptr.To[string](cloud.ServiceNameTagKey),
-		Value: ptr.To(svcName),
+		Key:   cloud.ServiceNameTagKey,
+		Value: svcName,
 	}}
-	for _, tag := range tags {
+	for i := range tags {
 		for _, update := range updates {
-			update(tag)
+			update(&tags[i])
 		}
 	}
 	mock.EXPECT().
-		DescribeTagsWithContext(gomock.Any(), gomock.Eq(&elb.DescribeTagsInput{
-			LoadBalancerNames: []*string{&lbName},
+		ReadLoadBalancers(gomock.Any(), gomock.Eq(sdk.ReadLoadBalancersRequest{
+			Filters: &sdk.FiltersLoadBalancer{
+				LoadBalancerNames: &[]string{lbName},
+			},
 		})).
-		Return(&elb.DescribeTagsOutput{TagDescriptions: []*elb.TagDescription{{
-			LoadBalancerName: &lbName,
-			Tags:             tags,
-		}}}, nil)
-}
-
-func expectLoadbalancerExistsAndNotOwned(mock *oapimocks.MockLoadBalancer) {
-	mock.EXPECT().
-		DescribeTagsWithContext(gomock.Any(), gomock.Eq(&elb.DescribeTagsInput{
-			LoadBalancerNames: []*string{&lbName},
-		})).
-		Return(&elb.DescribeTagsOutput{TagDescriptions: []*elb.TagDescription{{
-			LoadBalancerName: &lbName,
-			Tags: []*elb.Tag{{
-				Key: ptr.To(cloud.ClusterIDTagKeyPrefix + "bar"),
-			}, {
-				Key:   ptr.To[string](cloud.ServiceNameTagKey),
-				Value: ptr.To("baz"),
-			}}},
+		Return([]sdk.LoadBalancer{{
+			Tags: &tags,
 		}}, nil)
 }
 
-func expectLoadBalancerDescription(mock *oapimocks.MockLoadBalancer, updates ...func(*elb.LoadBalancerDescription)) {
-	desc := &elb.LoadBalancerDescription{
+func expectLoadbalancerExistsAndNotOwned(mock *oapimocks.MockOAPI) {
+	mock.EXPECT().
+		ReadLoadBalancers(gomock.Any(), gomock.Eq(sdk.ReadLoadBalancersRequest{
+			Filters: &sdk.FiltersLoadBalancer{
+				LoadBalancerNames: &[]string{lbName},
+			},
+		})).
+		Return([]sdk.LoadBalancer{{
+			Tags: &[]sdk.ResourceTag{{
+				Key: cloud.ClusterIDTagKeyPrefix + "bar",
+			}, {
+				Key:   cloud.ServiceNameTagKey,
+				Value: "baz",
+			}},
+		}}, nil)
+}
+
+func expectReadLoadBalancer(mock *oapimocks.MockOAPI, updates ...func(*sdk.LoadBalancer)) {
+	desc := sdk.LoadBalancer{
 		LoadBalancerName: &lbName,
-		SecurityGroups:   []*string{ptr.To("sg-foo")},
-		Subnets:          []*string{ptr.To("subnet-service")},
-		ListenerDescriptions: []*elb.ListenerDescription{{Listener: &elb.Listener{
-			LoadBalancerPort: ptr.To[int64](80),
-			Protocol:         ptr.To("HTTP"),
-			InstancePort:     ptr.To[int64](8080),
-			InstanceProtocol: ptr.To("HTTP"),
-		}}},
-		HealthCheck: &elb.HealthCheck{
-			HealthyThreshold:   ptr.To[int64](2),
-			Interval:           ptr.To[int64](10),
-			Target:             ptr.To("TCP:8080"),
-			Timeout:            ptr.To[int64](5),
-			UnhealthyThreshold: ptr.To[int64](3),
+		SecurityGroups:   &[]string{"sg-foo"},
+		Subnets:          &[]string{"subnet-service"},
+		Listeners: &[]sdk.Listener{{
+			LoadBalancerPort:     ptr.To[int32](80),
+			LoadBalancerProtocol: ptr.To("HTTP"),
+			BackendPort:          ptr.To[int32](8080),
+			BackendProtocol:      ptr.To("HTTP"),
+		}},
+		HealthCheck: &sdk.HealthCheck{
+			HealthyThreshold:   2,
+			CheckInterval:      10,
+			Timeout:            5,
+			UnhealthyThreshold: 3,
 		},
 	}
 	for _, update := range updates {
-		update(desc)
+		update(&desc)
 	}
 	mock.EXPECT().
-		DescribeLoadBalancersWithContext(gomock.Any(), gomock.Eq(&elb.DescribeLoadBalancersInput{
-			LoadBalancerNames: []*string{&lbName},
+		ReadLoadBalancers(gomock.Any(), gomock.Eq(sdk.ReadLoadBalancersRequest{
+			Filters: &sdk.FiltersLoadBalancer{
+				LoadBalancerNames: &[]string{lbName},
+			},
 		})).
-		Return(&elb.DescribeLoadBalancersOutput{
-			LoadBalancerDescriptions: []*elb.LoadBalancerDescription{desc},
-		}, nil)
+		Return([]sdk.LoadBalancer{desc}, nil)
 }
 
-func expectNoLoadBalancerDescription(mock *oapimocks.MockLoadBalancer) {
+func expectReadLoadBalancerNoneFound(mock *oapimocks.MockOAPI) {
 	mock.EXPECT().
-		DescribeLoadBalancersWithContext(gomock.Any(), gomock.Eq(&elb.DescribeLoadBalancersInput{
-			LoadBalancerNames: []*string{&lbName},
+		ReadLoadBalancers(gomock.Any(), gomock.Eq(sdk.ReadLoadBalancersRequest{
+			Filters: &sdk.FiltersLoadBalancer{
+				LoadBalancerNames: &[]string{lbName},
+			},
 		})).
-		Return(&elb.DescribeLoadBalancersOutput{
-			LoadBalancerDescriptions: []*elb.LoadBalancerDescription{},
-		}, nil)
+		Return(nil, nil)
 }
 
-func expectCreateLoadBalancer(mock *oapimocks.MockLoadBalancer, updates ...func(*elb.CreateLoadBalancerInput)) {
-	req := &elb.CreateLoadBalancerInput{
-		LoadBalancerName: &lbName,
-		SecurityGroups:   []*string{ptr.To("sg-foo")},
-		Subnets:          []*string{ptr.To("subnet-service")},
-		Tags: []*elb.Tag{{
-			Key:   ptr.To("OscK8sClusterID/foo"),
-			Value: ptr.To("owned"),
+func expectCreateLoadBalancer(mock *oapimocks.MockOAPI, updates ...func(*sdk.CreateLoadBalancerRequest)) {
+	req := sdk.CreateLoadBalancerRequest{
+		LoadBalancerName: lbName,
+		SecurityGroups:   &[]string{"sg-foo"},
+		Subnets:          &[]string{"subnet-service"},
+		Tags: &[]sdk.ResourceTag{{
+			Key:   "OscK8sClusterID/foo",
+			Value: "owned",
 		}, {
-			Key:   ptr.To("OscK8sService"),
-			Value: ptr.To("svc-foo"),
+			Key:   "OscK8sService",
+			Value: "svc-foo",
 		}},
-		Listeners: []*elb.Listener{{
-			LoadBalancerPort: ptr.To[int64](80),
-			Protocol:         ptr.To("HTTP"),
-			InstancePort:     ptr.To[int64](8080),
-			InstanceProtocol: ptr.To("HTTP"),
+		Listeners: []sdk.ListenerForCreation{{
+			LoadBalancerPort:     80,
+			LoadBalancerProtocol: "HTTP",
+			BackendPort:          8080,
+			BackendProtocol:      ptr.To("HTTP"),
 		}},
 	}
 	for _, update := range updates {
-		update(req)
+		update(&req)
 	}
 	mock.EXPECT().
-		CreateLoadBalancerWithContext(gomock.Any(), gomock.Eq(req)).
-		Return(&elb.CreateLoadBalancerOutput{}, nil)
+		CreateLoadBalancer(gomock.Any(), gomock.Eq(req)).
+		Return(&sdk.LoadBalancer{}, nil)
 }
 
-func expectDeleteLoadBalancer(mock *oapimocks.MockLoadBalancer) {
+func expectDeleteLoadBalancer(mock *oapimocks.MockOAPI) {
 	mock.EXPECT().
-		DeleteLoadBalancerWithContext(gomock.Any(), gomock.Eq(&elb.DeleteLoadBalancerInput{
-			LoadBalancerName: &lbName,
+		DeleteLoadBalancer(gomock.Any(), gomock.Eq(sdk.DeleteLoadBalancerRequest{
+			LoadBalancerName: lbName,
 		})).
-		Return(&elb.DeleteLoadBalancerOutput{}, nil)
+		Return(nil)
 }
 
-func expectConfigureHealthCheck(mock *oapimocks.MockLoadBalancer) {
+func expectConfigureHealthCheck(mock *oapimocks.MockOAPI) {
 	mock.EXPECT().
-		ConfigureHealthCheckWithContext(gomock.Any(), gomock.Eq(&elb.ConfigureHealthCheckInput{
-			HealthCheck: &elb.HealthCheck{
-				HealthyThreshold:   ptr.To[int64](2),
-				Interval:           ptr.To[int64](10),
-				Target:             ptr.To("TCP:8080"),
-				Timeout:            ptr.To[int64](5),
-				UnhealthyThreshold: ptr.To[int64](3),
+		UpdateLoadBalancer(gomock.Any(), gomock.Eq(sdk.UpdateLoadBalancerRequest{
+			HealthCheck: &sdk.HealthCheck{
+				Port:               8080,
+				Protocol:           "TCP",
+				HealthyThreshold:   2,
+				CheckInterval:      10,
+				Timeout:            5,
+				UnhealthyThreshold: 3,
 			},
-			LoadBalancerName: ptr.To("lb-foo"),
+			LoadBalancerName: "lb-foo",
 		})).
-		Return(&elb.ConfigureHealthCheckOutput{}, nil)
+		Return(nil)
 }
 
-func expectConfigureLoadBalancerPolicy(mock *oapimocks.MockLoadBalancer, ports ...int64) {
-	mock.EXPECT().
-		CreateLoadBalancerPolicyWithContext(gomock.Any(), gomock.Eq(&elb.CreateLoadBalancerPolicyInput{
-			PolicyAttributes: []*elb.PolicyAttribute{{
-				AttributeName:  ptr.To("ProxyProtocol"),
-				AttributeValue: ptr.To("true"),
-			}},
-			PolicyName:       ptr.To("k8s-proxyprotocol-enabled"),
-			PolicyTypeName:   ptr.To("ProxyProtocolPolicyType"),
-			LoadBalancerName: ptr.To("lb-foo"),
-		})).
-		Return(&elb.CreateLoadBalancerPolicyOutput{}, nil)
+func expectDescribeProxyProtocol(mock *oapimocks.MockLBU, set bool, ports ...int64) {
 	if ports == nil {
 		ports = []int64{8080}
+	}
+	out := &elb.DescribeLoadBalancersOutput{
+		LoadBalancerDescriptions: []*elb.LoadBalancerDescription{{
+			ListenerDescriptions: []*elb.ListenerDescription{},
+		}},
+	}
+	for _, port := range ports {
+		l := &elb.ListenerDescription{
+			Listener: &elb.Listener{
+				InstancePort: &port,
+			},
+		}
+		if set {
+			l.PolicyNames = []*string{ptr.To("k8s-proxyprotocol-enabled")}
+		}
+		out.LoadBalancerDescriptions[0].ListenerDescriptions = append(out.LoadBalancerDescriptions[0].ListenerDescriptions, l)
+	}
+	mock.EXPECT().
+		DescribeLoadBalancersWithContext(gomock.Any(), gomock.Eq(&elb.DescribeLoadBalancersInput{
+			LoadBalancerNames: []*string{ptr.To("lb-foo")},
+		})).
+		Return(out, nil)
+}
+
+func expectConfigureProxyProtocol(mock *oapimocks.MockLBU, set, need bool, ports ...int64) {
+	if !set {
+		mock.EXPECT().
+			CreateLoadBalancerPolicyWithContext(gomock.Any(), gomock.Eq(&elb.CreateLoadBalancerPolicyInput{
+				PolicyAttributes: []*elb.PolicyAttribute{{
+					AttributeName:  ptr.To("ProxyProtocol"),
+					AttributeValue: ptr.To("true"),
+				}},
+				PolicyName:       ptr.To("k8s-proxyprotocol-enabled"),
+				PolicyTypeName:   ptr.To("ProxyProtocolPolicyType"),
+				LoadBalancerName: ptr.To("lb-foo"),
+			})).
+			Return(&elb.CreateLoadBalancerPolicyOutput{}, nil)
+	}
+	if ports == nil {
+		ports = []int64{8080}
+	}
+	var policies []*string
+	if need {
+		policies = []*string{ptr.To("k8s-proxyprotocol-enabled")}
+	} else {
+		policies = []*string{}
 	}
 	for _, port := range ports {
 		mock.EXPECT().
 			SetLoadBalancerPoliciesForBackendServerWithContext(gomock.Any(), gomock.Eq(&elb.SetLoadBalancerPoliciesForBackendServerInput{
 				InstancePort:     ptr.To[int64](port),
-				PolicyNames:      []*string{ptr.To("k8s-proxyprotocol-enabled")},
+				PolicyNames:      policies,
 				LoadBalancerName: ptr.To("lb-foo"),
 			})).
 			Return(&elb.SetLoadBalancerPoliciesForBackendServerOutput{}, nil)
@@ -421,50 +443,48 @@ func expectAddInternalSGRule(mock *oapimocks.MockOAPI, srcSG, dstSG string, upda
 		CreateSecurityGroupRule(gomock.Any(), gomock.Eq(req))
 }
 
-func expectRegisterInstances(mock *oapimocks.MockLoadBalancer, vmIds ...string) {
-	instances := osc.Map(vmIds, func(vmId string) *elb.Instance { return &elb.Instance{InstanceId: &vmId} })
+func expectRegisterInstances(mock *oapimocks.MockOAPI, vmIds ...string) {
 	mock.EXPECT().
-		RegisterInstancesWithLoadBalancerWithContext(gomock.Any(), gomock.Eq(&elb.RegisterInstancesWithLoadBalancerInput{
-			Instances:        instances,
-			LoadBalancerName: ptr.To("lb-foo"),
+		RegisterVmsInLoadBalancer(gomock.Any(), gomock.Eq(sdk.RegisterVmsInLoadBalancerRequest{
+			BackendVmIds:     vmIds,
+			LoadBalancerName: "lb-foo",
 		})).
-		Return(&elb.RegisterInstancesWithLoadBalancerOutput{}, nil)
+		Return(nil)
 }
 
-func expectDeregisterInstances(mock *oapimocks.MockLoadBalancer, vmIds ...string) {
-	instances := osc.Map(vmIds, func(vmId string) *elb.Instance { return &elb.Instance{InstanceId: &vmId} })
+func expectDeregisterInstances(mock *oapimocks.MockOAPI, vmIds ...string) {
 	mock.EXPECT().
-		DeregisterInstancesFromLoadBalancerWithContext(gomock.Any(), gomock.Eq(&elb.DeregisterInstancesFromLoadBalancerInput{
-			Instances:        instances,
-			LoadBalancerName: ptr.To("lb-foo"),
+		DeregisterVmsInLoadBalancer(gomock.Any(), gomock.Eq(sdk.DeregisterVmsInLoadBalancerRequest{
+			BackendVmIds:     vmIds,
+			LoadBalancerName: "lb-foo",
 		})).
-		Return(&elb.DeregisterInstancesFromLoadBalancerOutput{}, nil)
+		Return(nil)
 }
 
-func expectDeleteListener(mock *oapimocks.MockLoadBalancer) {
+func expectDeleteListener(mock *oapimocks.MockOAPI) {
 	mock.EXPECT().
-		DeleteLoadBalancerListenersWithContext(gomock.Any(), gomock.Eq(&elb.DeleteLoadBalancerListenersInput{
-			LoadBalancerName:  ptr.To("lb-foo"),
-			LoadBalancerPorts: []*int64{ptr.To[int64](80)},
+		DeleteLoadBalancerListeners(gomock.Any(), gomock.Eq(sdk.DeleteLoadBalancerListenersRequest{
+			LoadBalancerName:  "lb-foo",
+			LoadBalancerPorts: []int32{80},
 		})).
-		Return(&elb.DeleteLoadBalancerListenersOutput{}, nil)
+		Return(&sdk.LoadBalancer{}, nil)
 }
 
-func expectCreateListener(mock *oapimocks.MockLoadBalancer, port int64) {
+func expectCreateListener(mock *oapimocks.MockOAPI, port int32) {
 	mock.EXPECT().
-		CreateLoadBalancerListenersWithContext(gomock.Any(), gomock.Eq(&elb.CreateLoadBalancerListenersInput{
-			LoadBalancerName: ptr.To("lb-foo"),
-			Listeners: []*elb.Listener{{
-				LoadBalancerPort: ptr.To(port),
-				Protocol:         ptr.To("HTTP"),
-				InstancePort:     ptr.To[int64](8080),
-				InstanceProtocol: ptr.To("HTTP"),
+		CreateLoadBalancerListeners(gomock.Any(), gomock.Eq(sdk.CreateLoadBalancerListenersRequest{
+			LoadBalancerName: "lb-foo",
+			Listeners: []sdk.ListenerForCreation{{
+				LoadBalancerPort:     port,
+				LoadBalancerProtocol: "HTTP",
+				BackendPort:          8080,
+				BackendProtocol:      ptr.To("HTTP"),
 			}},
 		})).
-		Return(&elb.CreateLoadBalancerListenersOutput{}, nil)
+		Return(&sdk.LoadBalancer{}, nil)
 }
 
-func expectDescribeLoadBalancerAttributes(mock *oapimocks.MockLoadBalancer) {
+func expectDescribeLoadBalancerAttributes(mock *oapimocks.MockLBU) {
 	mock.EXPECT().DescribeLoadBalancerAttributesWithContext(gomock.Any(), gomock.Eq(&elb.DescribeLoadBalancerAttributesInput{
 		LoadBalancerName: ptr.To("lb-foo"),
 	})).
@@ -483,7 +503,7 @@ func expectDescribeLoadBalancerAttributes(mock *oapimocks.MockLoadBalancer) {
 		}, nil)
 }
 
-func expectModifyLoadBalancerAttributes(mock *oapimocks.MockLoadBalancer, attrs *elb.LoadBalancerAttributes) {
+func expectModifyLoadBalancerAttributes(mock *oapimocks.MockLBU, attrs *elb.LoadBalancerAttributes) {
 	mock.EXPECT().ModifyLoadBalancerAttributesWithContext(gomock.Any(), gomock.Eq(&elb.ModifyLoadBalancerAttributesInput{
 		LoadBalancerName:       ptr.To("lb-foo"),
 		LoadBalancerAttributes: attrs,
@@ -537,4 +557,10 @@ func expectPurgeSecurityGroups(mock *oapimocks.MockOAPI) {
 			SecurityGroupId: ptr.To("sg-foo"),
 		})).
 		Return(nil)
+}
+
+func expectPublicIPFromPool(mock *oapimocks.MockOAPI, ips []sdk.PublicIp) {
+	mock.EXPECT().
+		ListPublicIpsFromPool(gomock.Any(), gomock.Eq("pool-foo")).
+		Return(ips, nil)
 }

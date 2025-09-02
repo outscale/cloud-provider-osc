@@ -18,5 +18,5 @@ set -euo pipefail
 
 IMPORT_PATH=github.com/outscale/cloud-provider-osc
 
-mockgen -package=mocks -destination=./cloud-controller-manager/osc/oapi/mocks/mock_aws.go ${IMPORT_PATH}/cloud-controller-manager/osc/oapi LoadBalancer 
+mockgen -package=mocks -destination=./cloud-controller-manager/osc/oapi/mocks/mock_aws.go ${IMPORT_PATH}/cloud-controller-manager/osc/oapi LBU 
 mockgen -package=mocks -destination=./cloud-controller-manager/osc/oapi/mocks/mock_oapi.go ${IMPORT_PATH}/cloud-controller-manager/osc/oapi OAPI 

@@ -22,18 +22,105 @@ import (
 	osc "github.com/outscale/osc-sdk-go/v2"
 )
 
+const (
+	PublicIPPoolTag = "OscK8sIPPool"
+)
+
 func (c *OscClient) APIClient() *osc.APIClient {
 	return c.api
 }
 
 func (c *OscClient) ReadVms(ctx context.Context, req osc.ReadVmsRequest) ([]osc.Vm, error) {
-	// Instances are paged
 	resp, httpRes, err := c.api.VmApi.ReadVms(c.WithAuth(ctx)).ReadVmsRequest(req).Execute()
 	err = logAndExtractError(ctx, "ReadVms", req, httpRes, err)
 	if err != nil {
 		return nil, err
 	}
 	return resp.GetVms(), nil
+}
+
+func (c *OscClient) ListPublicIpsFromPool(ctx context.Context, pool string) ([]osc.PublicIp, error) {
+	req := osc.ReadPublicIpsRequest{
+		Filters: &osc.FiltersPublicIp{
+			TagKeys:   &[]string{PublicIPPoolTag},
+			TagValues: &[]string{pool},
+		},
+	}
+	resp, httpRes, err := c.api.PublicIpApi.ReadPublicIps(c.WithAuth(ctx)).ReadPublicIpsRequest(req).Execute()
+	err = logAndExtractError(ctx, "ReadPublicIps", req, httpRes, err)
+	if err != nil {
+		return nil, err
+	}
+	return resp.GetPublicIps(), nil
+}
+
+func (c *OscClient) ReadLoadBalancers(ctx context.Context, req osc.ReadLoadBalancersRequest) ([]osc.LoadBalancer, error) {
+	resp, httpRes, err := c.api.LoadBalancerApi.ReadLoadBalancers(c.WithAuth(ctx)).ReadLoadBalancersRequest(req).Execute()
+	err = logAndExtractError(ctx, "ReadLoadBalancers", req, httpRes, err)
+	if err != nil {
+		return nil, err
+	}
+	return resp.GetLoadBalancers(), nil
+}
+
+func (c *OscClient) ReadLoadBalancerTags(ctx context.Context, req osc.ReadLoadBalancerTagsRequest) ([]osc.LoadBalancerTag, error) {
+	resp, httpRes, err := c.api.LoadBalancerApi.ReadLoadBalancerTags(c.WithAuth(ctx)).ReadLoadBalancerTagsRequest(req).Execute()
+	err = logAndExtractError(ctx, "ReadLoadBalancerTags", req, httpRes, err)
+	if err != nil {
+		return nil, err
+	}
+	return resp.GetTags(), nil
+}
+
+func (c *OscClient) CreateLoadBalancer(ctx context.Context, req osc.CreateLoadBalancerRequest) (*osc.LoadBalancer, error) {
+	resp, httpRes, err := c.api.LoadBalancerApi.CreateLoadBalancer(c.WithAuth(ctx)).CreateLoadBalancerRequest(req).Execute()
+	err = logAndExtractError(ctx, "CreateLoadBalancer", req, httpRes, err)
+	if err != nil {
+		return nil, err
+	}
+	return resp.LoadBalancer, nil
+}
+
+func (c *OscClient) CreateLoadBalancerListeners(ctx context.Context, req osc.CreateLoadBalancerListenersRequest) (*osc.LoadBalancer, error) {
+	resp, httpRes, err := c.api.ListenerApi.CreateLoadBalancerListeners(c.WithAuth(ctx)).CreateLoadBalancerListenersRequest(req).Execute()
+	err = logAndExtractError(ctx, "CreateLoadBalancerListeners", req, httpRes, err)
+	if err != nil {
+		return nil, err
+	}
+	return resp.LoadBalancer, nil
+}
+
+func (c *OscClient) DeleteLoadBalancer(ctx context.Context, req osc.DeleteLoadBalancerRequest) error {
+	_, httpRes, err := c.api.LoadBalancerApi.DeleteLoadBalancer(c.WithAuth(ctx)).DeleteLoadBalancerRequest(req).Execute()
+	err = logAndExtractError(ctx, "DeleteLoadBalancer", req, httpRes, err)
+	return err
+}
+
+func (c *OscClient) DeleteLoadBalancerListeners(ctx context.Context, req osc.DeleteLoadBalancerListenersRequest) (*osc.LoadBalancer, error) {
+	resp, httpRes, err := c.api.ListenerApi.DeleteLoadBalancerListeners(c.WithAuth(ctx)).DeleteLoadBalancerListenersRequest(req).Execute()
+	err = logAndExtractError(ctx, "DeleteLoadBalancerListeners", req, httpRes, err)
+	if err != nil {
+		return nil, err
+	}
+	return resp.LoadBalancer, nil
+}
+
+func (c *OscClient) RegisterVmsInLoadBalancer(ctx context.Context, req osc.RegisterVmsInLoadBalancerRequest) error {
+	_, httpRes, err := c.api.LoadBalancerApi.RegisterVmsInLoadBalancer(c.WithAuth(ctx)).RegisterVmsInLoadBalancerRequest(req).Execute()
+	err = logAndExtractError(ctx, "RegisterVmsInLoadBalancer", req, httpRes, err)
+	return err
+}
+
+func (c *OscClient) DeregisterVmsInLoadBalancer(ctx context.Context, req osc.DeregisterVmsInLoadBalancerRequest) error {
+	_, httpRes, err := c.api.LoadBalancerApi.DeregisterVmsInLoadBalancer(c.WithAuth(ctx)).DeregisterVmsInLoadBalancerRequest(req).Execute()
+	err = logAndExtractError(ctx, "DeregisterVmsInLoadBalancer", req, httpRes, err)
+	return err
+}
+
+func (c *OscClient) UpdateLoadBalancer(ctx context.Context, req osc.UpdateLoadBalancerRequest) error {
+	_, httpRes, err := c.api.LoadBalancerApi.UpdateLoadBalancer(c.WithAuth(ctx)).UpdateLoadBalancerRequest(req).Execute()
+	err = logAndExtractError(ctx, "UpdateLoadBalancer", req, httpRes, err)
+	return err
 }
 
 func (c *OscClient) ReadSecurityGroups(ctx context.Context, req osc.ReadSecurityGroupsRequest) ([]osc.SecurityGroup, error) {
