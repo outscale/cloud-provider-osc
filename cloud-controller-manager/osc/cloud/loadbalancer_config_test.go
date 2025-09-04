@@ -20,6 +20,7 @@ func TestNewLoadBalancer(t *testing.T) {
 	tcs := []struct {
 		name string
 		svc  *v1.Service
+		tags map[string]string
 		lb   *cloud.LoadBalancer
 		err  bool
 	}{{
@@ -145,6 +146,52 @@ func TestNewLoadBalancer(t *testing.T) {
 			AllowFrom: ipNetSet("192.0.2.0/24", "198.51.100.0/24"),
 		},
 	}, {
+		name: "Tags are merged with the global config",
+		tags: map[string]string{
+			"foobar": "bazbar",
+			"foobaz": "bazbaz",
+		},
+		svc: &v1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "foo",
+				UID:  "012-3456-789",
+				Annotations: map[string]string{
+					"service.beta.kubernetes.io/osc-load-balancer-additional-resource-tags": "foo=bar,foobar=barbar",
+				},
+			},
+			Spec: v1.ServiceSpec{
+				SessionAffinity: v1.ServiceAffinityNone,
+				Ports:           []v1.ServicePort{{Protocol: v1.ProtocolTCP, Port: 42, NodePort: 43}},
+			},
+		},
+		lb: &cloud.LoadBalancer{
+			Name:        "0123456789",
+			ServiceName: "foo",
+			Listeners: []cloud.Listener{{
+				Port:        42,
+				BackendPort: 43,
+			}},
+			ListenerDefaults: cloud.ListenerDefaults{
+				SSLPorts: []string{"*"},
+			},
+			TargetRole: cloud.DefaultLoadBalancerConfiguration.TargetRole,
+			HealthCheck: cloud.HealthCheck{
+				Port:               43,
+				Protocol:           "tcp",
+				Interval:           cloud.DefaultLoadBalancerConfiguration.HealthCheck.Interval,
+				Timeout:            cloud.DefaultLoadBalancerConfiguration.HealthCheck.Timeout,
+				HealthyThreshold:   cloud.DefaultLoadBalancerConfiguration.HealthCheck.HealthyThreshold,
+				UnhealthyThreshold: cloud.DefaultLoadBalancerConfiguration.HealthCheck.UnhealthyThreshold,
+			},
+			AllowFrom:  ipNetSet("0.0.0.0/0"),
+			Connection: cloud.Connection{IdleTimeout: 60},
+			Tags: map[string]string{
+				"foo":    "bar",
+				"foobar": "barbar",
+				"foobaz": "bazbaz",
+			},
+		},
+	}, {
 		name: "AWS annotations are loaded",
 		svc: &v1.Service{
 			ObjectMeta: metav1.ObjectMeta{
@@ -267,7 +314,11 @@ func TestNewLoadBalancer(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			lb, err := cloud.NewLoadBalancer(tc.svc)
+			tags := tc.tags
+			if tags == nil {
+				tags = map[string]string{}
+			}
+			lb, err := cloud.NewLoadBalancer(tc.svc, tags)
 			if tc.err {
 				require.Error(t, err)
 			} else {

@@ -31,6 +31,7 @@ Kubernetes: `>=1.20.0-0`
 | customEndpointEim | string | `""` | Use customEndpointEim (url with protocol) ex: https://eim.eu-west-2.outscale.com     |
 | customEndpointFcu | string | `""` | Use customEndpointFcu (url with protocol) ex: https://fcu.eu-west-2.outscale.com |
 | customEndpointLbu | string | `""` | Use customEndpointLbu (url with protocol) ex: https://lbu.eu-west-2.outscale.com   |
+| extraLoadBalancerTags | object | `{}` | Add extra tags on load-balancers |
 | httpsProxy | string | `""` | Value used to create environment variable HTTPS_PROXY |
 | image.pullPolicy | string | `"IfNotPresent"` | Container pull policy |
 | image.repository | string | `"outscale/cloud-provider-osc"` | Container image to use |

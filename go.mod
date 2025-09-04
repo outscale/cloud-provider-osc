@@ -12,6 +12,7 @@ require (
 	github.com/onsi/gomega v1.38.2
 	github.com/outscale/osc-sdk-go/v2 v2.29.0
 	github.com/rs/xid v1.6.0
+	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.11.0
 	go.uber.org/mock v0.6.0
 	k8s.io/api v0.32.8
@@ -102,7 +103,6 @@ require (
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/spf13/cobra v1.8.1 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stoewer/go-strcase v1.3.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	go.etcd.io/etcd/api/v3 v3.5.16 // indirect

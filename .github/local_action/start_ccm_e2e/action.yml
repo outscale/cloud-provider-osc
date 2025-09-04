@@ -60,7 +60,8 @@ runs:
         kubectl create secret generic osc-secret --from-literal=access_key=${{ inputs.osc_access_key }} --from-literal=secret_key=${{ inputs.osc_secret_key }} --from-literal=region=${{ inputs.osc_region }} \
           -n kube-system
         echo "installing CCM"
-        helm install --wait k8s-osc-ccm deploy/k8s-osc-ccm --set oscSecretName=osc-secret --set image.repository=${{ inputs.registry }}/outscale/cloud-provider-osc --set image.tag=${{ inputs.version }}
+        helm install --wait k8s-osc-ccm deploy/k8s-osc-ccm --set oscSecretName=osc-secret --set image.repository=${{ inputs.registry }}/outscale/cloud-provider-osc --set image.tag=${{ inputs.version }} \
+          --set extraLoadBalancerTags.clikey=clivalue
         echo "waiting for worker nodes"
         kubectl wait --for=condition=Ready nodes --all --timeout=900s
         kubectl get nodes -o wide
@@ -95,7 +96,8 @@ runs:
         profile="{\"default\":{\"access_key\":\"${{ inputs.osc_access_key }}\",\"secret_key\":\"${{ inputs.osc_secret_key }}\"}}"
         kubectl create secret generic osc-secret-file --from-literal=config.json=$profile -n kube-system
         echo "updating CCM config"
-        helm upgrade --wait k8s-osc-ccm deploy/k8s-osc-ccm --set oscSecretName=osc-secret-file --set oscCredentialsFromFile=true --set image.repository=${{ inputs.registry }}/outscale/cloud-provider-osc --set image.tag=${{ inputs.version }}
+        helm upgrade --wait k8s-osc-ccm deploy/k8s-osc-ccm --set oscSecretName=osc-secret-file --set oscCredentialsFromFile=true --set image.repository=${{ inputs.registry }}/outscale/cloud-provider-osc --set image.tag=${{ inputs.version }}\
+          --set extraLoadBalancerTags.clikey=clivalue
         echo "waiting for pods"
         kubectl wait --for=condition=Ready po --all -A --timeout=900s
         kubectl get po -A

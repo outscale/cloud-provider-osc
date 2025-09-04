@@ -40,6 +40,8 @@ const ProviderName = "osc"
 
 // Provider is the Ouscale Cloud provider.
 type Provider struct {
+	opts Options
+
 	cloud *cloud.Cloud
 
 	// The vm instance that we are running on
@@ -54,7 +56,7 @@ type Provider struct {
 }
 
 // NewProvider builds a provider.
-func NewProvider(ctx context.Context) (*Provider, error) {
+func NewProvider(ctx context.Context, opts Options) (*Provider, error) {
 	klog.V(2).Infof("Starting OSC cloud provider")
 
 	c, err := cloud.New(ctx, os.Getenv(""))
@@ -66,6 +68,7 @@ func NewProvider(ctx context.Context) (*Provider, error) {
 	klog.V(3).Infof("OSC CCM Instance (%s)", self.ID)
 	klog.V(3).Infof("OSC CCM vpcID (%s)", self.NetID)
 	return &Provider{
+		opts:  opts,
 		cloud: c,
 		self:  self,
 	}, nil

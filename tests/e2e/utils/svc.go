@@ -18,7 +18,7 @@ import (
 func getAnnotations() map[string]string {
 	return map[string]string{
 		// Tags
-		"service.beta.kubernetes.io/aws-load-balancer-additional-resource-tags": "testKey1=Val1,testKey2=Val2",
+		"service.beta.kubernetes.io/aws-load-balancer-additional-resource-tags": "annotationkey=annotationvalue",
 		// ConnectionDraining
 		"service.beta.kubernetes.io/aws-load-balancer-connection-draining-enabled": "true",
 		"service.beta.kubernetes.io/aws-load-balancer-connection-draining-timeout": "30",

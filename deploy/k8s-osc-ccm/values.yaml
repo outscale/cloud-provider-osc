@@ -66,3 +66,10 @@ noProxy: ''
 
 # resources -- Pod resource requests and limits.
 resources: {}
+
+# Extra tags to set on every created load-balancer.
+# extraLoadBalancerTags:
+#   key1: value1
+#   key2: value2
+# -- Add extra tags on load-balancers
+extraLoadBalancerTags: {}

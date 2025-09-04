@@ -142,7 +142,7 @@ type LoadBalancer struct {
 var reName = regexp.MustCompile("^[a-zA-Z0-9-]+$")
 
 // NewLoadBalancer creates a new LoadBalancer instance from a Kubernetes Service.
-func NewLoadBalancer(svc *v1.Service) (*LoadBalancer, error) {
+func NewLoadBalancer(svc *v1.Service, addTags map[string]string) (*LoadBalancer, error) {
 	if svc.Spec.SessionAffinity != v1.ServiceAffinityNone {
 		return nil, fmt.Errorf("unsupported SessionAffinity %q", svc.Spec.SessionAffinity)
 	}
@@ -168,6 +168,11 @@ func NewLoadBalancer(svc *v1.Service) (*LoadBalancer, error) {
 		}
 		if len(lb.Name) > 32 {
 			lb.Name = lb.Name[:32]
+		}
+	}
+	for k, v := range addTags {
+		if _, found := lb.Tags[k]; !found {
+			lb.Tags[k] = v
 		}
 	}
 

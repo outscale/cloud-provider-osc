@@ -147,6 +147,9 @@ spec:
             - --configure-cloud-routes=false
             - --cloud-provider=osc
             - -v={{ .Values.verbose }}
+            {{- if .Values.extraLoadBalancerTags }}
+              {{- include "osc-cloud-controller-manager.extra-loadbalancer-tags" . | nindent 12 }}
+            {{- end }}
           resources:
           {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
