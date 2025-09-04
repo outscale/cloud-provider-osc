@@ -20,8 +20,10 @@ import (
 
 	. "github.com/onsi/ginkgo/v2" //nolint: staticcheck
 	"github.com/onsi/gomega"
+	"github.com/outscale/cloud-provider-osc/cloud-controller-manager/osc/cloud"
 	"github.com/outscale/cloud-provider-osc/cloud-controller-manager/osc/oapi"
 	e2eutils "github.com/outscale/cloud-provider-osc/tests/e2e/utils"
+	"github.com/outscale/osc-sdk-go/v2"
 	"github.com/rs/xid"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -34,8 +36,7 @@ import (
 )
 
 const (
-	testTimeout     = 10 * time.Minute
-	echoServerImage = "gcr.io/google_containers/echoserver:1.10"
+	testTimeout = 10 * time.Minute
 )
 
 var _ = Describe("[e2e][loadbalancer][fast] Creating a load-balancer", func() {
@@ -47,6 +48,7 @@ var _ = Describe("[e2e][loadbalancer][fast] Creating a load-balancer", func() {
 		ns     *v1.Namespace
 		ctx    context.Context
 		lbName string
+		oapi   *oapi.Client
 	)
 
 	BeforeEach(func() {
@@ -54,6 +56,9 @@ var _ = Describe("[e2e][loadbalancer][fast] Creating a load-balancer", func() {
 		ns = f.Namespace
 		ctx = context.Background()
 		lbName = "ccm-simple-" + xid.New().String()
+		var err error
+		oapi, err = e2eutils.OAPI()
+		framework.ExpectNoError(err)
 	})
 
 	Context("When creating a simple service", func() {
@@ -81,8 +86,6 @@ var _ = Describe("[e2e][loadbalancer][fast] Creating a load-balancer", func() {
 					Port:       80,
 				},
 			}, nil)
-
-			svc = e2eutils.WaitForSvc(ctx, cs, svc)
 		})
 
 		AfterEach(func() {
@@ -97,10 +100,21 @@ var _ = Describe("[e2e][loadbalancer][fast] Creating a load-balancer", func() {
 		})
 
 		It("can connect to the load-balancer", func() {
+			svc = e2eutils.WaitForSvc(ctx, cs, svc)
 			e2esvc.TestReachableHTTP(ctx, svc.Status.LoadBalancer.Ingress[0].Hostname, 80, testTimeout)
 		})
 
+		It("sets tags from cli args and annotations in addition to the standard ones", func() {
+			e2eutils.ExpectLoadBalancerTags(ctx, oapi, lbName, gomega.And(
+				gomega.ContainElement(osc.ResourceTag{Key: "annotationkey", Value: "annotationvalue"}),
+				gomega.ContainElement(osc.ResourceTag{Key: "clikey", Value: "clivalue"}),
+				gomega.ContainElement(osc.ResourceTag{Key: cloud.ServiceNameTagKey, Value: svc.Name}),
+				gomega.ContainElement(gomega.HaveField("Key", gomega.HavePrefix(cloud.ClusterIDTagKeyPrefix))),
+			))
+		})
+
 		It("can update the port", func() {
+			svc = e2eutils.WaitForSvc(ctx, cs, svc)
 			_, err := e2esvc.UpdateService(ctx, cs, svc.Namespace, svc.Name, func(d *v1.Service) {
 				d.Spec.Ports[0].Port = 8080
 			})

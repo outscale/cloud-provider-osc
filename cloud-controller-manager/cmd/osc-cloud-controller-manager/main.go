@@ -55,11 +55,15 @@ func main() {
 	controllerAliases := names.CCMControllerAliases()
 
 	controllerInitializers := app.DefaultInitFuncConstructors
+
 	fss := cliflag.NamedFlagSets{}
+	oopts := osc.Options{}
+	oopts.AddFlags(fss.FlagSet("osc"))
+
 	command := app.NewCloudControllerManagerCommand(opts, cloudInitializer, controllerInitializers, controllerAliases, fss, wait.NeverStop)
 
 	cloudprovider.RegisterCloudProvider(osc.ProviderName, func(config io.Reader) (cloudprovider.Interface, error) {
-		return osc.NewProvider(context.Background())
+		return osc.NewProvider(context.Background(), oopts)
 	})
 
 	if err := command.Execute(); err != nil {

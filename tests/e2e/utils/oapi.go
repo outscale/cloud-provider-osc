@@ -42,9 +42,41 @@ func GetLoadBalancer(ctx context.Context, api *oapi.Client, name string) (*elb.L
 	}
 }
 
+func GetLoadBalancerTags(ctx context.Context, api *oapi.Client, name string) ([]osc.ResourceTag, error) {
+	if len(name) > 32 {
+		name = name[:32]
+	}
+	response, err := api.OAPI().ReadLoadBalancers(ctx, osc.ReadLoadBalancersRequest{
+		Filters: &osc.FiltersLoadBalancer{
+			LoadBalancerNames: &[]string{name},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	switch len(response) {
+	case 0:
+		return nil, nil
+	case 1:
+		return response[0].GetTags(), nil
+	default:
+		return nil, fmt.Errorf("found multiple load balancers with name: %s", name)
+	}
+}
+
 func ExpectLoadBalancer(ctx context.Context, api *oapi.Client, name string, matcher types.GomegaMatcher) {
 	err := framework.Gomega().Eventually(ctx, func(ctx context.Context) (*elb.LoadBalancerDescription, error) {
 		return GetLoadBalancer(ctx, api, name)
+	}).
+		WithTimeout(10 * time.Minute).WithPolling(30 * time.Second).
+		Should(matcher)
+	framework.ExpectNoError(err)
+}
+
+func ExpectLoadBalancerTags(ctx context.Context, api *oapi.Client, name string, matcher types.GomegaMatcher) {
+	err := framework.Gomega().Eventually(ctx, func(ctx context.Context) ([]osc.ResourceTag, error) {
+		return GetLoadBalancerTags(ctx, api, name)
 	}).
 		WithTimeout(10 * time.Minute).WithPolling(30 * time.Second).
 		Should(matcher)
