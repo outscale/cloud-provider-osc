@@ -530,6 +530,30 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
 	})
+	t.Run("Nodes can be filtered", func(t *testing.T) {
+		svc := testSvc()
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-target-node-labels"] = "key=val"
+		vmNode1 := vmNode
+		vmNode1.Labels = map[string]string{"key": "val"}
+		vmNode2 := vmNode
+		vmNode2.Name = "10.0.0.11.eu-west-2.compute.internal"
+		c, oapimock, lbmock := newAPI(t, self, "foo")
+		expectVMs(oapimock, sdkSelf, sdkVM)
+		expectNoLoadbalancer(oapimock)
+		expectFindLBSubnet(oapimock)
+		expectCreateSecurityGroup(oapimock)
+		expectFindWorkerSGByRole(oapimock)
+		expectAddIngressSGRule(oapimock, []string{"0.0.0.0/0"}, "sg-foo")
+		expectAddInternalSGRule(oapimock, "sg-foo", "sg-worker")
+		expectCreateLoadBalancer(oapimock)
+		expectConfigureHealthCheck(oapimock)
+		expectDescribeProxyProtocol(lbmock, false)
+		expectDescribeLoadBalancerAttributes(lbmock)
+		expectRegisterInstances(oapimock, *sdkVM.VmId)
+		p := osc.NewProviderWith(c)
+		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode1, &vmNode2})
+		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
+	})
 }
 
 func TestEnsureLoadBalancer_Update(t *testing.T) {

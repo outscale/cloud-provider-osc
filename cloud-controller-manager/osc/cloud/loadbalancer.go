@@ -126,6 +126,7 @@ type LoadBalancer struct {
 	SecurityGroups           []string          `annotation:"osc-load-balancer-security-group"`
 	AdditionalSecurityGroups []string          `annotation:"osc-load-balancer-extra-security-groups"`
 	TargetRole               string            `annotation:"osc-load-balancer-target-role"`
+	TargetNodesLabels        map[string]string `annotation:"osc-load-balancer-target-node-labels"`
 	Tags                     map[string]string `annotation:"osc-load-balancer-additional-resource-tags"`
 	HealthCheck              HealthCheck       `annotation:",squash"`
 	ListenerDefaults         ListenerDefaults  `annotation:",squash"`

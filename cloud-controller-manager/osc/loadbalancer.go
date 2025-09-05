@@ -43,13 +43,13 @@ func (c *Provider) EnsureLoadBalancer(ctx context.Context, clusterName string, s
 	if err != nil {
 		return nil, fmt.Errorf("unable to build LB: %w", err)
 	}
-	// Figure out what mappings we want on the load balancer
 
 	exists, err := c.cloud.LoadBalancerExists(ctx, lb)
 	if err != nil {
 		return nil, fmt.Errorf("unable to check LB: %w", err)
 	}
 
+	nodes = c.filterTargetNodes(lb, nodes)
 	vms, err := c.getVmsByNodeName(ctx, Map(nodes, func(node *v1.Node) string { return node.Name })...)
 	if err != nil {
 		return nil, err
@@ -73,6 +73,24 @@ func (c *Provider) EnsureLoadBalancer(ctx context.Context, clusterName string, s
 	}
 }
 
+func (c *Provider) filterTargetNodes(l *cloud.LoadBalancer, nodes []*v1.Node) []*v1.Node {
+	if len(l.TargetNodesLabels) == 0 {
+		return nodes
+	}
+
+	targetNodes := make([]*v1.Node, 0, len(nodes))
+LOOPNODES:
+	for _, node := range nodes {
+		for k, v := range l.TargetNodesLabels {
+			if lv, found := node.Labels[k]; !found || lv != v {
+				continue LOOPNODES
+			}
+		}
+		targetNodes = append(targetNodes, node)
+	}
+	return targetNodes
+}
+
 // UpdateLoadBalancer implements cloudprovider.LoadBalancer
 func (c *Provider) UpdateLoadBalancer(ctx context.Context, clusterName string, svc *v1.Service, nodes []*v1.Node) error {
 	lb, err := cloud.NewLoadBalancer(svc, c.opts.ExtraTags)
@@ -86,6 +104,7 @@ func (c *Provider) UpdateLoadBalancer(ctx context.Context, clusterName string, s
 	case !exists:
 		return errors.New("LB does not exist")
 	}
+	nodes = c.filterTargetNodes(lb, nodes)
 	vms, err := c.getVmsByNodeName(ctx, Map(nodes, func(node *v1.Node) string { return node.Name })...)
 	if err != nil {
 		return err
