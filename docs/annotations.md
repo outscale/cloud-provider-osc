@@ -11,8 +11,9 @@ The supported Service annotations are:
 | service.beta.kubernetes.io/osc-load-balancer-ip-id | n/a | No | The ID of the public IP to use.
 | service.beta.kubernetes.io/osc-load-balancer-security-group | n/a | No | The main security group of the load balancer, if not set, a new SG will be created.
 | service.beta.kubernetes.io/osc-load-balancer-extra-security-groups | n/a | No | Additional security groups to be added
-| service.beta.kubernetes.io/osc-load-balancer-additional-resource-tags | n/a | No | A comma-separated list of key=value pairs which to be added as additional tags in the LBU. For example: `Key1=Val1,Key2=Val2,KeyNoVal1=,KeyNoVal2`
-| service.beta.kubernetes.io/osc-load-balancer-target-role | `worker` | No | The role of backend server nodes
+| service.beta.kubernetes.io/osc-load-balancer-additional-resource-tags | n/a | No | A comma-separated list of key=value tags to be added to the LBU. For example: `Key1=Val1,Key2=Val2,KeyNoVal1=,KeyNoVal2`
+| service.beta.kubernetes.io/osc-load-balancer-target-role | `worker` | Yes | The role of backend server nodes, used to search the target node security group.
+| service.beta.kubernetes.io/osc-load-balancer-target-node-labels | n/a | Yes | A comma-separated list of key=value labels the backend server nodes need to have.
 | service.beta.kubernetes.io/osc-load-balancer-proxy-protocol | n/a | Yes | A comma-separated list of backend ports that will use proxy protocol. Set to value `*` to enable proxy protocol on all backends.
 | service.beta.kubernetes.io/osc-load-balancer-backend-protocol | n/a | Yes | The protocol to use to talk to backend pods. If `http` or `https`, an HTTPS listener that terminates the connection and parses headers is created. If set to `ssl` or `tcp`, a "raw" SSL listener is used. If set to `http` and `osc-load-balancer-ssl-cert` is not used then a HTTP listener is used.
 | service.beta.kubernetes.io/osc-load-balancer-ssl-cert | n/a | Yes | The ORN of the certificate to use with a SSL/HTTPS listener. See https://docs.outscale.com/en/userguide/About-Server-Certificates-in-EIM.html for more info.
