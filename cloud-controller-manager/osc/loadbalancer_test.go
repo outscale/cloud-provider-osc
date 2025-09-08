@@ -300,6 +300,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 	t.Run("HTTP SSL termination can be set on the LB", func(t *testing.T) {
 		svc := testSvc()
 		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-ssl-cert"] = "arn:aws:service:region:account:resource"
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-backend-protocol"] = "http"
 		svc.Spec.Ports[0].Port = 443
 		c, oapimock, lbmock := newAPI(t, self, "foo")
 		expectVMs(oapimock, sdkSelf, sdkVM)
@@ -330,6 +331,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		svc := testSvc()
 		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-ssl-cert"] = "arn:aws:service:region:account:resource"
 		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-ssl-ports"] = "443"
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-backend-protocol"] = "http"
 		svc.Spec.Ports = append(svc.Spec.Ports, v1.ServicePort{
 			Protocol: v1.ProtocolTCP,
 			NodePort: 8080,
@@ -349,6 +351,8 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectAddInternalSGRule(oapimock, "sg-foo", "sg-worker")
 		expectAddInternalSGRule(oapimock, "sg-foo", "sg-worker")
 		expectCreateLoadBalancer(oapimock, func(req *sdk.CreateLoadBalancerRequest) {
+			req.Listeners[0].LoadBalancerProtocol = "HTTP"
+			req.Listeners[0].BackendProtocol = ptr.To("HTTP")
 			req.Listeners = append(req.Listeners, sdk.ListenerForCreation{
 				LoadBalancerPort:     443,
 				LoadBalancerProtocol: "HTTPS",
@@ -577,7 +581,6 @@ func TestEnsureLoadBalancer_Update(t *testing.T) {
 	})
 	t.Run("Listeners are updated", func(t *testing.T) {
 		svc := testSvc()
-		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-backend-protocol"] = "http"
 		svc.Spec.Ports[0].Port = 8080
 		c, oapimock, lbmock := newAPI(t, self, "foo")
 		expectLoadbalancerExistsAndOwned(oapimock)
@@ -661,7 +664,6 @@ func TestEnsureLoadBalancer_Update(t *testing.T) {
 func TestUpdateLoadBalancer(t *testing.T) {
 	t.Run("Listeners are updated", func(t *testing.T) {
 		svc := testSvc()
-		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-backend-protocol"] = "http"
 		svc.Spec.Ports[0].Port = 8080
 		c, oapimock, lbmock := newAPI(t, self, "foo")
 		expectLoadbalancerExistsAndOwned(oapimock)
