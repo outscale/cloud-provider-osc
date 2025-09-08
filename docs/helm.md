@@ -27,6 +27,7 @@ Kubernetes: `>=1.20.0-0`
 | affinity | object | `{"nodeAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"node-role.kubernetes.io/control-plane","operator":"Exists"}]}]}}}` | Assign Pod to Nodes (see [kubernetes doc](https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes/)) |
 | caBundle.key | string | `""` | Entry key in secret used to store additional certificates authorities |
 | caBundle.name | string | `""` | Secret name containing additional certificates authorities |
+| customClusterID | string | `""` | Set this if you want to use a specific cluster ID instead of the automatically computed one. Use with caution. |
 | customEndpoint | string | `""` | Use customEndpoint (url with protocol) ex: https://api.eu-west-2.outscale.com/api/v1 |
 | customEndpointEim | string | `""` | Use customEndpointEim (url with protocol) ex: https://eim.eu-west-2.outscale.com     |
 | customEndpointFcu | string | `""` | Use customEndpointFcu (url with protocol) ex: https://fcu.eu-west-2.outscale.com |

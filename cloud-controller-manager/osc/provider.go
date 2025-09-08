@@ -59,14 +59,14 @@ type Provider struct {
 func NewProvider(ctx context.Context, opts Options) (*Provider, error) {
 	klog.V(2).Infof("Starting OSC cloud provider")
 
-	c, err := cloud.New(ctx, os.Getenv(""))
+	c, err := cloud.New(ctx, os.Getenv("OSC_CLUSTER_ID"))
 	if err != nil {
 		return nil, fmt.Errorf("init: %w", err)
 	}
 
 	self := c.Self
-	klog.V(3).Infof("OSC CCM Instance (%s)", self.ID)
-	klog.V(3).Infof("OSC CCM vpcID (%s)", self.NetID)
+	klog.V(3).Infof("Instance: %q", self.ID)
+	klog.V(3).Infof("VPC: %q", self.NetID)
 	return &Provider{
 		opts:  opts,
 		cloud: c,
