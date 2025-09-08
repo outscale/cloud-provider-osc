@@ -286,13 +286,10 @@ func (l *LoadBalancer) listeners() []osc.ListenerForCreation {
 		var protocol string
 		backendProtocol := strings.ToLower(l.ListenerDefaults.BackendProtocol)
 		if l.ListenerDefaults.SSLCertificate != "" && isPortIn(lstnr.Port, l.ListenerDefaults.SSLPorts) {
-			switch {
-			case backendProtocol == "http":
+			switch backendProtocol {
+			case "http", "https":
 				protocol = "https"
-			case backendProtocol == "" && lstnr.Port == 443:
-				protocol = "https"
-				backendProtocol = "http"
-			case backendProtocol == "":
+			case "":
 				protocol = "ssl"
 				backendProtocol = "tcp"
 			default:
@@ -300,13 +297,10 @@ func (l *LoadBalancer) listeners() []osc.ListenerForCreation {
 			}
 			olstnr.ServerCertificateId = ptr.To(l.ListenerDefaults.SSLCertificate)
 		} else {
-			switch {
-			case backendProtocol == "http":
+			switch backendProtocol {
+			case "http":
 				protocol = "http"
-			case backendProtocol == "" && lstnr.Port == 80:
-				protocol = "http"
-				backendProtocol = "http"
-			case backendProtocol == "":
+			case "":
 				protocol = "tcp"
 				backendProtocol = "tcp"
 			default:

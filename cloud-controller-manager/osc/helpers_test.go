@@ -155,9 +155,9 @@ func expectReadLoadBalancer(mock *oapimocks.MockOAPI, updates ...func(*sdk.LoadB
 		Subnets:          &[]string{"subnet-service"},
 		Listeners: &[]sdk.Listener{{
 			LoadBalancerPort:     ptr.To[int32](80),
-			LoadBalancerProtocol: ptr.To("HTTP"),
+			LoadBalancerProtocol: ptr.To("TCP"),
 			BackendPort:          ptr.To[int32](8080),
-			BackendProtocol:      ptr.To("HTTP"),
+			BackendProtocol:      ptr.To("TCP"),
 		}},
 		HealthCheck: &sdk.HealthCheck{
 			HealthyThreshold:   2,
@@ -202,9 +202,9 @@ func expectCreateLoadBalancer(mock *oapimocks.MockOAPI, updates ...func(*sdk.Cre
 		}},
 		Listeners: []sdk.ListenerForCreation{{
 			LoadBalancerPort:     80,
-			LoadBalancerProtocol: "HTTP",
+			LoadBalancerProtocol: "TCP",
 			BackendPort:          8080,
-			BackendProtocol:      ptr.To("HTTP"),
+			BackendProtocol:      ptr.To("TCP"),
 		}},
 	}
 	for _, update := range updates {
@@ -476,9 +476,9 @@ func expectCreateListener(mock *oapimocks.MockOAPI, port int32) {
 			LoadBalancerName: "lb-foo",
 			Listeners: []sdk.ListenerForCreation{{
 				LoadBalancerPort:     port,
-				LoadBalancerProtocol: "HTTP",
+				LoadBalancerProtocol: "TCP",
 				BackendPort:          8080,
-				BackendProtocol:      ptr.To("HTTP"),
+				BackendProtocol:      ptr.To("TCP"),
 			}},
 		})).
 		Return(&sdk.LoadBalancer{}, nil)
