@@ -73,3 +73,6 @@ resources: {}
 #   key2: value2
 # -- Add extra tags on load-balancers
 extraLoadBalancerTags: {}
+
+# -- Set this if you want to use a specific cluster ID instead of the automatically computed one. Use with caution.
+customClusterID: ''
