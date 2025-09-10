@@ -1,45 +1,48 @@
-<!--  Thanks for sending a pull request!  Here are some tips for you:
+# 📦 Pull Request Template
 
-1. If this is your first time, please read our contributor guidelines: https://git.k8s.io/community/contributors/guide#your-first-contribution and developer guide https://git.k8s.io/community/contributors/devel/development.md#development-guide
-2. Please label this pull request according to what type of issue you are addressing, especially if this is a release targeted pull request. For reference on required PR/issue labels, read here:
-https://git.k8s.io/community/contributors/devel/release.md#issue-kind-label
-3. Ensure you have added or ran the appropriate tests for your PR: https://git.k8s.io/community/contributors/devel/testing.md
-4. If you want *faster* PR reviews, read how: https://git.k8s.io/community/contributors/guide/pull-requests.md#best-practices-for-faster-reviews
-5. Follow the instructions for writing a release note: https://git.k8s.io/community/contributors/guide/release-notes.md
-6. If the PR is unfinished, see how to mark it: https://git.k8s.io/community/contributors/guide/pull-requests.md#marking-unfinished-pull-requests
--->
+## Description
 
-**What type of PR is this?**
-> Uncomment only one, leave it on its own line:
->
-> /kind api-change
-> /kind bug
-> /kind cleanup
-> /kind design
-> /kind documentation
-> /kind failing-test
-> /kind feature
-> /kind flake
+Please include a summary of the changes and the related context. If this is a feature, explain the motivation. If it's a bug fix, describe what was broken.
 
-**What this PR does / why we need it**:
+Fixes: #<issue-number> _(if applicable)_
 
-**Which issue(s) this PR fixes**:
-<!-- 
-*Automatically closes linked issue when PR is merged.
-Usage: `Fixes #<issue number>`, or `Fixes (paste link of issue)`.
-_If PR is about `failing-tests or flakes`, please post the related issues/tests in a comment and do not use `Fixes`_*
--->
-Fixes #
+## Type of Change
 
-**Special notes for your reviewer**:
+Please check the relevant option(s):
 
-**Does this PR introduce a user-facing change?**:
-<!--  
-If no, just write "NONE".
-If yes, a release note is required:
-Enter your extended release note in the block below. If the PR requires additional action from users switching to the new release, include the string "action required".
-2. 
--->
-```release-note
+- [ ] 🐛 Bug fix
+- [ ] ✨ New feature
+- [ ] 🧹 Code cleanup or refactor
+- [ ] 📝 Documentation update
+- [ ] 🔧 Build or CI-related change
+- [ ] 🔒 Security fix
+- [ ] Other (specify):
 
-```
+## How Has This Been Tested?
+
+Please describe the test strategy:
+
+- [ ] Manual testing
+- [ ] Unit tests
+- [ ] Integration tests
+- [ ] Not tested yet
+
+Commands used (if applicable):
+
+```bash
+# Example
+my-cli-tool build --verbose
+my-cli-tool test
+````
+
+## Checklist
+
+* [ ] I have followed the [Contributing Guidelines](CONTRIBUTING.md)
+* [ ] I have added tests or explained why they are not needed
+* [ ] I have updated relevant documentation (README, examples, etc.)
+* [ ] My changes follow the [Conventional Commits](https://www.conventionalcommits.org/) specification
+* [ ] My commits include appropriate [Gitmoji](https://gitmoji.dev/)
+
+## Additional Context
+
+Add any additional context or screenshots if necessary.
