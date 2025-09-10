@@ -1,5 +1,38 @@
 # Changelog
 
+## [v1.0.0-alpha.1] - 2025-09-10
+
+v1.0.0 is a major refactoring, fixing many bugs (no security group leftovers anymore), and adding new features & annotations.
+
+A new set of annotations has been defined, but the v0.x annotations are still accepted for compatibility purposes.
+
+### ✨ Added
+* ✨ feat(config): load cfg from profile file by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/462
+* ✨ feat(loadbalancer): use predefined public IPs by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/463
+* ✨ feat(loadbalancers): add custom tags by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/464
+* ✨ feat(loadbalancer): filter backend nodes by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/467
+* ✨ feat: allow custom cluster id by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/470
+### 🛠️ Changed / Refactoring
+* ♻️ Version 1.0 refactoring by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/442
+* 👷 build: update Go version by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/471
+### 🐛 Fixed
+* 🐛 fix/helm: nodeSelector did not work with RKE by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/436
+* 🐛 fix(loadbalancer): CCM upgrade would recreate all listeners by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/469
+### 📦 Dependency updates
+* Bump github.com/outscale/osc-sdk-go/v2 from 2.26.0 to 2.27.0 by @dependabot[bot] in https://github.com/outscale/cloud-provider-osc/pull/428
+* ⬆ deps: bump kube to 1.32 by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/437
+* ⬆️ deps: Bump k8s.io/cloud-provider from 0.32.3 to 0.32.8 by @dependabot[bot] in https://github.com/outscale/cloud-provider-osc/pull/446
+* ⬆️ deps: Bump k8s.io/kubernetes from 1.32.3 to 1.32.8 by @dependabot[bot] in https://github.com/outscale/cloud-provider-osc/pull/451
+* ⬆️ deps: Bump k8s.io/kubectl from 0.32.3 to 0.32.8 by @dependabot[bot] in https://github.com/outscale/cloud-provider-osc/pull/449
+* ⬆️ deps: Bump k8s.io/pod-security-admission from 0.32.3 to 0.32.8 by @dependabot[bot] in https://github.com/outscale/cloud-provider-osc/pull/445
+* ⬆️ deps: Bump github.com/stretchr/testify from 1.10.0 to 1.11.0 by @dependabot[bot] in https://github.com/outscale/cloud-provider-osc/pull/457
+* ⬆️ deps: Bump github.com/outscale/osc-sdk-go/v2 from 2.27.0 to 2.29.0 by @dependabot[bot] in https://github.com/outscale/cloud-provider-osc/pull/454
+* ⬆️ deps: Bump github.com/onsi/gomega from 1.36.3 to 1.38.2 by @dependabot[bot] in https://github.com/outscale/cloud-provider-osc/pull/458
+* ⬆️ deps: Bump go.uber.org/mock from 0.5.2 to 0.6.0 by @dependabot[bot] in https://github.com/outscale/cloud-provider-osc/pull/459
+### 🌱 Others
+* 👷 dependabot: update to main branch by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/444
+* 👷 github: updated templates by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/472
+
 ## [v0.2.8]
 ### ✨ Added
 * 🔧 helm: add control-plane nodeSelector by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/415
