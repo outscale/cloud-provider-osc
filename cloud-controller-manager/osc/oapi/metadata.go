@@ -37,12 +37,12 @@ func FetchMetadata() (Metadata, error) {
 	awsConfig := &aws.Config{
 		EndpointResolver: MetadataResolver(),
 	}
-	awsConfig.WithLogLevel(aws.LogDebugWithSigning | aws.LogDebugWithHTTPBody | aws.LogDebugWithRequestRetries | aws.LogDebugWithRequestErrors)
+	// awsConfig.WithLogLevel(aws.LogDebugWithSigning | aws.LogDebugWithHTTPBody | aws.LogDebugWithRequestRetries | aws.LogDebugWithRequestErrors)
 	sess, err := session.NewSession(awsConfig)
 	if err != nil {
 		return Metadata{}, fmt.Errorf("unable to fetch metadata: %w", err)
 	}
-	// addOscUserAgent(&sess.Handlers)
+	addHandlers(&sess.Handlers)
 	svc := ec2metadata.New(sess)
 
 	return fetchMetadata(svc)
