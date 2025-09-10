@@ -313,6 +313,19 @@ func expectFindLBSubnet(mock *oapimocks.MockOAPI) {
 		}, nil)
 }
 
+func expectFindNoLBSubnet(mock *oapimocks.MockOAPI) {
+	mock.EXPECT().
+		ReadSubnets(gomock.Any(), gomock.Eq(sdk.ReadSubnetsRequest{
+			Filters: &sdk.FiltersSubnet{
+				TagKeys: &[]string{"OscK8sClusterID/foo"},
+			},
+		})).
+		Return([]sdk.Subnet{
+			{SubnetId: ptr.To("subnet-service"), Tags: &[]sdk.ResourceTag{}},
+			{SubnetId: ptr.To("subnet-service.internal"), Tags: &[]sdk.ResourceTag{}},
+		}, nil)
+}
+
 func expectCreateSecurityGroup(mock *oapimocks.MockOAPI) {
 	mock.EXPECT().
 		CreateSecurityGroup(gomock.Any(), gomock.Eq(sdk.CreateSecurityGroupRequest{
