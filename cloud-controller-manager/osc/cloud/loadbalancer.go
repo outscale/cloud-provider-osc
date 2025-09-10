@@ -538,6 +538,8 @@ func (c *Cloud) ensureSubnet(ctx context.Context, l *LoadBalancer) error {
 	case l.Internal && ensureByTag("OscK8sRole/service.internal"):
 	case ensureByTag("OscK8sRole/service"):
 	case ensureByTag("OscK8sRole/loadbalancer"):
+	default:
+		return errors.New("no subnet found with the correct tag")
 	}
 	return nil
 }

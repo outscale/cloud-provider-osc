@@ -101,7 +101,17 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.Error(t, err)
 	})
-	t.Run("A public LB is created and a retryable error is returned when not ready", func(t *testing.T) {
+	t.Run("Cannot create a load-balancer if no subnet is found", func(t *testing.T) {
+		svc := testSvc()
+		c, oapimock, _ := newAPI(t, self, "foo")
+		expectVMs(oapimock, sdkSelf, sdkVM)
+		expectNoLoadbalancer(oapimock)
+		expectFindNoLBSubnet(oapimock)
+		p := osc.NewProviderWith(c)
+		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
+		require.Error(t, err)
+	})
+	t.Run("A public LB is created, and a retryable error is returned if it is not ready", func(t *testing.T) {
 		svc := testSvc()
 		c, oapimock, lbmock := newAPI(t, self, "foo")
 		expectVMs(oapimock, sdkSelf, sdkVM)
