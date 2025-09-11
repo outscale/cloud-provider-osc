@@ -3,6 +3,7 @@ package osc
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/outscale/cloud-provider-osc/cloud-controller-manager/osc/cloud"
 	"k8s.io/client-go/informers"
@@ -26,10 +27,10 @@ func (c *Provider) getProviderID(ctx context.Context, nodeName string) (string, 
 
 	node, err := c.nodeInformer.Lister().Get(nodeName)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("informer: %w", err)
 	}
 	if node.Spec.ProviderID == "" {
-		return "", errors.New("getProviderID: node has no providerID")
+		klog.FromContext(ctx).V(4).Info("Warning: node has no provider ID", "node", nodeName)
 	}
 	return node.Spec.ProviderID, nil
 }
@@ -37,11 +38,14 @@ func (c *Provider) getProviderID(ctx context.Context, nodeName string) (string, 
 // getVmByNodeName returns the instance with the specified node name
 func (c *Provider) getVmByNodeName(ctx context.Context, nodeName string) (*cloud.VM, error) {
 	providerID, err := c.getProviderID(ctx, nodeName)
-	if err == nil {
+	switch {
+	case err != nil:
+		klog.FromContext(ctx).V(4).Error(err, "Unable to find provider ID")
+	case providerID != "":
 		return c.cloud.GetVMByProviderID(ctx, providerID)
 	}
 
-	klog.FromContext(ctx).V(4).Info("Unable to find provider ID, falling back to tag search")
+	klog.FromContext(ctx).V(4).Info("Falling back to tag search")
 	return c.cloud.GetVMByNodeName(ctx, nodeName)
 }
 
@@ -51,14 +55,20 @@ func (c *Provider) getVmsByNodeName(ctx context.Context, nodeNames ...string) ([
 		providerIDs := make([]string, 0, len(nodeNames))
 		for _, nodeName := range nodeNames {
 			providerID, err := c.getProviderID(ctx, nodeName)
-			if err != nil {
-				return nil, err
+			switch {
+			case err != nil:
+				// error ? rather than return an error and triggering an expensive backoff, we try OAPI
+				klog.FromContext(ctx).V(4).Error(err, "Unable to find provider ID")
+				goto NOPROVIDERID
+			case providerID == "":
+				// no provider id ??? need to switch back to OAPI search
+				goto NOPROVIDERID
 			}
 			providerIDs = append(providerIDs, providerID)
 		}
 		return c.cloud.GetVMsByProviderID(ctx, providerIDs...)
 	}
-
-	klog.FromContext(ctx).V(4).Info("Unable to find provider ID, falling back to tag search")
+NOPROVIDERID:
+	klog.FromContext(ctx).V(4).Info("Falling back to tag search")
 	return c.cloud.GetVMsByNodeName(ctx, nodeNames...)
 }
