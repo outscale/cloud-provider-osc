@@ -49,7 +49,7 @@ func NewClient(region string) (*Client, error) {
 		return nil, fmt.Errorf("new client: %w", err)
 	}
 	aws := elb.New(sess)
-	oapi, err := NewOscClient(configEnv)
+	oapi, err := NewOscClient(region, configEnv)
 	if err != nil {
 		return nil, fmt.Errorf("new client: %w", err)
 	}

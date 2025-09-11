@@ -32,7 +32,8 @@ type OscClient struct {
 }
 
 // NewOscClient builds an OAPI client.
-func NewOscClient(configEnv *osc.ConfigEnv) (*OscClient, error) {
+func NewOscClient(region string, configEnv *osc.ConfigEnv) (*OscClient, error) {
+	configEnv.Region = &region
 	config, err := configEnv.Configuration()
 	if err != nil {
 		return nil, fmt.Errorf("load osc config: %w", err)
