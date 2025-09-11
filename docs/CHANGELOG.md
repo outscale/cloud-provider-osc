@@ -1,5 +1,16 @@
 # Changelog
 
+## [v1.0.0-alpha.2] - 2025-09-11
+
+### 🛠️ Changed / Refactoring
+* 🚀 helm: add v0/v1 compatible helm chart by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/485
+* 🔊 logs: use v1 logs for metadata calls by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/476
+### 🐛 Fixed
+* 🥅 errors(loadbalancers): better handling of nodes without providerID by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/481
+* 🥅 errors: handle when no subnet is found by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/477
+* 🐛 fix: ccm was broken outside eu-west-2 by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/482
+
+
 ## [v1.0.0-alpha.1] - 2025-09-10
 
 v1.0.0 is a major refactoring, fixing many bugs (no security group leftovers anymore), and adding new features & annotations.
