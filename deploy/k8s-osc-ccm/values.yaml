@@ -24,6 +24,8 @@ image:
 verbose: 5
 # -- Secret name containing cloud credentials
 oscSecretName: osc-secret
+# -- Set to v1 if deploying a v1 image, v0 otherwise.
+oscSecretFormat: v0
 # -- Set if credentials are read from a [profile file](https://docs.outscale.com/en/userguide/Installing-and-Configuring-oapi-cli.html#_configuring_oapi_cli) stored in `/root/.osc/config.json`. If `oscSecretName` is set, the secret is mounted as `/root/.osc` and is expected to have a `config.json` key.
 oscCredentialsFromFile: false
 # -- Specify image pull secrets
