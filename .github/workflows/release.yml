@@ -12,23 +12,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
-        
       - name: Get changelog for release
         id: changelog
         uses: mindsers/changelog-reader-action@v2
         with:
           path: "docs/CHANGELOG.md"
           version: ${{ github.ref_name }}
-
-      - uses: azure/setup-helm@v3
+      - uses: azure/setup-helm@v4
         with:
-          version: v3.10.1
+          version: v3.18.3
       - name : Create Helm-package
         run: make helm-package
-
       - name: Create Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
