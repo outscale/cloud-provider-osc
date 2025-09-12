@@ -1,0 +1,68 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: "advanced-lb"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: echoheaders
+  namespace: advanced-lb
+  labels:
+    app: echoheaders
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: echoheaders
+  template:
+    metadata:
+      labels:
+        app: echoheaders
+    spec:
+      containers:
+      - name: echoheaders
+        image: gcr.io/google_containers/echoserver:1.10
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        - containerPort: 8443
+          protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: echoheaders-lb-advanced-public
+  namespace: advanced-lb
+  labels:
+    app: echoheaders
+  annotations:
+# Tags
+    service.beta.kubernetes.io/osc-load-balancer-additional-resource-tags: "testKey1=Val1,testKey2=Val2"
+# ConnectionDraining
+    service.beta.kubernetes.io/osc-load-balancer-connection-draining-enabled: "true"
+    service.beta.kubernetes.io/osc-load-balancer-connection-draining-timeout: "30"
+# ConnectionSettings
+    service.beta.kubernetes.io/osc-load-balancer-connection-idle-timeout: "65"
+# proxy-protocol
+    service.beta.kubernetes.io/osc-load-balancer-proxy-protocol: "*"
+# ssl-cert
+    service.beta.kubernetes.io/osc-load-balancer-ssl-cert : OSC_ORN_ID
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 8080
+    name: http
+  - port: 443
+    protocol: TCP
+    targetPort: 8443
+    name: https
+  selector:
+    app: echoheaders
+  type: LoadBalancer
+  loadBalancerSourceRanges:
+    #- you can replace it with multiple cidr desired values
+    - MY_CIDR
+
