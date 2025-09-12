@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: "2048-game"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "2048-deployment"
+  namespace: "2048-game"
+  labels:
+    app: "2048"
+spec:
+  selector:
+    matchLabels:
+      app: "2048"
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: "2048"
+    spec:
+      containers:
+      - image: alexwhen/docker-2048
+        imagePullPolicy: IfNotPresent
+        name: "2048"
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: "service-2048"
+  namespace: "2048-game"
+  labels:
+    app: "2048"
+  annotations:
+    service.beta.kubernetes.io/osc-load-balancer-name: "2048"
+spec:
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+  type: LoadBalancer
+  selector:
+    app: "2048"

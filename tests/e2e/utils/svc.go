@@ -18,12 +18,12 @@ import (
 func getAnnotations() map[string]string {
 	return map[string]string{
 		// Tags
-		"service.beta.kubernetes.io/aws-load-balancer-additional-resource-tags": "annotationkey=annotationvalue",
+		"service.beta.kubernetes.io/osc-load-balancer-additional-resource-tags": "annotationkey=annotationvalue",
 		// ConnectionDraining
-		"service.beta.kubernetes.io/aws-load-balancer-connection-draining-enabled": "true",
-		"service.beta.kubernetes.io/aws-load-balancer-connection-draining-timeout": "30",
+		"service.beta.kubernetes.io/osc-load-balancer-connection-draining-enabled": "true",
+		"service.beta.kubernetes.io/osc-load-balancer-connection-draining-timeout": "30",
 		// ConnectionSettings
-		"service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout": "65",
+		"service.beta.kubernetes.io/osc-load-balancer-connection-idle-timeout": "65",
 	}
 }
 
