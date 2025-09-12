@@ -71,21 +71,6 @@ func (mr *MockOAPIMockRecorder) CreateLoadBalancerListeners(ctx, req any) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateLoadBalancerListeners", reflect.TypeOf((*MockOAPI)(nil).CreateLoadBalancerListeners), ctx, req)
 }
 
-// CreateRoute mocks base method.
-func (m *MockOAPI) CreateRoute(ctx context.Context, req osc.CreateRouteRequest) (*osc.RouteTable, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateRoute", ctx, req)
-	ret0, _ := ret[0].(*osc.RouteTable)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// CreateRoute indicates an expected call of CreateRoute.
-func (mr *MockOAPIMockRecorder) CreateRoute(ctx, req any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateRoute", reflect.TypeOf((*MockOAPI)(nil).CreateRoute), ctx, req)
-}
-
 // CreateSecurityGroup mocks base method.
 func (m *MockOAPI) CreateSecurityGroup(ctx context.Context, req osc.CreateSecurityGroupRequest) (*osc.SecurityGroup, error) {
 	m.ctrl.T.Helper()
@@ -157,21 +142,6 @@ func (m *MockOAPI) DeleteLoadBalancerListeners(ctx context.Context, req osc.Dele
 func (mr *MockOAPIMockRecorder) DeleteLoadBalancerListeners(ctx, req any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteLoadBalancerListeners", reflect.TypeOf((*MockOAPI)(nil).DeleteLoadBalancerListeners), ctx, req)
-}
-
-// DeleteRoute mocks base method.
-func (m *MockOAPI) DeleteRoute(ctx context.Context, req osc.DeleteRouteRequest) (*osc.RouteTable, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteRoute", ctx, req)
-	ret0, _ := ret[0].(*osc.RouteTable)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// DeleteRoute indicates an expected call of DeleteRoute.
-func (mr *MockOAPIMockRecorder) DeleteRoute(ctx, req any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRoute", reflect.TypeOf((*MockOAPI)(nil).DeleteRoute), ctx, req)
 }
 
 // DeleteSecurityGroup mocks base method.
@@ -247,21 +217,6 @@ func (mr *MockOAPIMockRecorder) ReadLoadBalancers(ctx, req any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadLoadBalancers", reflect.TypeOf((*MockOAPI)(nil).ReadLoadBalancers), ctx, req)
 }
 
-// ReadRouteTables mocks base method.
-func (m *MockOAPI) ReadRouteTables(ctx context.Context, req osc.ReadRouteTablesRequest) ([]osc.RouteTable, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReadRouteTables", ctx, req)
-	ret0, _ := ret[0].([]osc.RouteTable)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ReadRouteTables indicates an expected call of ReadRouteTables.
-func (mr *MockOAPIMockRecorder) ReadRouteTables(ctx, req any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadRouteTables", reflect.TypeOf((*MockOAPI)(nil).ReadRouteTables), ctx, req)
-}
-
 // ReadSecurityGroups mocks base method.
 func (m *MockOAPI) ReadSecurityGroups(ctx context.Context, req osc.ReadSecurityGroupsRequest) ([]osc.SecurityGroup, error) {
 	m.ctrl.T.Helper()
@@ -333,19 +288,4 @@ func (m *MockOAPI) UpdateLoadBalancer(ctx context.Context, req osc.UpdateLoadBal
 func (mr *MockOAPIMockRecorder) UpdateLoadBalancer(ctx, req any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateLoadBalancer", reflect.TypeOf((*MockOAPI)(nil).UpdateLoadBalancer), ctx, req)
-}
-
-// UpdateVM mocks base method.
-func (m *MockOAPI) UpdateVM(ctx context.Context, req osc.UpdateVmRequest) (*osc.Vm, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateVM", ctx, req)
-	ret0, _ := ret[0].(*osc.Vm)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// UpdateVM indicates an expected call of UpdateVM.
-func (mr *MockOAPIMockRecorder) UpdateVM(ctx, req any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateVM", reflect.TypeOf((*MockOAPI)(nil).UpdateVM), ctx, req)
 }

@@ -28,7 +28,6 @@ import (
 // OAPI is the interface for OAPI calls.
 type OAPI interface {
 	ReadVms(ctx context.Context, req osc.ReadVmsRequest) ([]osc.Vm, error)
-	UpdateVM(ctx context.Context, req osc.UpdateVmRequest) (*osc.Vm, error)
 
 	ReadLoadBalancers(ctx context.Context, req osc.ReadLoadBalancersRequest) ([]osc.LoadBalancer, error)
 	CreateLoadBalancer(ctx context.Context, req osc.CreateLoadBalancerRequest) (*osc.LoadBalancer, error)
@@ -51,10 +50,6 @@ type OAPI interface {
 	ReadSubnets(ctx context.Context, req osc.ReadSubnetsRequest) ([]osc.Subnet, error)
 
 	CreateTags(ctx context.Context, req osc.CreateTagsRequest) error
-
-	ReadRouteTables(ctx context.Context, req osc.ReadRouteTablesRequest) ([]osc.RouteTable, error)
-	CreateRoute(ctx context.Context, req osc.CreateRouteRequest) (*osc.RouteTable, error)
-	DeleteRoute(ctx context.Context, req osc.DeleteRouteRequest) (*osc.RouteTable, error)
 }
 
 // LBU is the interface for API calls using the AWS LBU gateway.

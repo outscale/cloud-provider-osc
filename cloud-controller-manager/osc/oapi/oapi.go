@@ -205,12 +205,3 @@ func (c *OscClient) DeleteRoute(ctx context.Context, req osc.DeleteRouteRequest)
 	}
 	return resp.RouteTable, nil
 }
-
-func (c *OscClient) UpdateVM(ctx context.Context, req osc.UpdateVmRequest) (*osc.Vm, error) {
-	resp, httpRes, err := c.api.VmApi.UpdateVm(c.WithAuth(ctx)).UpdateVmRequest(req).Execute()
-	err = logAndExtractError(ctx, "UpdateVM", req, httpRes, err)
-	if err != nil {
-		return nil, err
-	}
-	return resp.Vm, nil
-}
