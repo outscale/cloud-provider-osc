@@ -25,11 +25,11 @@ All other entries can be deleted.
 
 # Usage
 
-Some example of services:
-- [2048](../examples/2048)
-- [simple-lb](../examples/simple-lb)
-- [simple-internal](../examples/simple-internal)
-- [advanced-lb](../examples/advanced-lb)
+Some examples:
+- [2048 game](../examples/2048)
+- [Load-Balancer with access logs](../examples/access-logs)
+- [Internal Load-Balancer](../examples/simple-internal)
+- [Advanced configuration](../examples/advanced-lb)
 
 Services can be annotated to adapt behavior and configuration of Load Balancer Units.
 Check [annotation documentation](../docs/annotations.md) for more details.
