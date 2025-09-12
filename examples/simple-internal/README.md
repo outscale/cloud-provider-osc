@@ -1,63 +1,27 @@
-# Simple lb creation
+# Internal Load-Balancer
  
-This example creates a deployment named echoheaders on your cluster, which will run a single replica 
-of the echoserver container, listening on port 8080.
-Then create a Service that exposes our new application to the internal vpc over an Outscale Load Balancer unit (LBU) with schema setted to internal.
+This example creates an echoheaders deployment on your cluster, which listens on port 8080 and is exposed through a service available only within the VPC.
 
-- Add `kubernetes.io/role/internal-elb` to private subnet
+- Verify the the subnet where the load balancer needs to be deployed has the `OskK8sRole/service.internal` tag (with any value).
 
-- Create ns
-
-```
-$ kubectl create namespace simple-internal
+- Deploy the example
+```sh
+$ kubectl apply -f examples/simple-internal/
 namespace/simple-internal created
+deployment.apps/echoheaders created
+service/echoheaders-lb-internal created
 ```
 
-- Create bucket for logs. Be sure to change bucket name (they are unique per region).
-```
-$ aws s3 mb s3://ccm-examples  --endpoint https://osu.eu-west-2.outscale.com
-make_bucket: ccm-examples
-```
-
-- Adapt `service.beta.kubernetes.io/aws-load-balancer-access-log-s3-bucket-name` annotation in [specs/svc.yaml](specs/svc.yaml) with your bucket name.
-
-- Deploy the application, which a simple server that responds with the http headers it received, along with the Loadbalancer
-
-```
-$ kubectl apply  -f examples/simple-internal/specs/
-	deployment.apps/echoheaders created
-	service/echoheaders-lb-internal created
-	
-$ kubectl get all -n simple-internal
-NAME                               READY   STATUS    RESTARTS   AGE
-pod/echoheaders-5465f4df9d-wxht2   1/1     Running   0          5m20s
-
-NAME                            TYPE           CLUSTER-IP     EXTERNAL-IP                                                             PORT(S)        AGE
-service/echoheaders-lb-internal   LoadBalancer   10.32.187.30   a4fd6f97708b94d288e9986f98df61da-322867284.eu-west-2.lbu.outscale.com   80:32363/TCP   5m20s
-
-NAME                          READY   UP-TO-DATE   AVAILABLE   AGE
-deployment.apps/echoheaders   1/1     1            1           5m21s
-
-NAME                                     DESIRED   CURRENT   READY   AGE
-replicaset.apps/echoheaders-5465f4df9d   1         1         1       5m21s
+- Ensure the LB is created and the endpoint is available
+```sh
+$ kubectl get svc -n simple-internal
+NAME                      TYPE           CLUSTER-IP     EXTERNAL-IP                                                                      PORT(S)        AGE
+echoheaders-lb-internal   LoadBalancer   10.40.92.204   internal-3485cbf3059b4a47b7febcda8d15e26b-126712148.eu-west-2.lbu.outscale.com   80:31595/TCP   10m
 ```
 
-- Validate the LB was created and the endpoint is available
-
-```	
-$ kubectl get service  -n simple-internal echoheaders-lb-internal
-NAME                    TYPE           CLUSTER-IP     EXTERNAL-IP                                                             PORT(S)        AGE
-echoheaders-lb-internal   LoadBalancer   10.32.187.30   a4fd6f97708b94d288e9986f98df61da-322867284.eu-west-2.lbu.outscale.com   80:32363/TCP   33s
-```
-- Check logs under  buckets created  and its content
-```
-aws s3 ls --recursive s3://ccm-examples/ --endpoint https://osu.eu-west-2.outscale.com
-
-```
-- Wait for the lb to be ready  and then check it is running and forwarding traffic
-
-```		
-$ curl http://a4fd6f97708b94d288e9986f98df61da-322867284.eu-west-2.lbu.outscale.com
+- Wait for the LB to be ready, then verify it is running and forwarding traffic
+```sh
+$ kubectl run --image curlimages/curl:8.14.1 example-curl --restart=Never -ti --rm -q -- curl -s -S http://internal-3485cbf3059b4a47b7febcda8d15e26b-126712148.eu-west-2.lbu.outscale.com
 
 Hostname: echoheaders-5465f4df9d-wxht2
 
@@ -86,9 +50,8 @@ Request Body:
 ```
 
 - Cleanup resources:
-
-```
-$ kubectl delete  -f examples/simple-internal/specs/
+```sh
+$ kubectl delete  -f examples/simple-internal/
 ```
 
 
