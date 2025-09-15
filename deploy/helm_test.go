@@ -99,7 +99,7 @@ func TestHelmTemplate(t *testing.T) {
 		}, ds.Spec.Template.Spec.Tolerations)
 	})
 	t.Run("By default, auth is based on env", func(t *testing.T) {
-		specs := getHelmSpecs(t, nil)
+		specs := getHelmSpecs(t, []string{"oscSecretFormat=v1"})
 		require.IsType(t, &appsv1.DaemonSet{}, specs[4])
 		ds := specs[4].(*appsv1.DaemonSet)
 		require.Len(t, ds.Spec.Template.Spec.Containers, 1)
@@ -326,18 +326,29 @@ func TestHelmTemplate(t *testing.T) {
 		assert.Equal(t, "--extra-loadbalancer-tags=key1=value1,key2=value2", ds.Spec.Template.Spec.Containers[0].Command[4])
 	})
 	t.Run("The secret containing access keys may be changed", func(t *testing.T) {
-		specs := getHelmSpecs(t, []string{"oscSecretName=foo"})
-		require.IsType(t, &appsv1.DaemonSet{}, specs[4])
-		ds := specs[4].(*appsv1.DaemonSet)
-		require.Len(t, ds.Spec.Template.Spec.Containers, 1)
-		count := 0
-		for _, e := range ds.Spec.Template.Spec.Containers[0].Env {
-			if e.ValueFrom == nil || e.ValueFrom.SecretKeyRef == nil {
-				continue
+		{
+			specs := getHelmSpecs(t, []string{"oscSecretName=foo"})
+			require.IsType(t, &appsv1.DaemonSet{}, specs[4])
+			ds := specs[4].(*appsv1.DaemonSet)
+			require.Len(t, ds.Spec.Template.Spec.Containers, 1)
+			for _, e := range ds.Spec.Template.Spec.Containers[0].Env {
+				if e.ValueFrom == nil || e.ValueFrom.SecretKeyRef == nil {
+					continue
+				}
+				assert.Equal(t, "foo", e.ValueFrom.SecretKeyRef.Name)
 			}
-			assert.Equal(t, "foo", e.ValueFrom.SecretKeyRef.Name)
-			count++
 		}
-		assert.Equal(t, 2, count)
+		{
+			specs := getHelmSpecs(t, []string{"oscSecretName=foo", "oscSecretFormat=v1"})
+			require.IsType(t, &appsv1.DaemonSet{}, specs[4])
+			ds := specs[4].(*appsv1.DaemonSet)
+			require.Len(t, ds.Spec.Template.Spec.Containers, 1)
+			for _, e := range ds.Spec.Template.Spec.Containers[0].Env {
+				if e.ValueFrom == nil || e.ValueFrom.SecretKeyRef == nil {
+					continue
+				}
+				assert.Equal(t, "foo", e.ValueFrom.SecretKeyRef.Name)
+			}
+		}
 	})
 }

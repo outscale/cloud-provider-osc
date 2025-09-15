@@ -157,17 +157,65 @@ spec:
             {}
           volumeMounts:
           env:
-            - name: OSC_ACCESS_KEY
+            - name: OSC_ACCOUNT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: osc-secret
+                  key: osc_account_id
+                  optional: true
+            - name: OSC_ACCOUNT_IAM
+              valueFrom:
+                secretKeyRef:
+                  name: osc-secret
+                  key: osc_account_iam
+                  optional: true
+            - name: OSC_USER_ID
+              valueFrom:
+                secretKeyRef:
+                  name: osc-secret
+                  key: osc_user_id
+                  optional: true
+            - name: OSC_ARN
+              valueFrom:
+                secretKeyRef:
+                  name: osc-secret
+                  key: osc_arn
+                  optional: true
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: osc-secret
+                  key: key_id
+                  optional: false
+            - name: AWS_SECRET_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
                   name: osc-secret
                   key: access_key
                   optional: false
+            - name: AWS_DEFAULT_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: osc-secret
+                  key: aws_default_region
+                  optional: false
+            - name: AWS_AVAILABILITY_ZONES
+              valueFrom:
+                secretKeyRef:
+                  name: osc-secret
+                  key: aws_availability_zones
+                  optional: true
             - name: OSC_SECRET_KEY
               valueFrom:
                 secretKeyRef:
                   name: osc-secret
-                  key: secret_key
+                  key: access_key
+                  optional: false
+            - name: OSC_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: osc-secret
+                  key: key_id
                   optional: false
       volumes:
       hostNetwork: true
