@@ -4,6 +4,9 @@ on:
   pull_request:
     branches: [ OSC-MIGRATION, main ]
 
+permissions:
+  contents: read
+
 jobs:
   cred-scan:
     runs-on: ubuntu-latest
