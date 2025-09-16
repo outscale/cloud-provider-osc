@@ -1,5 +1,13 @@
 # Changelog
 
+## [v1.0.0-beta.1] - 2025-09-16
+
+### 🛠️ Changed / Refactoring
+* ✅ tests(helm): fix tests by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/490
+### 📝 Documentation
+* 📝 examples: updated examples by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/489
+* 📝 doc: updated README + sample EIM policy + cleanup by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/488
+
 ## [v1.0.0-alpha.2] - 2025-09-11
 
 ### 🛠️ Changed / Refactoring
