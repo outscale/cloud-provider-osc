@@ -116,7 +116,7 @@ make build-image image-tag image-push helm_deploy test-e2e
 5.  Generate helm doc `make helm-docs`
 6.  Update version in [deploy/osc-ccm-manifest.yml](../deploy/osc-ccm-manifest.yml)
 7.  Commit version with `git commit -am "cloud-controller-manager vX.Y.Z"`
-8.  Create PR and merge it to OSC-MIGRATION
-9.  Create Tag with `git tag vX.Y.Z` on OSC-MIGRATION
+8.  Create PR and merge it to main
+9.  Create Tag with `git tag vX.Y.Z` on main
 10. Push tag on Github
 11. Publish the release on Github
