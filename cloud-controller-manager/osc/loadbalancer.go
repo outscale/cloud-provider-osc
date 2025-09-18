@@ -56,18 +56,18 @@ func (c *Provider) EnsureLoadBalancer(ctx context.Context, clusterName string, s
 	}
 
 	var (
-		dns string
+		dns, ip string
 	)
 	if exists {
-		dns, err = c.cloud.UpdateLoadBalancer(ctx, lb, vms)
+		dns, ip, err = c.cloud.UpdateLoadBalancer(ctx, lb, vms)
 	} else {
-		dns, err = c.cloud.CreateLoadBalancer(ctx, lb, vms) // Note: no DNS is expected to be returned after creation
+		dns, ip, err = c.cloud.CreateLoadBalancer(ctx, lb, vms) // Note: no DNS is expected to be returned after creation
 	}
 	switch {
 	case err != nil:
 		return nil, err
 	case dns != "":
-		return &v1.LoadBalancerStatus{Ingress: []v1.LoadBalancerIngress{{Hostname: dns}}}, nil
+		return &v1.LoadBalancerStatus{Ingress: []v1.LoadBalancerIngress{{Hostname: dns, IP: ip}}}, nil
 	default:
 		return &v1.LoadBalancerStatus{}, nil
 	}
@@ -110,7 +110,7 @@ func (c *Provider) UpdateLoadBalancer(ctx context.Context, clusterName string, s
 		return err
 	}
 
-	_, err = c.cloud.UpdateLoadBalancer(ctx, lb, vms)
+	_, _, err = c.cloud.UpdateLoadBalancer(ctx, lb, vms)
 	return err
 }
 

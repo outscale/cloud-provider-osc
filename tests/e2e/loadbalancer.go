@@ -99,6 +99,13 @@ var _ = Describe("[e2e][loadbalancer][fast] Creating a load-balancer", func() {
 			}
 		})
 
+		It("ingress is configured", func() {
+			svc = e2eutils.WaitForSvc(ctx, cs, svc)
+			gomega.Expect(svc.Status.LoadBalancer.Ingress, gomega.Not(gomega.BeEmpty()))
+			gomega.Expect(svc.Status.LoadBalancer.Ingress[0].Hostname, gomega.Not(gomega.BeEmpty()))
+			gomega.Expect(svc.Status.LoadBalancer.Ingress[0].IP, gomega.Not(gomega.BeEmpty()))
+		})
+
 		It("can connect to the load-balancer", func() {
 			svc = e2eutils.WaitForSvc(ctx, cs, svc)
 			e2esvc.TestReachableHTTP(ctx, svc.Status.LoadBalancer.Ingress[0].Hostname, 80, testTimeout)

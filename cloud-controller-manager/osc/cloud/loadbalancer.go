@@ -385,7 +385,7 @@ func (c *Cloud) GetLoadBalancer(ctx context.Context, l *LoadBalancer) (dns strin
 }
 
 // CreateLoadBalancer creates a load-balancer.
-func (c *Cloud) CreateLoadBalancer(ctx context.Context, l *LoadBalancer, backend []VM) (dns string, err error) {
+func (c *Cloud) CreateLoadBalancer(ctx context.Context, l *LoadBalancer, backend []VM) (dns, ip string, err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("unable to create LB: %w", err)
@@ -405,7 +405,7 @@ func (c *Cloud) CreateLoadBalancer(ctx context.Context, l *LoadBalancer, backend
 	case l.PublicIPPool != "":
 		ip, err := c.allocateFromPool(ctx, l.PublicIPPool)
 		if err != nil {
-			return "", fmt.Errorf("allocate ip: %w", err)
+			return "", "", fmt.Errorf("allocate ip: %w", err)
 		}
 		createRequest.PublicIp = ip.PublicIpId
 	}
@@ -417,14 +417,14 @@ func (c *Cloud) CreateLoadBalancer(ctx context.Context, l *LoadBalancer, backend
 		// subnet
 		err = c.ensureSubnet(ctx, l)
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
 		createRequest.Subnets = &[]string{l.SubnetID}
 
 		// security group
 		err = c.ensureSecurityGroup(ctx, l)
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
 		sgs := append(l.SecurityGroups, l.AdditionalSecurityGroups...)
 		createRequest.SecurityGroups = &sgs
@@ -479,11 +479,13 @@ func (c *Cloud) CreateLoadBalancer(ctx context.Context, l *LoadBalancer, backend
 	}
 	switch {
 	case err != nil:
-		return "", err
-	case res.DnsName != nil:
-		return *res.DnsName, nil
+		return "", "", err
+	case !l.Internal && res.PublicIp == nil:
+		return "", "", ErrLoadBalancerIsNotReady
+	case res.DnsName == nil:
+		return "", "", ErrLoadBalancerIsNotReady
 	default:
-		return "", ErrLoadBalancerIsNotReady
+		return res.GetDnsName(), res.GetPublicIp(), nil
 	}
 }
 
@@ -571,7 +573,7 @@ func (c *Cloud) ensureSecurityGroup(ctx context.Context, l *LoadBalancer) error 
 }
 
 // UpdateLoadBalancer updates a load-balancer.
-func (c *Cloud) UpdateLoadBalancer(ctx context.Context, l *LoadBalancer, backend []VM) (dns string, err error) {
+func (c *Cloud) UpdateLoadBalancer(ctx context.Context, l *LoadBalancer, backend []VM) (dns string, ip string, err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("unable to create LB: %w", err)
@@ -579,10 +581,10 @@ func (c *Cloud) UpdateLoadBalancer(ctx context.Context, l *LoadBalancer, backend
 	}()
 	existing, err := c.getLoadBalancer(ctx, l)
 	if err != nil {
-		return "", fmt.Errorf("check LB: %w", err)
+		return "", "", fmt.Errorf("check LB: %w", err)
 	}
 	if existing == nil {
-		return "", errors.New("existing LBU not found")
+		return "", "", errors.New("existing LBU not found")
 	}
 
 	err = c.updateListeners(ctx, l, existing)
@@ -614,11 +616,13 @@ func (c *Cloud) UpdateLoadBalancer(ctx context.Context, l *LoadBalancer, backend
 
 	switch {
 	case err != nil:
-		return "", err
-	case existing.DnsName != nil:
-		return existing.GetDnsName(), nil
+		return "", "", err
+	case !l.Internal && existing.PublicIp == nil:
+		return "", "", ErrLoadBalancerIsNotReady
+	case existing.DnsName == nil:
+		return "", "", ErrLoadBalancerIsNotReady
 	default:
-		return "", ErrLoadBalancerIsNotReady
+		return existing.GetDnsName(), existing.GetPublicIp(), nil
 	}
 }
 
