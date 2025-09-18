@@ -52,9 +52,9 @@ func awsValidateResponseHandlerLogger(req *request.Request) {
 		logger.V(3).Error(req.Error, "LBU error", "LBU", call)
 	case req.HTTPResponse == nil:
 	case req.HTTPResponse.StatusCode > 299:
-		logger.V(3).Info("LBU error response: "+cleanAws(req.Params), "LBU", call, "http_status", req.HTTPResponse.Status)
+		logger.V(3).Info("LBU error response: "+cleanAws(req.Data), "LBU", call, "http_status", req.HTTPResponse.Status)
 	case logger.V(5).Enabled(): // no error
-		logger.Info("LBU response: "+cleanAws(req.Params), "LBU", call)
+		logger.Info("LBU response: "+cleanAws(req.Data), "LBU", call)
 	}
 }
 
