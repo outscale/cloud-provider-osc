@@ -579,6 +579,27 @@ func TestEnsureLoadBalancer_Update(t *testing.T) {
 		expectReadLoadBalancer(oapimock, func(desc *sdk.LoadBalancer) {
 			desc.DnsName = ptr.To("foo.example.com")
 			desc.BackendVmIds = &[]string{"i-foo"}
+			desc.PublicIp = ptr.To("198.51.100.42")
+		})
+		expectDescribeProxyProtocol(lbmock, false)
+		expectDescribeLoadBalancerAttributes(lbmock)
+		expectFindExistingIngressSecurityGroup(oapimock, "sg-foo")
+		expectFindExistingWorkerSG(oapimock)
+		p := osc.NewProviderWith(c)
+		status, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
+		require.NoError(t, err)
+		assert.Equal(t, &v1.LoadBalancerStatus{Ingress: []v1.LoadBalancerIngress{{Hostname: "foo.example.com", IP: "198.51.100.42"}}}, status)
+	})
+	t.Run("When retrying creation on an internal LBU, the status is properly returned when ready, without IP", func(t *testing.T) {
+		svc := testSvc()
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-internal"] = "true"
+		c, oapimock, lbmock := newAPI(t, self, "foo")
+		expectLoadbalancerExistsAndOwned(oapimock)
+		expectVMs(oapimock, sdkSelf, sdkVM)
+		expectReadLoadBalancer(oapimock, func(desc *sdk.LoadBalancer) {
+			desc.LoadBalancerType = ptr.To("internal")
+			desc.DnsName = ptr.To("foo.example.com")
+			desc.BackendVmIds = &[]string{"i-foo"}
 		})
 		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
@@ -598,6 +619,7 @@ func TestEnsureLoadBalancer_Update(t *testing.T) {
 		expectReadLoadBalancer(oapimock, func(desc *sdk.LoadBalancer) {
 			desc.DnsName = ptr.To("foo.example.com")
 			desc.BackendVmIds = &[]string{"i-foo"}
+			desc.PublicIp = ptr.To("198.51.100.42")
 		})
 		expectDeleteListener(oapimock)
 		expectCreateListener(oapimock, 8080)
@@ -623,6 +645,7 @@ func TestEnsureLoadBalancer_Update(t *testing.T) {
 		expectReadLoadBalancer(oapimock, func(desc *sdk.LoadBalancer) {
 			desc.DnsName = ptr.To("foo.example.com")
 			desc.BackendVmIds = &[]string{"i-foo"}
+			desc.PublicIp = ptr.To("198.51.100.42")
 		})
 		expectDescribeProxyProtocol(lbmock, false)
 		expectConfigureProxyProtocol(lbmock, false, true)
@@ -642,6 +665,7 @@ func TestEnsureLoadBalancer_Update(t *testing.T) {
 		expectReadLoadBalancer(oapimock, func(desc *sdk.LoadBalancer) {
 			desc.DnsName = ptr.To("foo.example.com")
 			desc.BackendVmIds = &[]string{"i-foo"}
+			desc.PublicIp = ptr.To("198.51.100.42")
 		})
 		expectDescribeProxyProtocol(lbmock, true)
 		expectDescribeLoadBalancerAttributes(lbmock)
@@ -659,6 +683,7 @@ func TestEnsureLoadBalancer_Update(t *testing.T) {
 		expectReadLoadBalancer(oapimock, func(desc *sdk.LoadBalancer) {
 			desc.DnsName = ptr.To("foo.example.com")
 			desc.BackendVmIds = &[]string{"i-foo"}
+			desc.PublicIp = ptr.To("198.51.100.42")
 		})
 		expectDescribeProxyProtocol(lbmock, true)
 		expectConfigureProxyProtocol(lbmock, true, false)
@@ -681,6 +706,7 @@ func TestUpdateLoadBalancer(t *testing.T) {
 		expectReadLoadBalancer(oapimock, func(desc *sdk.LoadBalancer) {
 			desc.DnsName = ptr.To("foo.example.com")
 			desc.BackendVmIds = &[]string{"i-foo"}
+			desc.PublicIp = ptr.To("198.51.100.42")
 		})
 		expectDeleteListener(oapimock)
 		expectCreateListener(oapimock, 8080)
@@ -707,6 +733,7 @@ func TestUpdateLoadBalancer(t *testing.T) {
 		expectReadLoadBalancer(oapimock, func(desc *sdk.LoadBalancer) {
 			desc.DnsName = ptr.To("foo.example.com")
 			desc.BackendVmIds = &[]string{"i-foo"}
+			desc.PublicIp = ptr.To("198.51.100.42")
 			desc.GetListeners()[0].LoadBalancerProtocol = ptr.To("https")
 			desc.GetListeners()[0].BackendProtocol = ptr.To("http")
 			desc.GetListeners()[0].ServerCertificateId = ptr.To("arn:aws:service:region:account:resource")
@@ -734,6 +761,7 @@ func TestUpdateLoadBalancer(t *testing.T) {
 		expectReadLoadBalancer(oapimock, func(desc *sdk.LoadBalancer) {
 			desc.DnsName = ptr.To("foo.example.com")
 			desc.BackendVmIds = &[]string{"i-foo"}
+			desc.PublicIp = ptr.To("198.51.100.42")
 		})
 		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
@@ -769,6 +797,7 @@ func TestUpdateLoadBalancer(t *testing.T) {
 		expectReadLoadBalancer(oapimock, func(desc *sdk.LoadBalancer) {
 			desc.DnsName = ptr.To("foo.example.com")
 			desc.BackendVmIds = &[]string{"i-foo"}
+			desc.PublicIp = ptr.To("198.51.100.42")
 		})
 		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
@@ -785,6 +814,7 @@ func TestUpdateLoadBalancer(t *testing.T) {
 		expectVMs(oapimock, sdkSelf, sdkVM)
 		expectReadLoadBalancer(oapimock, func(desc *sdk.LoadBalancer) {
 			desc.DnsName = ptr.To("foo.example.com")
+			desc.PublicIp = ptr.To("198.51.100.42")
 		})
 		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
@@ -803,6 +833,7 @@ func TestUpdateLoadBalancer(t *testing.T) {
 		expectReadLoadBalancer(oapimock, func(desc *sdk.LoadBalancer) {
 			desc.DnsName = ptr.To("foo.example.com")
 			desc.BackendVmIds = &[]string{"i-foo", "i-bar"}
+			desc.PublicIp = ptr.To("198.51.100.42")
 		})
 		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
