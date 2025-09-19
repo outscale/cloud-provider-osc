@@ -1,5 +1,12 @@
 # Changelog
 
+## [v1.0.0-beta.2] - 2025-09-19
+
+### ✨ Added
+* 👽️ load-balancer: set ingress IP for better integration with IP-based services by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/494
+### 🐛 Fixed
+* 🐛 fix(loadbalancer): updating a proxy protocol LBU was broken by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/495
+
 ## [v1.0.0-beta.1] - 2025-09-16
 
 ### 🛠️ Changed / Refactoring
