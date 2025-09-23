@@ -8,6 +8,7 @@ import (
 	"github.com/outscale/cloud-provider-osc/cloud-controller-manager/osc/cloud"
 	v1 "k8s.io/api/core/v1"
 	cloudprovider "k8s.io/cloud-provider"
+	"k8s.io/klog/v2"
 )
 
 // GetLoadBalancer implements cloudprovider.LoadBalancer
@@ -34,6 +35,22 @@ func (c *Provider) GetLoadBalancerName(ctx context.Context, clusterName string, 
 		return ""
 	}
 	return lb.Name
+}
+
+func (c *Provider) resolveLBUHostname(ctx context.Context, hostname string) (string, error) {
+	logger := klog.FromContext(ctx)
+	logger.V(5).Info("Resolving LBU hostname", "hostname", hostname)
+	ips, err := c.resolver.LookupHost(ctx, hostname)
+	if err != nil {
+		return "", fmt.Errorf("resolving internal hostname: %w", err)
+	}
+	if len(ips) == 0 {
+		logger.V(4).Info("No IP found for hostname", "hostname", hostname)
+		return "", nil
+	}
+	ip := ips[0]
+	logger.V(4).Info("Resolved LBU hostname", "hostname", hostname, "hostname", ip)
+	return ip, nil
 }
 
 // EnsureLoadBalancer implements cloudprovider.LoadBalancer
@@ -67,6 +84,12 @@ func (c *Provider) EnsureLoadBalancer(ctx context.Context, clusterName string, s
 	case err != nil:
 		return nil, err
 	case dns != "":
+		if ip == "" {
+			ip, err = c.resolveLBUHostname(ctx, dns)
+			if err != nil {
+				return nil, err
+			}
+		}
 		return &v1.LoadBalancerStatus{Ingress: []v1.LoadBalancerIngress{{Hostname: dns, IP: ip}}}, nil
 	default:
 		return &v1.LoadBalancerStatus{}, nil

@@ -131,6 +131,77 @@ var _ = Describe("[e2e][loadbalancer][fast] Creating a load-balancer", func() {
 	})
 })
 
+var _ = Describe("[e2e][loadbalancer] Creating an internal load-balancer", func() {
+	f := framework.NewDefaultFramework("ccm")
+	f.NamespacePodSecurityEnforceLevel = admissionapi.LevelPrivileged
+
+	var (
+		cs     clientset.Interface
+		ns     *v1.Namespace
+		ctx    context.Context
+		lbName string
+	)
+
+	BeforeEach(func() {
+		cs = f.ClientSet
+		ns = f.Namespace
+		ctx = context.Background()
+		lbName = "ccm-simple-" + xid.New().String()
+	})
+
+	Context("When creating an internal service", func() {
+		var (
+			deployment *appsv1.Deployment
+			svc        *v1.Service
+		)
+		BeforeEach(func() {
+			deployment = e2eutils.CreateDeployment(ctx, cs, ns, 1, []v1.ContainerPort{
+				{
+					Name:          "tcp",
+					Protocol:      v1.ProtocolTCP,
+					ContainerPort: 8080,
+				},
+			})
+			e2eutils.WaitForDeploymentReady(ctx, cs, deployment)
+
+			svc = e2eutils.CreateSvc(ctx, cs, ns, map[string]string{
+				"service.beta.kubernetes.io/osc-load-balancer-name":     lbName,
+				"service.beta.kubernetes.io/osc-load-balancer-internal": "true",
+			}, []v1.ServicePort{
+				{
+					Name:       "tcp",
+					Protocol:   v1.ProtocolTCP,
+					TargetPort: intstr.FromInt(8080),
+					Port:       80,
+				},
+			}, nil)
+		})
+
+		AfterEach(func() {
+			if deployment != nil {
+				e2eutils.DeleteDeployment(ctx, cs, deployment)
+				deployment = nil
+			}
+			if svc != nil {
+				e2eutils.DeleteSvc(ctx, cs, svc)
+				svc = nil
+			}
+		})
+
+		It("ingress is configured and a private IP is returned", func() {
+			svc = e2eutils.WaitForSvc(ctx, cs, svc)
+			gomega.Expect(svc.Status.LoadBalancer.Ingress, gomega.Not(gomega.BeEmpty()))
+			gomega.Expect(svc.Status.LoadBalancer.Ingress[0].Hostname, gomega.Not(gomega.BeEmpty()))
+			gomega.Expect(svc.Status.LoadBalancer.Ingress[0].IP, gomega.Not(gomega.BeEmpty()))
+			gomega.Expect(svc.Status.LoadBalancer.Ingress[0].IP, gomega.Or(
+				// 172.16.0.0/12 should be tested, but a /12 has too many string prefixes
+				gomega.HavePrefix("10."),
+				gomega.HavePrefix("192.168."),
+			))
+		})
+	})
+})
+
 var _ = Describe("[e2e][loadbalancer] Checking proxy-protocol", func() {
 	f := framework.NewDefaultFramework("ccm")
 	f.NamespacePodSecurityEnforceLevel = admissionapi.LevelPrivileged
