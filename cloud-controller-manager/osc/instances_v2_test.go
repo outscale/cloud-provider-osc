@@ -17,7 +17,7 @@ func TestInstanceExists(t *testing.T) {
 	t.Run("If the instance exists, return true", func(t *testing.T) {
 		c, mock, _ := newAPI(t, self, "foo")
 		expectVMs(mock, sdkSelf, sdkVM)
-		p := osc.NewProviderWith(c)
+		p := osc.NewProviderWith(c, nil)
 		exists, err := p.InstanceExists(context.TODO(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
 		require.NoError(t, err)
 		assert.True(t, exists)
@@ -25,7 +25,7 @@ func TestInstanceExists(t *testing.T) {
 	t.Run("If the instance does not exists, return true", func(t *testing.T) {
 		c, mock, _ := newAPI(t, self, "foo")
 		expectVMs(mock, sdkSelf)
-		p := osc.NewProviderWith(c)
+		p := osc.NewProviderWith(c, nil)
 		exists, err := p.InstanceExists(context.TODO(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
 		require.NoError(t, err)
 		assert.False(t, exists)
@@ -36,7 +36,7 @@ func TestInstanceShutdown(t *testing.T) {
 	t.Run("If the instance is running, return false", func(t *testing.T) {
 		c, mock, _ := newAPI(t, self, "foo")
 		expectVMs(mock, sdkSelf, sdkVM)
-		p := osc.NewProviderWith(c)
+		p := osc.NewProviderWith(c, nil)
 		shut, err := p.InstanceShutdown(context.TODO(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
 		require.NoError(t, err)
 		assert.False(t, shut)
@@ -46,7 +46,7 @@ func TestInstanceShutdown(t *testing.T) {
 		sdkVM.State = ptr.To("stopped")
 		c, mock, _ := newAPI(t, self, "foo")
 		expectVMs(mock, sdkSelf, sdkVM)
-		p := osc.NewProviderWith(c)
+		p := osc.NewProviderWith(c, nil)
 		shut, err := p.InstanceShutdown(context.TODO(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
 		require.NoError(t, err)
 		assert.True(t, shut)
@@ -56,7 +56,7 @@ func TestInstanceShutdown(t *testing.T) {
 func TestInstanceMetadata(t *testing.T) {
 	c, mock, _ := newAPI(t, self, "foo")
 	expectVMs(mock, sdkSelf, sdkVM)
-	p := osc.NewProviderWith(c)
+	p := osc.NewProviderWith(c, nil)
 	meta, err := p.InstanceMetadata(context.TODO(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
 	require.NoError(t, err)
 	assert.Equal(t, &cloudprovider.InstanceMetadata{

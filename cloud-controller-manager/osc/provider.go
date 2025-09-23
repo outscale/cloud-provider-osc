@@ -19,6 +19,7 @@ package osc
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"time"
 
@@ -38,6 +39,10 @@ import (
 // ProviderName is the name of this cloud provider.
 const ProviderName = "osc"
 
+type Resolver interface {
+	LookupHost(ctx context.Context, hostname string) ([]string, error)
+}
+
 // Provider is the Ouscale Cloud provider.
 type Provider struct {
 	opts Options
@@ -49,6 +54,7 @@ type Provider struct {
 
 	clientBuilder cloudprovider.ControllerClientBuilder
 	kubeClient    clientset.Interface
+	resolver      Resolver
 
 	nodeInformer     informercorev1.NodeInformer
 	eventBroadcaster record.EventBroadcaster
@@ -68,16 +74,18 @@ func NewProvider(ctx context.Context, opts Options) (*Provider, error) {
 	klog.V(3).Infof("Instance: %q", self.ID)
 	klog.V(3).Infof("VPC: %q", self.NetID)
 	return &Provider{
-		opts:  opts,
-		cloud: c,
-		self:  self,
+		opts:     opts,
+		cloud:    c,
+		resolver: net.DefaultResolver,
+		self:     self,
 	}, nil
 }
 
-func NewProviderWith(c *cloud.Cloud) *Provider {
+func NewProviderWith(c *cloud.Cloud, r Resolver) *Provider {
 	return &Provider{
-		cloud: c,
-		self:  c.Self,
+		cloud:    c,
+		resolver: r,
+		self:     c.Self,
 	}
 }
 
