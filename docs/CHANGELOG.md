@@ -1,5 +1,10 @@
 # Changelog
 
+## [v1.0.0-beta.3] - 2025-09-24
+
+### ✨ Added
+* 👽️ load-balancer: set ingress IP for private LBUs by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/498
+
 ## [v1.0.0-beta.2] - 2025-09-19
 
 ### ✨ Added
