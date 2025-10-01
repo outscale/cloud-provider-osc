@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.0.0-rc.1] - 2025-10-01
+
+No changes since v1.0.0-beta.3
+
 ## [v1.0.0-beta.3] - 2025-09-24
 
 ### ✨ Added
