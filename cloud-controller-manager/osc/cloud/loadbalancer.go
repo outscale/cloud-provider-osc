@@ -119,10 +119,11 @@ type AccessLog struct {
 type LoadBalancer struct {
 	Name                     string `annotation:"osc-load-balancer-name"`
 	ServiceName              string
-	Internal                 bool              `annotation:"osc-load-balancer-internal"`
-	PublicIPPool             string            `annotation:"osc-load-balancer-ip-pool"`
-	PublicIPID               string            `annotation:"osc-load-balancer-ip-id"`
-	SubnetID                 string            `annotation:"osc-load-balancer-subnet-id"`
+	Internal                 bool   `annotation:"osc-load-balancer-internal"`
+	PublicIPPool             string `annotation:"osc-load-balancer-ip-pool"`
+	PublicIPID               string `annotation:"osc-load-balancer-ip-id"`
+	SubnetID                 string `annotation:"osc-load-balancer-subnet-id"`
+	NetID                    string
 	SecurityGroups           []string          `annotation:"osc-load-balancer-security-group"`
 	AdditionalSecurityGroups []string          `annotation:"osc-load-balancer-extra-security-groups"`
 	TargetRole               string            `annotation:"osc-load-balancer-target-role"`
@@ -529,6 +530,7 @@ func (c *Cloud) ensureSubnet(ctx context.Context, l *LoadBalancer) error {
 		for _, subnet := range subnets {
 			if hasTag(subnet.GetTags(), key) {
 				l.SubnetID = subnet.GetSubnetId()
+				l.NetID = subnet.GetNetId()
 				return true
 			}
 		}
@@ -555,7 +557,7 @@ func (c *Cloud) ensureSecurityGroup(ctx context.Context, l *LoadBalancer) error 
 	resp, err := c.api.OAPI().CreateSecurityGroup(ctx, osc.CreateSecurityGroupRequest{
 		SecurityGroupName: sgName,
 		Description:       sgDescription,
-		NetId:             &c.Self.NetID,
+		NetId:             &l.NetID,
 	})
 	if err != nil {
 		return fmt.Errorf("create SG: %w", err)
