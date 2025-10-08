@@ -1,5 +1,49 @@
 # Changelog
 
+## [v1.0.0] - 2025-10-01
+
+No changes since v1.0.0-rc.1
+
+Breaking change: the secret storing credentials has now the same format as the CSI driver
+
+Changes since v0.2.8:
+### ✨ Added
+* ✨ feat(config): load cfg from profile file by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/462
+* ✨ feat(loadbalancer): use predefined public IPs by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/463
+* ✨ feat(loadbalancers): add custom tags  by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/464
+* ✨ feat(loadbalancer): filter backend nodes by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/467
+* ✨ feat: allow custom cluster id by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/470
+* 👽️ load-balancer: set ingress IP for better integration with IP-based services by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/494
+* 👽️ load-balancer: set ingress IP for private LBUs by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/498
+### 🛠️ Changed / Refactoring
+* 👷 dependabot: update to main branch by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/444
+* ♻️ Version 1.0 refactoring by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/442
+* 👷 build: update Go version by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/471
+* 🔊 logs: use v1 logs for metadata calls by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/476
+* 🚀 helm: add v0/v1 compatible helm chart by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/485
+* ✅ tests(helm): fix tests by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/490
+### 📝 Documentation
+* 📝 examples: updated examples by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/489
+* 📝 doc: updated README + sample EIM policy + cleanup by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/488
+### 🐛 Fixed
+* 🐛 fix/helm: nodeSelector did not work with RKE by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/436
+* 🐛 fix(loadbalancer): CCM upgrade would recreate all listeners by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/469
+* 🥅 errors(loadbalancers): better handling of nodes without providerID by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/481
+* 🥅 errors: handle when no subnet is found by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/477
+* 🐛 fix: ccm was broken outside eu-west-2 by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/482
+* 🐛 fix(loadbalancer): updating a proxy protocol LBU was broken by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/495
+### 📦 Dependency updates
+* Bump github.com/outscale/osc-sdk-go/v2 from 2.26.0 to 2.27.0 by @dependabot[bot] in https://github.com/outscale/cloud-provider-osc/pull/428
+* ⬆ deps: bump kube to 1.32 by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/437
+* ⬆️ deps: Bump k8s.io/cloud-provider from 0.32.3 to 0.32.8 by @dependabot[bot] in https://github.com/outscale/cloud-provider-osc/pull/446
+* ⬆️ deps: Bump k8s.io/kubernetes from 1.32.3 to 1.32.8 by @dependabot[bot] in https://github.com/outscale/cloud-provider-osc/pull/451
+* ⬆️ deps: Bump k8s.io/kubectl from 0.32.3 to 0.32.8 by @dependabot[bot] in https://github.com/outscale/cloud-provider-osc/pull/449
+* ⬆️ deps: Bump k8s.io/pod-security-admission from 0.32.3 to 0.32.8 by @dependabot[bot] in https://github.com/outscale/cloud-provider-osc/pull/445
+* ⬆️ deps: Bump github.com/stretchr/testify from 1.10.0 to 1.11.0 by @dependabot[bot] in https://github.com/outscale/cloud-provider-osc/pull/457
+* ⬆️ deps: Bump github.com/outscale/osc-sdk-go/v2 from 2.27.0 to 2.29.0 by @dependabot[bot] in https://github.com/outscale/cloud-provider-osc/pull/454
+* ⬆️ deps: Bump github.com/onsi/gomega from 1.36.3 to 1.38.2 by @dependabot[bot] in https://github.com/outscale/cloud-provider-osc/pull/458
+* ⬆️ deps: Bump go.uber.org/mock from 0.5.2 to 0.6.0 by @dependabot[bot] in https://github.com/outscale/cloud-provider-osc/pull/459
+
 ## [v1.0.0-rc.1] - 2025-10-01
 
 No changes since v1.0.0-beta.3
