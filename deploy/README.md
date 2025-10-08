@@ -21,7 +21,7 @@ This includes:
 - [Instances](https://docs.outscale.com/en/userguide/About-Instances.html)
 - [Security Groups](https://docs.outscale.com/en/userguide/About-Security-Groups-(Concepts).html)
 
-The tag key must be `OscK8sClusterID/[mcluster-id]` (`[cluster-id]` being the ID of a cluster) and tag value can be one of the following values:
+The tag key must be `OscK8sClusterID/[cluster-id]` (`[cluster-id]` being the ID of a cluster) and tag value can be one of the following values:
 - `shared`: resource is shared between multiple clusters, and should not be destroyed,
 - `owned`: the resource is considered owned and managed by the cluster.
 
@@ -43,7 +43,7 @@ The Cluster API Provider for Outscale (CAPOSC) sets the tag, no need to do anyth
 
 The CCM will look for a subnet having one of the following tags:
 * `OscK8sRole/service.internal` is service is internal,
-* `OscK8sRole/service` is service is not internal of if no `OscK8sRole/service.internal` subnet is found,
+* `OscK8sRole/service` is service is not internal or if no `OscK8sRole/service.internal` subnet is found,
 * `OscK8sRole/loadbalancer` if no subnet found.
 
 The Cluster API Provider for Outscale (CAPOSC) automatically sets the `OscK8sRole/loadbalancer` tag to the subnet where the Kubernetes API load-balancer is configured.
@@ -111,14 +111,15 @@ helm upgrade --install --wait --wait-for-jobs k8s-osc-ccm oci://registry-1.docke
 ```
 More [helm options are available](../docs/helm.md)
 
-# Check Deployment
+# Upgrading to v1.0
 
-To check if Outscale Cloud Manager has been deployed, check for `osc-cloud-controller-manager`:
-```
-kubectl get pod -n kube-system -l "app=osc-cloud-controller-manager"
-```
+The secret has now the same format as the CSI driver. You need to rename:
+* `key_id` to `access_key`,
+* `access_key` to `secret_key`.
 
-You can also deploy a simple application exposed by a Service like [2048 web application](../examples/2048/README.md).
+All other entries can be deleted.
+
+If you use an EIM user, you also need to update your policies with [the updated EIM policy](eim-policy.example.json).
 
 # Troubleshooting
 

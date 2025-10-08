@@ -1,6 +1,6 @@
 # osc-cloud-controller-manager
 
-![Version: 0.5.0](https://img.shields.io/badge/Version-0.5.0-informational?style=flat-square) ![AppVersion: 0.2.8](https://img.shields.io/badge/AppVersion-0.2.8-informational?style=flat-square)
+![Version: 0.6.0](https://img.shields.io/badge/Version-0.6.0-informational?style=flat-square) ![AppVersion: 1.0.0](https://img.shields.io/badge/AppVersion-1.0.0-informational?style=flat-square)
 
 A Helm chart for OSC CCM cloud provider
 
@@ -36,12 +36,12 @@ Kubernetes: `>=1.20.0-0`
 | httpsProxy | string | `""` | Value used to create environment variable HTTPS_PROXY |
 | image.pullPolicy | string | `"IfNotPresent"` | Container pull policy |
 | image.repository | string | `"outscale/cloud-provider-osc"` | Container image to use |
-| image.tag | string | `"v0.2.8"` | Container image tag to deploy |
+| image.tag | string | `"v1.0.0"` | Container image tag to deploy |
 | imagePullSecrets | list | `[]` | Specify image pull secrets |
 | noProxy | string | `""` | Value used to create environment variable NO_PROXY |
 | nodeSelector | object | `{}` | Assign Pod to Nodes (see [kubernetes doc](https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes/)) |
 | oscCredentialsFromFile | bool | `false` | Set if credentials are read from a [profile file](https://docs.outscale.com/en/userguide/Installing-and-Configuring-oapi-cli.html#_configuring_oapi_cli) stored in `/root/.osc/config.json`. If `oscSecretName` is set, the secret is mounted as `/root/.osc` and is expected to have a `config.json` key. |
-| oscSecretFormat | string | `"v0"` | Set to v1 if deploying a v1 image, v0 otherwise. |
+| oscSecretFormat | string | `"v1"` | Set to v1 if deploying a v1 image using access_key/secret_key secret values, v0 otherwise. |
 | oscSecretName | string | `"osc-secret"` | Secret name containing cloud credentials |
 | podLabels | object | `{}` | Labels for pod |
 | replicaCount | int | `1` | Number of replicas to deploy |
