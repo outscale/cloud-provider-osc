@@ -17,12 +17,16 @@ func (c *Provider) GetLoadBalancer(ctx context.Context, clusterName string, svc 
 	if err != nil {
 		return nil, false, fmt.Errorf("unable to build LB: %w", err)
 	}
-	dns, found, err := c.cloud.GetLoadBalancer(ctx, lb)
+	dns, ip, found, err := c.cloud.GetLoadBalancer(ctx, lb)
 	switch {
 	case err != nil || !found:
 		return nil, found, err
 	case dns != "":
-		return &v1.LoadBalancerStatus{Ingress: []v1.LoadBalancerIngress{{Hostname: dns}}}, true, nil
+		i, err := c.ingressStatus(ctx, lb, dns, ip)
+		if err != nil {
+			return nil, true, err
+		}
+		return &v1.LoadBalancerStatus{Ingress: []v1.LoadBalancerIngress{i}}, true, nil
 	default:
 		return &v1.LoadBalancerStatus{}, true, nil
 	}
@@ -84,13 +88,11 @@ func (c *Provider) EnsureLoadBalancer(ctx context.Context, clusterName string, s
 	case err != nil:
 		return nil, err
 	case dns != "":
-		if ip == "" {
-			ip, err = c.resolveLBUHostname(ctx, dns)
-			if err != nil {
-				return nil, err
-			}
+		i, err := c.ingressStatus(ctx, lb, dns, ip)
+		if err != nil {
+			return nil, err
 		}
-		return &v1.LoadBalancerStatus{Ingress: []v1.LoadBalancerIngress{{Hostname: dns, IP: ip}}}, nil
+		return &v1.LoadBalancerStatus{Ingress: []v1.LoadBalancerIngress{i}}, nil
 	default:
 		return &v1.LoadBalancerStatus{}, nil
 	}
@@ -154,6 +156,26 @@ func (c *Provider) EnsureLoadBalancerDeleted(ctx context.Context, clusterName st
 	default:
 		return c.cloud.DeleteLoadBalancer(ctx, lb)
 	}
+}
+
+func (c *Provider) ingressStatus(ctx context.Context, lb *cloud.LoadBalancer, dns, ip string) (v1.LoadBalancerIngress, error) {
+	var (
+		err error
+		res v1.LoadBalancerIngress
+	)
+	if lb.IngressAddress.NeedIP() {
+		if ip == "" {
+			ip, err = c.resolveLBUHostname(ctx, dns)
+			if err != nil {
+				return res, fmt.Errorf("resolve hostname: %w", err)
+			}
+		}
+		res.IP = ip
+	}
+	if lb.IngressAddress.NeedHostname() {
+		res.Hostname = dns
+	}
+	return res, nil
 }
 
 var _ cloudprovider.LoadBalancer = (*Provider)(nil)

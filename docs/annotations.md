@@ -32,4 +32,5 @@ The supported Service annotations are:
 | service.beta.kubernetes.io/osc-load-balancer-connection-draining-enabled | n/a | Yes | Enable connection draining.
 | service.beta.kubernetes.io/osc-load-balancer-connection-draining-timeout | n/a | Yes | The connection draining timeout.
 | service.beta.kubernetes.io/osc-load-balancer-connection-idle-timeout | `60` | Yes | The idle connection timeout.
+| service.beta.kubernetes.io/osc-load-balancer-ingress-address | `hostname` | Yes | Defines what information is set in `status.loadBalancer.ingress`: `hostname`, `ip` or `both` (sets both ip and hostname).
 | service.beta.kubernetes.io/load-balancer-source-ranges | n/a | Yes | The IP source ranges allowed to call the load balancer.

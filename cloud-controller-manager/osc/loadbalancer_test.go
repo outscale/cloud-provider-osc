@@ -44,12 +44,57 @@ func TestGetLoadBalancer(t *testing.T) {
 	t.Run("If the ingress is configured, it is returned", func(t *testing.T) {
 		svc := testSvc()
 		c, mock, _ := newAPI(t, self, "foo")
-		expectReadLoadBalancer(mock, func(desc *sdk.LoadBalancer) { desc.DnsName = ptr.To("bar.example.com") })
+		expectReadLoadBalancer(mock, func(desc *sdk.LoadBalancer) {
+			desc.DnsName = ptr.To("bar.example.com")
+			desc.PublicIp = ptr.To("198.51.100.42")
+		})
 		p := osc.NewProviderWith(c, staticDNSResolver{})
 		status, exists, err := p.GetLoadBalancer(context.TODO(), "foo", svc)
 		require.NoError(t, err)
 		assert.True(t, exists)
 		assert.Equal(t, &v1.LoadBalancerStatus{Ingress: []v1.LoadBalancerIngress{{Hostname: "bar.example.com"}}}, status)
+	})
+	t.Run("The ingress has only the IP when requested", func(t *testing.T) {
+		svc := testSvc()
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-ingress-address"] = "ip"
+		c, mock, _ := newAPI(t, self, "foo")
+		expectReadLoadBalancer(mock, func(desc *sdk.LoadBalancer) {
+			desc.DnsName = ptr.To("bar.example.com")
+			desc.PublicIp = ptr.To("198.51.100.42")
+		})
+		p := osc.NewProviderWith(c, staticDNSResolver{})
+		status, exists, err := p.GetLoadBalancer(context.TODO(), "foo", svc)
+		require.NoError(t, err)
+		assert.True(t, exists)
+		assert.Equal(t, &v1.LoadBalancerStatus{Ingress: []v1.LoadBalancerIngress{{IP: "198.51.100.42"}}}, status)
+	})
+	t.Run("The ingress has only the hostname when requested", func(t *testing.T) {
+		svc := testSvc()
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-ingress-address"] = "hostname"
+		c, mock, _ := newAPI(t, self, "foo")
+		expectReadLoadBalancer(mock, func(desc *sdk.LoadBalancer) {
+			desc.DnsName = ptr.To("bar.example.com")
+			desc.PublicIp = ptr.To("198.51.100.42")
+		})
+		p := osc.NewProviderWith(c, staticDNSResolver{})
+		status, exists, err := p.GetLoadBalancer(context.TODO(), "foo", svc)
+		require.NoError(t, err)
+		assert.True(t, exists)
+		assert.Equal(t, &v1.LoadBalancerStatus{Ingress: []v1.LoadBalancerIngress{{Hostname: "bar.example.com"}}}, status)
+	})
+	t.Run("The ingress has bost IP and hostname when requested", func(t *testing.T) {
+		svc := testSvc()
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-ingress-address"] = "both"
+		c, mock, _ := newAPI(t, self, "foo")
+		expectReadLoadBalancer(mock, func(desc *sdk.LoadBalancer) {
+			desc.DnsName = ptr.To("bar.example.com")
+			desc.PublicIp = ptr.To("198.51.100.42")
+		})
+		p := osc.NewProviderWith(c, staticDNSResolver{})
+		status, exists, err := p.GetLoadBalancer(context.TODO(), "foo", svc)
+		require.NoError(t, err)
+		assert.True(t, exists)
+		assert.Equal(t, &v1.LoadBalancerStatus{Ingress: []v1.LoadBalancerIngress{{Hostname: "bar.example.com", IP: "198.51.100.42"}}}, status)
 	})
 	t.Run("If no ingress is configured, status is empty", func(t *testing.T) {
 		svc := testSvc()
@@ -577,8 +622,68 @@ func (staticDNSResolver) LookupHost(ctx context.Context, hostname string) ([]str
 }
 
 func TestEnsureLoadBalancer_Update(t *testing.T) {
-	t.Run("When retrying creation, the status is properly returned when ready", func(t *testing.T) {
+	t.Run("When retrying creation, the status is properly returned when ready with only the hostname", func(t *testing.T) {
 		svc := testSvc()
+		c, oapimock, lbmock := newAPI(t, self, "foo")
+		expectLoadbalancerExistsAndOwned(oapimock)
+		expectVMs(oapimock, sdkSelf, sdkVM)
+		expectReadLoadBalancer(oapimock, func(desc *sdk.LoadBalancer) {
+			desc.DnsName = ptr.To("foo.example.com")
+			desc.BackendVmIds = &[]string{"i-foo"}
+			desc.PublicIp = ptr.To("198.51.100.42")
+		})
+		expectDescribeProxyProtocol(lbmock, false)
+		expectDescribeLoadBalancerAttributes(lbmock)
+		expectFindExistingIngressSecurityGroup(oapimock, "sg-foo")
+		expectFindExistingWorkerSG(oapimock)
+		p := osc.NewProviderWith(c, staticDNSResolver{})
+		status, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
+		require.NoError(t, err)
+		assert.Equal(t, &v1.LoadBalancerStatus{Ingress: []v1.LoadBalancerIngress{{Hostname: "foo.example.com"}}}, status)
+	})
+	t.Run("When retrying creation, the status is properly returned when ready, with only the IP", func(t *testing.T) {
+		svc := testSvc()
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-ingress-address"] = "ip"
+		c, oapimock, lbmock := newAPI(t, self, "foo")
+		expectLoadbalancerExistsAndOwned(oapimock)
+		expectVMs(oapimock, sdkSelf, sdkVM)
+		expectReadLoadBalancer(oapimock, func(desc *sdk.LoadBalancer) {
+			desc.DnsName = ptr.To("foo.example.com")
+			desc.BackendVmIds = &[]string{"i-foo"}
+			desc.PublicIp = ptr.To("198.51.100.42")
+		})
+		expectDescribeProxyProtocol(lbmock, false)
+		expectDescribeLoadBalancerAttributes(lbmock)
+		expectFindExistingIngressSecurityGroup(oapimock, "sg-foo")
+		expectFindExistingWorkerSG(oapimock)
+		p := osc.NewProviderWith(c, staticDNSResolver{})
+		status, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
+		require.NoError(t, err)
+		assert.Equal(t, &v1.LoadBalancerStatus{Ingress: []v1.LoadBalancerIngress{{IP: "198.51.100.42"}}}, status)
+	})
+	t.Run("When retrying creation, the status is properly returned when ready, with only the nostname", func(t *testing.T) {
+		svc := testSvc()
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-ingress-address"] = "hostname"
+		c, oapimock, lbmock := newAPI(t, self, "foo")
+		expectLoadbalancerExistsAndOwned(oapimock)
+		expectVMs(oapimock, sdkSelf, sdkVM)
+		expectReadLoadBalancer(oapimock, func(desc *sdk.LoadBalancer) {
+			desc.DnsName = ptr.To("foo.example.com")
+			desc.BackendVmIds = &[]string{"i-foo"}
+			desc.PublicIp = ptr.To("198.51.100.42")
+		})
+		expectDescribeProxyProtocol(lbmock, false)
+		expectDescribeLoadBalancerAttributes(lbmock)
+		expectFindExistingIngressSecurityGroup(oapimock, "sg-foo")
+		expectFindExistingWorkerSG(oapimock)
+		p := osc.NewProviderWith(c, staticDNSResolver{})
+		status, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
+		require.NoError(t, err)
+		assert.Equal(t, &v1.LoadBalancerStatus{Ingress: []v1.LoadBalancerIngress{{Hostname: "foo.example.com"}}}, status)
+	})
+	t.Run("When retrying creation, the status is properly returned when ready, with both IP and hostname", func(t *testing.T) {
+		svc := testSvc()
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-ingress-address"] = "both"
 		c, oapimock, lbmock := newAPI(t, self, "foo")
 		expectLoadbalancerExistsAndOwned(oapimock)
 		expectVMs(oapimock, sdkSelf, sdkVM)
@@ -599,6 +704,7 @@ func TestEnsureLoadBalancer_Update(t *testing.T) {
 	t.Run("When retrying creation on an internal LBU, the status is properly returned when ready, with a resolved IP", func(t *testing.T) {
 		svc := testSvc()
 		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-internal"] = "true"
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-ingress-address"] = "ip"
 		c, oapimock, lbmock := newAPI(t, self, "foo")
 		expectLoadbalancerExistsAndOwned(oapimock)
 		expectVMs(oapimock, sdkSelf, sdkVM)
@@ -614,7 +720,7 @@ func TestEnsureLoadBalancer_Update(t *testing.T) {
 		p := osc.NewProviderWith(c, staticDNSResolver{})
 		status, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.NoError(t, err)
-		assert.Equal(t, &v1.LoadBalancerStatus{Ingress: []v1.LoadBalancerIngress{{Hostname: "foo.example.com", IP: "10.0.0.1"}}}, status)
+		assert.Equal(t, &v1.LoadBalancerStatus{Ingress: []v1.LoadBalancerIngress{{IP: "10.0.0.1"}}}, status)
 	})
 	t.Run("Listeners are updated", func(t *testing.T) {
 		svc := testSvc()
