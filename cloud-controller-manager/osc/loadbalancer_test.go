@@ -568,6 +568,74 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode1, &vmNode2})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
 	})
+	t.Run("HTTP health checks can be configured", func(t *testing.T) {
+		svc := testSvc()
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-healthcheck-healthy-threshold"] = "42"
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-healthcheck-unhealthy-threshold"] = "43"
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-healthcheck-timeout"] = "44"
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-healthcheck-interval"] = "45"
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-healthcheck-port"] = "46"
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-healthcheck-protocol"] = "http"
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-healthcheck-path"] = "/healthz"
+		c, oapimock, lbmock := newAPI(t, self, "foo")
+		expectVMs(oapimock, sdkSelf, sdkVM)
+		expectNoLoadbalancer(oapimock)
+		expectFindLBSubnet(oapimock)
+		expectCreateSecurityGroup(oapimock)
+		expectFindWorkerSGByRole(oapimock)
+		expectAddIngressSGRule(oapimock, []string{"0.0.0.0/0"}, "sg-foo")
+		expectAddInternalSGRule(oapimock, "sg-foo", "sg-worker")
+		expectCreateLoadBalancer(oapimock)
+		expectConfigureHealthCheck(oapimock, &sdk.HealthCheck{
+			HealthyThreshold:   42,
+			UnhealthyThreshold: 43,
+			Timeout:            44,
+			CheckInterval:      45,
+			Port:               46,
+			Protocol:           "HTTP",
+			Path:               ptr.To("/healthz"),
+		})
+		expectDescribeProxyProtocol(lbmock, false)
+		expectDescribeLoadBalancerAttributes(lbmock)
+		expectRegisterInstances(oapimock, *sdkVM.VmId)
+		p := osc.NewProviderWith(c, staticDNSResolver{})
+		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
+		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
+	})
+	t.Run("HTTPs health checks can be configured", func(t *testing.T) {
+		svc := testSvc()
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-healthcheck-healthy-threshold"] = "42"
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-healthcheck-unhealthy-threshold"] = "43"
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-healthcheck-timeout"] = "44"
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-healthcheck-interval"] = "45"
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-healthcheck-port"] = "46"
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-healthcheck-protocol"] = "https"
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-healthcheck-path"] = "/healthz"
+		c, oapimock, lbmock := newAPI(t, self, "foo")
+		expectVMs(oapimock, sdkSelf, sdkVM)
+		expectNoLoadbalancer(oapimock)
+		expectFindLBSubnet(oapimock)
+		expectCreateSecurityGroup(oapimock)
+		expectFindWorkerSGByRole(oapimock)
+		expectAddIngressSGRule(oapimock, []string{"0.0.0.0/0"}, "sg-foo")
+		expectAddInternalSGRule(oapimock, "sg-foo", "sg-worker")
+		expectCreateLoadBalancer(oapimock)
+		expectConfigureHealthCheck(oapimock, &sdk.HealthCheck{
+			HealthyThreshold:   42,
+			UnhealthyThreshold: 43,
+			Timeout:            44,
+			CheckInterval:      45,
+			Port:               46,
+			Protocol:           "HTTPS",
+			Path:               ptr.To("/healthz"),
+		})
+		expectDescribeProxyProtocol(lbmock, false)
+		expectDescribeLoadBalancerAttributes(lbmock)
+		expectRegisterInstances(oapimock, *sdkVM.VmId)
+		p := osc.NewProviderWith(c, staticDNSResolver{})
+		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
+		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
+	})
 }
 
 type staticDNSResolver struct{}

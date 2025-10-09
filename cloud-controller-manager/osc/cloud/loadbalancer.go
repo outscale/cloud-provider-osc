@@ -328,7 +328,7 @@ func (l *LoadBalancer) healthCheck() *osc.HealthCheck {
 		UnhealthyThreshold: l.HealthCheck.UnhealthyThreshold,
 	}
 	switch hc.Protocol {
-	case "HTTP":
+	case "HTTP", "HTTPS":
 		if l.HealthCheck.Path != "" {
 			hc.Path = ptr.To(l.HealthCheck.Path)
 		}

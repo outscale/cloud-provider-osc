@@ -223,19 +223,24 @@ func expectDeleteLoadBalancer(mock *oapimocks.MockOAPI) {
 		Return(nil)
 }
 
-func expectConfigureHealthCheck(mock *oapimocks.MockOAPI) {
+func expectConfigureHealthCheck(mock *oapimocks.MockOAPI, hc ...*sdk.HealthCheck) {
+	req := sdk.UpdateLoadBalancerRequest{
+		LoadBalancerName: "lb-foo",
+	}
+	if len(hc) > 0 {
+		req.HealthCheck = hc[0]
+	} else {
+		req.HealthCheck = &sdk.HealthCheck{
+			Port:               8080,
+			Protocol:           "TCP",
+			HealthyThreshold:   2,
+			CheckInterval:      10,
+			Timeout:            5,
+			UnhealthyThreshold: 3,
+		}
+	}
 	mock.EXPECT().
-		UpdateLoadBalancer(gomock.Any(), gomock.Eq(sdk.UpdateLoadBalancerRequest{
-			HealthCheck: &sdk.HealthCheck{
-				Port:               8080,
-				Protocol:           "TCP",
-				HealthyThreshold:   2,
-				CheckInterval:      10,
-				Timeout:            5,
-				UnhealthyThreshold: 3,
-			},
-			LoadBalancerName: "lb-foo",
-		})).
+		UpdateLoadBalancer(gomock.Any(), gomock.Eq(req)).
 		Return(nil)
 }
 
