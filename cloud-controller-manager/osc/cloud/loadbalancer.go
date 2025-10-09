@@ -56,6 +56,7 @@ var (
 		ListenerDefaults: ListenerDefaults{
 			SSLPorts: []string{"*"},
 		},
+		IngressAddress: Hostname,
 	}
 	// ErrLoadBalancerIsNotReady is returned by CreateLoadBalancer/UpdateLoadBalancer when the LB is not ready yet.
 	ErrLoadBalancerIsNotReady = controllerapi.NewRetryError("load balancer is not ready", 30*time.Second)
@@ -115,6 +116,22 @@ type AccessLog struct {
 	BucketPrefix string `annotation:"osc-load-balancer-access-log-oos-bucket-prefix"`
 }
 
+type IngressAddress string
+
+const (
+	Hostname IngressAddress = "hostname"
+	IP       IngressAddress = "ip"
+	Both     IngressAddress = "both"
+)
+
+func (i IngressAddress) NeedHostname() bool {
+	return i == Hostname || i == Both
+}
+
+func (i IngressAddress) NeedIP() bool {
+	return i == IP || i == Both
+}
+
 // LoadBalancer defines a load-balancer.
 type LoadBalancer struct {
 	Name                     string `annotation:"osc-load-balancer-name"`
@@ -136,6 +153,7 @@ type LoadBalancer struct {
 	SessionAffinity          string
 	AccessLog                AccessLog `annotation:",squash"`
 	AllowFrom                utilnet.IPNetSet
+	IngressAddress           IngressAddress `annotation:"osc-load-balancer-ingress-address"`
 
 	lbSecurityGroup     *osc.SecurityGroup
 	targetSecurityGroup *osc.SecurityGroup
@@ -371,17 +389,17 @@ func (c *Cloud) getLoadBalancer(ctx context.Context, l *LoadBalancer) (*osc.Load
 }
 
 // GetLoadBalancer fetches a load-balancer.
-func (c *Cloud) GetLoadBalancer(ctx context.Context, l *LoadBalancer) (dns string, found bool, err error) {
+func (c *Cloud) GetLoadBalancer(ctx context.Context, l *LoadBalancer) (dns, ip string, found bool, err error) {
 	lb, err := c.getLoadBalancer(ctx, l)
 	switch {
 	case err != nil:
-		return "", false, fmt.Errorf("unable to get LB: %w", err)
+		return "", "", false, fmt.Errorf("unable to get LB: %w", err)
 	case lb == nil:
-		return "", false, nil
+		return "", "", false, nil
 	case lb.DnsName != nil:
-		return *lb.DnsName, true, nil
+		return lb.GetDnsName(), lb.GetPublicIp(), true, nil
 	default:
-		return "", true, nil
+		return "", "", true, nil
 	}
 }
 

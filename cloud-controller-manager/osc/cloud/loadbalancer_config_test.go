@@ -54,8 +54,9 @@ func TestNewLoadBalancer(t *testing.T) {
 				HealthyThreshold:   cloud.DefaultLoadBalancerConfiguration.HealthCheck.HealthyThreshold,
 				UnhealthyThreshold: cloud.DefaultLoadBalancerConfiguration.HealthCheck.UnhealthyThreshold,
 			},
-			AllowFrom:  ipNetSet("0.0.0.0/0"),
-			Connection: cloud.Connection{IdleTimeout: 60},
+			AllowFrom:      ipNetSet("0.0.0.0/0"),
+			Connection:     cloud.Connection{IdleTimeout: 60},
+			IngressAddress: cloud.Hostname,
 		},
 	}, {
 		name: "Annotations are loaded",
@@ -91,6 +92,7 @@ func TestNewLoadBalancer(t *testing.T) {
 					"service.beta.kubernetes.io/osc-load-balancer-connection-draining-enabled":     "true",
 					"service.beta.kubernetes.io/osc-load-balancer-connection-draining-timeout":     "47",
 					"service.beta.kubernetes.io/osc-load-balancer-connection-idle-timeout":         "48",
+					"service.beta.kubernetes.io/osc-load-balancer-ingress-address":                 "both",
 					"service.beta.kubernetes.io/load-balancer-source-ranges":                       "192.0.2.0/24,198.51.100.0/24",
 				},
 			},
@@ -143,7 +145,8 @@ func TestNewLoadBalancer(t *testing.T) {
 				"foo":    "bar",
 				"foobar": "barbar",
 			},
-			AllowFrom: ipNetSet("192.0.2.0/24", "198.51.100.0/24"),
+			AllowFrom:      ipNetSet("192.0.2.0/24", "198.51.100.0/24"),
+			IngressAddress: cloud.Both,
 		},
 	}, {
 		name: "Tags are merged with the global config",
@@ -190,6 +193,7 @@ func TestNewLoadBalancer(t *testing.T) {
 				"foobar": "barbar",
 				"foobaz": "bazbaz",
 			},
+			IngressAddress: cloud.Hostname,
 		},
 	}, {
 		name: "AWS annotations are loaded",
@@ -273,7 +277,8 @@ func TestNewLoadBalancer(t *testing.T) {
 				"foo":    "bar",
 				"foobar": "barbar",
 			},
-			AllowFrom: ipNetSet("192.0.2.0/24", "198.51.100.0/24"),
+			AllowFrom:      ipNetSet("192.0.2.0/24", "198.51.100.0/24"),
+			IngressAddress: cloud.Hostname,
 		},
 	}, {
 		name: "Source ranges can be set in the spec",
@@ -307,8 +312,9 @@ func TestNewLoadBalancer(t *testing.T) {
 				HealthyThreshold:   cloud.DefaultLoadBalancerConfiguration.HealthCheck.HealthyThreshold,
 				UnhealthyThreshold: cloud.DefaultLoadBalancerConfiguration.HealthCheck.UnhealthyThreshold,
 			},
-			AllowFrom:  ipNetSet("192.0.2.0/24", "198.51.100.0/24"),
-			Connection: cloud.Connection{IdleTimeout: 60},
+			AllowFrom:      ipNetSet("192.0.2.0/24", "198.51.100.0/24"),
+			Connection:     cloud.Connection{IdleTimeout: 60},
+			IngressAddress: cloud.Hostname,
 		},
 	}}
 
