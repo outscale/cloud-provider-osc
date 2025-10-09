@@ -515,6 +515,18 @@ func (c *Cloud) allocateFromPool(ctx context.Context, pool string) (*osc.PublicI
 
 func (c *Cloud) ensureSubnet(ctx context.Context, l *LoadBalancer) error {
 	if l.SubnetID != "" {
+		subnets, err := c.api.OAPI().ReadSubnets(ctx, osc.ReadSubnetsRequest{
+			Filters: &osc.FiltersSubnet{
+				SubnetIds: &[]string{l.SubnetID},
+			},
+		})
+		switch {
+		case err != nil:
+			return fmt.Errorf("find existing subnet: %w", err)
+		case len(subnets) == 0:
+			return errors.New("find existing subnet: not found")
+		}
+		l.NetID = subnets[0].GetNetId()
 		return nil
 	}
 	subnets, err := c.api.OAPI().ReadSubnets(ctx, osc.ReadSubnetsRequest{

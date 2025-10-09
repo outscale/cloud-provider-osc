@@ -292,6 +292,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		c, oapimock, lbmock := newAPI(t, self, "foo")
 		expectVMs(oapimock, sdkSelf, sdkVM)
 		expectNoLoadbalancer(oapimock)
+		expectFindExistingSubnet(oapimock, "subnet-existing")
 		expectCreateSecurityGroup(oapimock)
 		expectFindWorkerSGByRole(oapimock)
 		expectAddIngressSGRule(oapimock, []string{"0.0.0.0/0"}, "sg-foo")

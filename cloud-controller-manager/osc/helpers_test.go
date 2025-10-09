@@ -49,7 +49,7 @@ var (
 			Value: vmNodeName,
 		}},
 		SubnetId:       ptr.To("subnet-bar"),
-		NetId:          ptr.To("net-foo"),
+		NetId:          ptr.To("net-bar"),
 		SecurityGroups: &[]sdk.SecurityGroupLight{{SecurityGroupId: ptr.To("sg-worker")}, {SecurityGroupId: ptr.To("sg-node")}},
 		State:          ptr.To("running"),
 	}
@@ -68,8 +68,8 @@ var (
 			Value: selfNodeName,
 		}},
 		Placement:      &sdk.Placement{SubregionName: &subRegion},
-		SubnetId:       ptr.To("subnet-foo"),
-		NetId:          ptr.To("net-foo"),
+		SubnetId:       ptr.To("subnet-bar"),
+		NetId:          ptr.To("net-bar"),
 		SecurityGroups: &[]sdk.SecurityGroupLight{{SecurityGroupId: ptr.To("sg-controlplane")}, {SecurityGroupId: ptr.To("sg-node")}},
 		State:          ptr.To("running"),
 	}
@@ -305,6 +305,18 @@ func expectConfigureProxyProtocol(mock *oapimocks.MockLBU, set, need bool, ports
 	}
 }
 
+func expectFindExistingSubnet(mock *oapimocks.MockOAPI, id string) {
+	mock.EXPECT().
+		ReadSubnets(gomock.Any(), gomock.Eq(sdk.ReadSubnetsRequest{
+			Filters: &sdk.FiltersSubnet{
+				SubnetIds: &[]string{id},
+			},
+		})).
+		Return([]sdk.Subnet{
+			{SubnetId: ptr.To(id), NetId: ptr.To("net-foo")},
+		}, nil)
+}
+
 func expectFindLBSubnet(mock *oapimocks.MockOAPI) {
 	mock.EXPECT().
 		ReadSubnets(gomock.Any(), gomock.Eq(sdk.ReadSubnetsRequest{
@@ -313,8 +325,8 @@ func expectFindLBSubnet(mock *oapimocks.MockOAPI) {
 			},
 		})).
 		Return([]sdk.Subnet{
-			{SubnetId: ptr.To("subnet-service"), Tags: &[]sdk.ResourceTag{{Key: "OscK8sRole/service"}}},
-			{SubnetId: ptr.To("subnet-service.internal"), Tags: &[]sdk.ResourceTag{{Key: "OscK8sRole/service.internal"}}},
+			{SubnetId: ptr.To("subnet-service"), NetId: ptr.To("net-foo"), Tags: &[]sdk.ResourceTag{{Key: "OscK8sRole/service"}}},
+			{SubnetId: ptr.To("subnet-service.internal"), NetId: ptr.To("net-foo"), Tags: &[]sdk.ResourceTag{{Key: "OscK8sRole/service.internal"}}},
 		}, nil)
 }
 
@@ -326,8 +338,8 @@ func expectFindNoLBSubnet(mock *oapimocks.MockOAPI) {
 			},
 		})).
 		Return([]sdk.Subnet{
-			{SubnetId: ptr.To("subnet-service"), Tags: &[]sdk.ResourceTag{}},
-			{SubnetId: ptr.To("subnet-service.internal"), Tags: &[]sdk.ResourceTag{}},
+			{SubnetId: ptr.To("subnet-service"), NetId: ptr.To("net-foo"), Tags: &[]sdk.ResourceTag{}},
+			{SubnetId: ptr.To("subnet-service.internal"), NetId: ptr.To("net-foo"), Tags: &[]sdk.ResourceTag{}},
 		}, nil)
 }
 
