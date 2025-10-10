@@ -1,5 +1,16 @@
 # Changelog
 
+## [v1.0.1] - 2025-10-13
+
+Change: by default, v1.0.1 only returns the hostname of a load-balancer ingress instead of hostname + IP.
+If you need the IP, you will need to set the `service.beta.kubernetes.io/osc-load-balancer-ingress-address` annotation to `ip` or `both`.
+
+### ✨ Added
+* ✨ feat(loadbalancer): add service.beta.kubernetes.io/osc-load-balancer-ingress-address annotation by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/508
+### 🐛 Fixed
+* 🐛 fix: path was not configured on https health checks by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/510
+* 🐛 fix: always create the LoadBalancer in the same net of its subnet by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/509
+
 ## [v1.0.0] - 2025-10-01
 
 No changes since v1.0.0-rc.1
