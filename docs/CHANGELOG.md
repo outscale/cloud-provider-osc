@@ -9,7 +9,7 @@ If you need the IP, you will need to set the `service.beta.kubernetes.io/osc-loa
 * ✨ feat(loadbalancer): add service.beta.kubernetes.io/osc-load-balancer-ingress-address annotation by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/508
 ### 🐛 Fixed
 * 🐛 fix: path was not configured on https health checks by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/510
-* 🐛 fix: always create the LoadBalancer in the same net of its subnet by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/509
+* 🐛 fix: always create the LoadBalancer in the same net of its subnet by @alistarle and @jfbus in https://github.com/outscale/cloud-provider-osc/pull/509
 
 ## [v1.0.0] - 2025-10-01
 
