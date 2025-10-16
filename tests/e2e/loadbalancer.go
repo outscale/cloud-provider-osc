@@ -255,6 +255,60 @@ var _ = Describe("[e2e][loadbalancer] Checking proxy-protocol", func() {
 	})
 })
 
+
+var _ = Describe("[e2e][loadbalancer] Checking IP restriction", func() {
+	f := framework.NewDefaultFramework("ccm")
+	f.NamespacePodSecurityEnforceLevel = admissionapi.LevelPrivileged
+
+	var (
+		cs   clientset.Interface
+		ns   *v1.Namespace
+		ctx  context.Context
+		oapi *oapi.Client
+	)
+
+	BeforeEach(func() {
+		cs = f.ClientSet
+		ns = f.Namespace
+		ctx = context.Background()
+		var err error
+		oapi, err = e2eutils.OAPI()
+		framework.ExpectNoError(err)
+	})
+
+	It("can create a service using proxy protocol", func() {
+		deployment := e2eutils.CreateDeployment(ctx, cs, ns, 1, []v1.ContainerPort{
+			{
+				Name:          "tcp",
+				Protocol:      v1.ProtocolTCP,
+				ContainerPort: 8080,
+			},
+		})
+		defer e2eutils.DeleteDeployment(ctx, cs, deployment)
+		e2eutils.WaitForDeploymentReady(ctx, cs, deployment)
+
+		lbName := "ccm-restriction-" + xid.New().String()
+		svc := e2eutils.CreateSvc(ctx, cs, ns, map[string]string{
+			"service.beta.kubernetes.io/osc-load-balancer-proxy-protocol":   "*",
+			"service.beta.kubernetes.io/osc-load-balancer-backend-protocol": "http",
+			"service.beta.kubernetes.io/osc-load-balancer-name":             lbName,
+		}, []v1.ServicePort{
+			{
+				Name:       "tcp",
+				Protocol:   v1.ProtocolTCP,
+				TargetPort: intstr.FromInt(8080),
+				Port:       80,
+			},
+		}, nil)
+		svc = e2eutils.WaitForSvc(ctx, cs, svc)
+		e2eutils.ExpectLoadBalancer(ctx, oapi, lbName, gomega.HaveField("BackendServerDescriptions",
+			gomega.ContainElement(gomega.HaveField("PolicyNames", gomega.ContainElement(ptr.To("k8s-proxyprotocol-enabled")))),
+		))
+		e2esvc.TestReachableHTTP(ctx, svc.Status.LoadBalancer.Ingress[0].Hostname, 80, testTimeout)
+		e2eutils.DeleteSvc(ctx, cs, svc)
+	})
+})
+
 var _ = Describe("[e2e][loadbalancer] Checking cleanup of resources", func() {
 	f := framework.NewDefaultFramework("ccm")
 	f.NamespacePodSecurityEnforceLevel = admissionapi.LevelPrivileged
