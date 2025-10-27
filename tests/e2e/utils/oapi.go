@@ -10,8 +10,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/elb"
 	"github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
-	"github.com/outscale/cloud-provider-osc/cloud-controller-manager/osc/oapi"
-	"github.com/outscale/osc-sdk-go/v2"
+	"github.com/outscale/cloud-provider-osc/ccm/oapi"
+	"github.com/outscale/osc-sdk-go/v3/pkg/osc"
 	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/utils/ptr"
 )
@@ -59,7 +59,7 @@ func GetLoadBalancerTags(ctx context.Context, api *oapi.Client, name string) ([]
 	case 0:
 		return nil, nil
 	case 1:
-		return response[0].GetTags(), nil
+		return response[0].Tags, nil
 	default:
 		return nil, fmt.Errorf("found multiple load balancers with name: %s", name)
 	}
@@ -111,9 +111,9 @@ func ExpectSecurityGroups(ctx context.Context, api *oapi.Client, lb *elb.LoadBal
 func DeleteBackendVMs(ctx context.Context, api *oapi.Client, lb *elb.LoadBalancerDescription) {
 	c := api.OAPI().(*oapi.OscClient)
 	for _, instance := range lb.Instances {
-		_, _, err := c.APIClient().VmApi.DeleteVms(c.WithAuth(ctx)).DeleteVmsRequest(osc.DeleteVmsRequest{
+		_, err := c.APIClient().DeleteVms(ctx, osc.DeleteVmsRequest{
 			VmIds: []string{*instance.InstanceId},
-		}).Execute()
+		})
 		framework.ExpectNoError(err)
 	}
 }
