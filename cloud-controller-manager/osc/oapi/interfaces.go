@@ -22,7 +22,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/elb"
-	osc "github.com/outscale/osc-sdk-go/v2"
+	osc "github.com/outscale/osc-sdk-go/v3/pkg/osc"
 )
 
 // OAPI is the interface for OAPI calls.

@@ -30,6 +30,6 @@ func TestConfigEnvFromConfigFile(t *testing.T) {
 	ecfg, err := oapi.LoadConfig()
 	require.NoError(t, err)
 	require.NotNil(t, ecfg.AccessKey)
-	assert.Equal(t, "ACCESSKEY", *ecfg.AccessKey)
-	assert.Equal(t, "SECRETKEY", *ecfg.SecretKey)
+	assert.Equal(t, "ACCESSKEY", ecfg.AccessKey)
+	assert.Equal(t, "SECRETKEY", ecfg.SecretKey)
 }

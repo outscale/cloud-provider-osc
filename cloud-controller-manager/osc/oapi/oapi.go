@@ -19,24 +19,23 @@ package oapi
 import (
 	"context"
 
-	osc "github.com/outscale/osc-sdk-go/v2"
+	osc "github.com/outscale/osc-sdk-go/v3/pkg/osc"
 )
 
 const (
 	PublicIPPoolTag = "OscK8sIPPool"
 )
 
-func (c *OscClient) APIClient() *osc.APIClient {
+func (c *OscClient) APIClient() *osc.Client {
 	return c.api
 }
 
 func (c *OscClient) ReadVms(ctx context.Context, req osc.ReadVmsRequest) ([]osc.Vm, error) {
-	resp, httpRes, err := c.api.VmApi.ReadVms(c.WithAuth(ctx)).ReadVmsRequest(req).Execute()
-	err = logAndExtractError(ctx, "ReadVms", req, httpRes, err)
+	resp, err := c.api.ReadVms(ctx, req)
 	if err != nil {
 		return nil, err
 	}
-	return resp.GetVms(), nil
+	return *resp.Vms, nil
 }
 
 func (c *OscClient) ListPublicIpsFromPool(ctx context.Context, pool string) ([]osc.PublicIp, error) {
@@ -46,35 +45,31 @@ func (c *OscClient) ListPublicIpsFromPool(ctx context.Context, pool string) ([]o
 			TagValues: &[]string{pool},
 		},
 	}
-	resp, httpRes, err := c.api.PublicIpApi.ReadPublicIps(c.WithAuth(ctx)).ReadPublicIpsRequest(req).Execute()
-	err = logAndExtractError(ctx, "ReadPublicIps", req, httpRes, err)
+	resp, err := c.api.ReadPublicIps(ctx, req)
 	if err != nil {
 		return nil, err
 	}
-	return resp.GetPublicIps(), nil
+	return *resp.PublicIps, nil
 }
 
 func (c *OscClient) ReadLoadBalancers(ctx context.Context, req osc.ReadLoadBalancersRequest) ([]osc.LoadBalancer, error) {
-	resp, httpRes, err := c.api.LoadBalancerApi.ReadLoadBalancers(c.WithAuth(ctx)).ReadLoadBalancersRequest(req).Execute()
-	err = logAndExtractError(ctx, "ReadLoadBalancers", req, httpRes, err)
+	resp, err := c.api.ReadLoadBalancers(ctx, req)
 	if err != nil {
 		return nil, err
 	}
-	return resp.GetLoadBalancers(), nil
+	return *resp.LoadBalancers, nil
 }
 
 func (c *OscClient) ReadLoadBalancerTags(ctx context.Context, req osc.ReadLoadBalancerTagsRequest) ([]osc.LoadBalancerTag, error) {
-	resp, httpRes, err := c.api.LoadBalancerApi.ReadLoadBalancerTags(c.WithAuth(ctx)).ReadLoadBalancerTagsRequest(req).Execute()
-	err = logAndExtractError(ctx, "ReadLoadBalancerTags", req, httpRes, err)
+	resp, err := c.api.ReadLoadBalancerTags(ctx, req)
 	if err != nil {
 		return nil, err
 	}
-	return resp.GetTags(), nil
+	return *resp.Tags, nil
 }
 
 func (c *OscClient) CreateLoadBalancer(ctx context.Context, req osc.CreateLoadBalancerRequest) (*osc.LoadBalancer, error) {
-	resp, httpRes, err := c.api.LoadBalancerApi.CreateLoadBalancer(c.WithAuth(ctx)).CreateLoadBalancerRequest(req).Execute()
-	err = logAndExtractError(ctx, "CreateLoadBalancer", req, httpRes, err)
+	resp, err := c.api.CreateLoadBalancer(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -82,8 +77,7 @@ func (c *OscClient) CreateLoadBalancer(ctx context.Context, req osc.CreateLoadBa
 }
 
 func (c *OscClient) CreateLoadBalancerListeners(ctx context.Context, req osc.CreateLoadBalancerListenersRequest) (*osc.LoadBalancer, error) {
-	resp, httpRes, err := c.api.ListenerApi.CreateLoadBalancerListeners(c.WithAuth(ctx)).CreateLoadBalancerListenersRequest(req).Execute()
-	err = logAndExtractError(ctx, "CreateLoadBalancerListeners", req, httpRes, err)
+	resp, err := c.api.CreateLoadBalancerListeners(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -91,14 +85,12 @@ func (c *OscClient) CreateLoadBalancerListeners(ctx context.Context, req osc.Cre
 }
 
 func (c *OscClient) DeleteLoadBalancer(ctx context.Context, req osc.DeleteLoadBalancerRequest) error {
-	_, httpRes, err := c.api.LoadBalancerApi.DeleteLoadBalancer(c.WithAuth(ctx)).DeleteLoadBalancerRequest(req).Execute()
-	err = logAndExtractError(ctx, "DeleteLoadBalancer", req, httpRes, err)
+	_, err := c.api.DeleteLoadBalancer(ctx, req)
 	return err
 }
 
 func (c *OscClient) DeleteLoadBalancerListeners(ctx context.Context, req osc.DeleteLoadBalancerListenersRequest) (*osc.LoadBalancer, error) {
-	resp, httpRes, err := c.api.ListenerApi.DeleteLoadBalancerListeners(c.WithAuth(ctx)).DeleteLoadBalancerListenersRequest(req).Execute()
-	err = logAndExtractError(ctx, "DeleteLoadBalancerListeners", req, httpRes, err)
+	resp, err := c.api.DeleteLoadBalancerListeners(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -106,68 +98,60 @@ func (c *OscClient) DeleteLoadBalancerListeners(ctx context.Context, req osc.Del
 }
 
 func (c *OscClient) RegisterVmsInLoadBalancer(ctx context.Context, req osc.RegisterVmsInLoadBalancerRequest) error {
-	_, httpRes, err := c.api.LoadBalancerApi.RegisterVmsInLoadBalancer(c.WithAuth(ctx)).RegisterVmsInLoadBalancerRequest(req).Execute()
-	err = logAndExtractError(ctx, "RegisterVmsInLoadBalancer", req, httpRes, err)
+	_, err := c.api.RegisterVmsInLoadBalancer(ctx, req)
 	return err
 }
 
 func (c *OscClient) DeregisterVmsInLoadBalancer(ctx context.Context, req osc.DeregisterVmsInLoadBalancerRequest) error {
-	_, httpRes, err := c.api.LoadBalancerApi.DeregisterVmsInLoadBalancer(c.WithAuth(ctx)).DeregisterVmsInLoadBalancerRequest(req).Execute()
-	err = logAndExtractError(ctx, "DeregisterVmsInLoadBalancer", req, httpRes, err)
+	_, err := c.api.DeregisterVmsInLoadBalancer(ctx, req)
 	return err
 }
 
 func (c *OscClient) UpdateLoadBalancer(ctx context.Context, req osc.UpdateLoadBalancerRequest) error {
-	_, httpRes, err := c.api.LoadBalancerApi.UpdateLoadBalancer(c.WithAuth(ctx)).UpdateLoadBalancerRequest(req).Execute()
-	err = logAndExtractError(ctx, "UpdateLoadBalancer", req, httpRes, err)
+	_, err := c.api.UpdateLoadBalancer(ctx, req)
 	return err
 }
 
 func (c *OscClient) ReadSecurityGroups(ctx context.Context, req osc.ReadSecurityGroupsRequest) ([]osc.SecurityGroup, error) {
-	resp, httpRes, err := c.api.SecurityGroupApi.ReadSecurityGroups(c.WithAuth(ctx)).ReadSecurityGroupsRequest(req).Execute()
-	err = logAndExtractError(ctx, "ReadSecurityGroups", req, httpRes, err)
+	resp, err := c.api.ReadSecurityGroups(ctx, req)
 	if err != nil {
 		return nil, err
 	}
-	return resp.GetSecurityGroups(), nil
+	return *resp.SecurityGroups, nil
 }
 
 func (c *OscClient) ReadSubnets(ctx context.Context, req osc.ReadSubnetsRequest) ([]osc.Subnet, error) {
 	// Subnets are not paged
-	resp, httpRes, err := c.api.SubnetApi.ReadSubnets(c.WithAuth(ctx)).ReadSubnetsRequest(req).Execute()
-	err = logAndExtractError(ctx, "ReadSubnets", req, httpRes, err)
+	resp, err := c.api.ReadSubnets(ctx, req)
 	if err != nil {
 		return nil, err
 	}
-	return resp.GetSubnets(), nil
+	return *resp.Subnets, nil
 }
 
 func (c *OscClient) CreateSecurityGroup(ctx context.Context, req osc.CreateSecurityGroupRequest) (*osc.SecurityGroup, error) {
-	resp, httpRes, err := c.api.SecurityGroupApi.CreateSecurityGroup(c.WithAuth(ctx)).CreateSecurityGroupRequest(req).Execute()
-	err = logAndExtractError(ctx, "CreateSecurityGroup", req, httpRes, err)
+	resp, err := c.api.CreateSecurityGroup(ctx, req)
 	if err != nil {
 		return nil, err
 	}
-	return resp.SecurityGroup, err
+	return resp.SecurityGroup, nil
 }
 
 func (c *OscClient) DeleteSecurityGroup(ctx context.Context, req osc.DeleteSecurityGroupRequest) error {
-	_, httpRes, err := c.api.SecurityGroupApi.DeleteSecurityGroup(c.WithAuth(ctx)).DeleteSecurityGroupRequest(req).Execute()
-	return logAndExtractError(ctx, "DeleteSecurityGroup", req, httpRes, err)
+	_, err := c.api.DeleteSecurityGroup(ctx, req)
+	return err
 }
 
 func (c *OscClient) CreateSecurityGroupRule(ctx context.Context, req osc.CreateSecurityGroupRuleRequest) (*osc.SecurityGroup, error) {
-	resp, httpRes, err := c.api.SecurityGroupRuleApi.CreateSecurityGroupRule(c.WithAuth(ctx)).CreateSecurityGroupRuleRequest(req).Execute()
-	err = logAndExtractError(ctx, "CreateSecurityGroupRule", req, httpRes, err)
+	resp, err := c.api.CreateSecurityGroupRule(ctx, req)
 	if err != nil {
 		return nil, err
 	}
-	return resp.SecurityGroup, err
+	return resp.SecurityGroup, nil
 }
 
 func (c *OscClient) DeleteSecurityGroupRule(ctx context.Context, req osc.DeleteSecurityGroupRuleRequest) (*osc.SecurityGroup, error) {
-	resp, httpRes, err := c.api.SecurityGroupRuleApi.DeleteSecurityGroupRule(c.WithAuth(ctx)).DeleteSecurityGroupRuleRequest(req).Execute()
-	err = logAndExtractError(ctx, "DeleteSecurityGroupRule", req, httpRes, err)
+	resp, err := c.api.DeleteSecurityGroupRule(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -175,22 +159,20 @@ func (c *OscClient) DeleteSecurityGroupRule(ctx context.Context, req osc.DeleteS
 }
 
 func (c *OscClient) CreateTags(ctx context.Context, req osc.CreateTagsRequest) error {
-	_, httpRes, err := c.api.TagApi.CreateTags(c.WithAuth(ctx)).CreateTagsRequest(req).Execute()
-	return logAndExtractError(ctx, "CreateTags", req, httpRes, err)
+	_, err := c.api.CreateTags(ctx, req)
+	return err
 }
 
 func (c *OscClient) ReadRouteTables(ctx context.Context, req osc.ReadRouteTablesRequest) ([]osc.RouteTable, error) {
-	resp, httpRes, err := c.api.RouteTableApi.ReadRouteTables(c.WithAuth(ctx)).ReadRouteTablesRequest(req).Execute()
-	err = logAndExtractError(ctx, "ReadRouteTables", req, httpRes, err)
+	resp, err := c.api.ReadRouteTables(ctx, req)
 	if err != nil {
 		return nil, err
 	}
-	return resp.GetRouteTables(), nil
+	return *resp.RouteTables, nil
 }
 
 func (c *OscClient) CreateRoute(ctx context.Context, req osc.CreateRouteRequest) (*osc.RouteTable, error) {
-	resp, httpRes, err := c.api.RouteApi.CreateRoute(c.WithAuth(ctx)).CreateRouteRequest(req).Execute()
-	err = logAndExtractError(ctx, "CreateRoute", req, httpRes, err)
+	resp, err := c.api.CreateRoute(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -198,8 +180,7 @@ func (c *OscClient) CreateRoute(ctx context.Context, req osc.CreateRouteRequest)
 }
 
 func (c *OscClient) DeleteRoute(ctx context.Context, req osc.DeleteRouteRequest) (*osc.RouteTable, error) {
-	resp, httpRes, err := c.api.RouteApi.DeleteRoute(c.WithAuth(ctx)).DeleteRouteRequest(req).Execute()
-	err = logAndExtractError(ctx, "DeleteRoute", req, httpRes, err)
+	resp, err := c.api.DeleteRoute(ctx, req)
 	if err != nil {
 		return nil, err
 	}

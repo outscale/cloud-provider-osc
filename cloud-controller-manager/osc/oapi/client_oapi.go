@@ -17,46 +17,31 @@ limitations under the License.
 package oapi
 
 import (
-	"context"
-	"errors"
 	"fmt"
 
 	"github.com/outscale/cloud-provider-osc/cloud-controller-manager/utils"
-	osc "github.com/outscale/osc-sdk-go/v2"
+	osc "github.com/outscale/osc-sdk-go/v3/pkg/osc"
+	"github.com/outscale/osc-sdk-go/v3/pkg/profile"
+	options "github.com/outscale/osc-sdk-go/v3/pkg/utils"
 )
 
 // OscClient is an OAPI client.
 type OscClient struct {
 	accessKey, secretKey string
-	api                  *osc.APIClient
+	api                  *osc.Client
 }
 
 // NewOscClient builds an OAPI client.
-func NewOscClient(region string, configEnv *osc.ConfigEnv) (*OscClient, error) {
-	configEnv.Region = &region
-	config, err := configEnv.Configuration()
+func NewOscClient(region string, prof *profile.Profile) (*OscClient, error) {
+	prof.Region = region
+	ua := fmt.Sprintf("osc-cloud-controller-manager/%v", utils.GetVersion())
+	lg := OAPILogger{}
+	client, err := osc.NewClient(prof, options.WithUseragent(ua), options.WithLogging(lg))
 	if err != nil {
-		return nil, fmt.Errorf("load osc config: %w", err)
+		return nil, fmt.Errorf("unable to initialize OAPI client: %w", err)
 	}
-	config.UserAgent = fmt.Sprintf("osc-cloud-controller-manager/%v", utils.GetVersion())
-	client := osc.NewAPIClient(config)
 
-	if configEnv.AccessKey == nil {
-		return nil, errors.New("load osc config: missing access key")
-	}
-	if configEnv.SecretKey == nil {
-		return nil, errors.New("load osc config: missing secret key")
-	}
 	return &OscClient{
-		accessKey: *configEnv.AccessKey,
-		secretKey: *configEnv.SecretKey,
-		api:       client,
+		api: client,
 	}, nil
-}
-
-func (c *OscClient) WithAuth(ctx context.Context) context.Context {
-	return context.WithValue(ctx, osc.ContextAWSv4, osc.AWSv4{
-		AccessKey: c.accessKey,
-		SecretKey: c.secretKey,
-	})
 }

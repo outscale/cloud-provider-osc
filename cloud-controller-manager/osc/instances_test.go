@@ -6,7 +6,7 @@ import (
 
 	"github.com/outscale/cloud-provider-osc/cloud-controller-manager/osc"
 	"github.com/outscale/cloud-provider-osc/cloud-controller-manager/osc/cloud"
-	sdk "github.com/outscale/osc-sdk-go/v2"
+	sdk "github.com/outscale/osc-sdk-go/v3/pkg/osc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"

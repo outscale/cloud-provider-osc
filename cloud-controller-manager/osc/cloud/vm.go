@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/outscale/osc-sdk-go/v2"
+	"github.com/outscale/osc-sdk-go/v3/pkg/osc"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	cloudprovider "k8s.io/cloud-provider"
@@ -32,16 +32,16 @@ type VM struct {
 // FromOscVm creates a new awsInstance object
 func FromOscVm(vm *osc.Vm) *VM {
 	v := &VM{
-		ID:       vm.GetVmId(),
+		ID:       *vm.VmId,
 		NodeName: mapInstanceToNodeName(vm),
-		VmType:   vm.GetVmType(),
-		NetID:    vm.GetNetId(),
-		SubnetID: vm.GetSubnetId(),
+		VmType:   *vm.VmType,
+		NetID:    *vm.NetId,
+		SubnetID: *vm.SubnetId,
 
 		cloudVm: vm,
 	}
 	if vm.Placement != nil {
-		v.AvailabilityZone = vm.Placement.GetSubregionName()
+		v.AvailabilityZone = *vm.Placement.SubregionName
 		v.Region = v.AvailabilityZone[:len(v.AvailabilityZone)-1]
 	}
 	return v
@@ -56,53 +56,53 @@ func (vm *VM) NodeAddresses() []v1.NodeAddress {
 	addresses := []v1.NodeAddress{}
 
 	// handle internal network interfaces
-	if len(vm.cloudVm.GetNics()) > 0 {
-		for _, networkInterface := range vm.cloudVm.GetNics() {
+	if len(*vm.cloudVm.Nics) > 0 {
+		for _, networkInterface := range *vm.cloudVm.Nics {
 			// skip network interfaces that are not currently in use
 			if *networkInterface.State != "in-use" {
 				continue
 			}
 
-			for _, internalIP := range networkInterface.GetPrivateIps() {
-				if ipAddress := internalIP.GetPrivateIp(); ipAddress != "" {
+			for _, internalIP := range *networkInterface.PrivateIps {
+				if ipAddress := *internalIP.PrivateIp; ipAddress != "" {
 					addresses = append(addresses, v1.NodeAddress{Type: v1.NodeInternalIP, Address: ipAddress})
 				}
 			}
 		}
 	} else {
-		ipAddress := vm.cloudVm.GetPrivateIp()
-		if ipAddress != "" {
-			addresses = append(addresses, v1.NodeAddress{Type: v1.NodeInternalIP, Address: ipAddress})
+		ipAddress := vm.cloudVm.PrivateIp
+		if ipAddress != nil {
+			addresses = append(addresses, v1.NodeAddress{Type: v1.NodeInternalIP, Address: *ipAddress})
 		}
 	}
-	publicIPAddress := vm.cloudVm.GetPublicIp()
-	if publicIPAddress != "" {
-		addresses = append(addresses, v1.NodeAddress{Type: v1.NodeExternalIP, Address: publicIPAddress})
+	publicIPAddress := vm.cloudVm.PublicIp
+	if publicIPAddress != nil {
+		addresses = append(addresses, v1.NodeAddress{Type: v1.NodeExternalIP, Address: *publicIPAddress})
 	}
-	privateDNSName := aws.StringValue(vm.cloudVm.PrivateDnsName)
-	if privateDNSName != "" {
-		addresses = append(addresses, v1.NodeAddress{Type: v1.NodeInternalDNS, Address: privateDNSName})
-		addresses = append(addresses, v1.NodeAddress{Type: v1.NodeHostName, Address: privateDNSName})
+	privateDNSName := vm.cloudVm.PrivateDnsName
+	if privateDNSName != nil {
+		addresses = append(addresses, v1.NodeAddress{Type: v1.NodeInternalDNS, Address: *privateDNSName})
+		addresses = append(addresses, v1.NodeAddress{Type: v1.NodeHostName, Address: *privateDNSName})
 	}
-	publicDNSName := aws.StringValue(vm.cloudVm.PublicDnsName)
-	if publicDNSName != "" {
-		addresses = append(addresses, v1.NodeAddress{Type: v1.NodeExternalDNS, Address: publicDNSName})
+	publicDNSName := vm.cloudVm.PublicDnsName
+	if publicDNSName != nil {
+		addresses = append(addresses, v1.NodeAddress{Type: v1.NodeExternalDNS, Address: *publicDNSName})
 	}
 
 	return addresses
 }
 
 func (vm *VM) IsStopped() bool {
-	return vm.cloudVm.GetState() == "stopped"
+	return *vm.cloudVm.State == "stopped"
 }
 
 // InstanceID returns the instance ID
 func (vm *VM) InstanceID() string {
-	return "/" + vm.cloudVm.Placement.GetSubregionName() + "/" + vm.cloudVm.GetVmId()
+	return "/" + *vm.cloudVm.Placement.SubregionName + "/" + *vm.cloudVm.VmId
 }
 
 func (vm *VM) ClusterID() string {
-	for _, t := range vm.cloudVm.GetTags() {
+	for _, t := range *vm.cloudVm.Tags {
 		if strings.HasPrefix(t.Key, ClusterIDTagKeyPrefix) {
 			return strings.TrimPrefix(t.Key, ClusterIDTagKeyPrefix)
 		}
@@ -154,7 +154,7 @@ func (c *Cloud) GetVMsByNodeName(ctx context.Context, nodeNames ...string) ([]VM
 	vms := make([]VM, 0, len(nodeNames))
 	for _, nodeName := range nodeNames {
 		for _, sdkVM := range sdkVMs {
-			if hasTag(sdkVM.GetTags(), TagVmNodeName, nodeName) ||
+			if hasTag(*sdkVM.Tags, TagVmNodeName, nodeName) ||
 				mapInstanceToNodeName(&sdkVM) == types.NodeName(nodeName) {
 				vms = append(vms, *FromOscVm(&sdkVM))
 			}

@@ -37,19 +37,19 @@ type Client struct {
 
 // NewClient builds a Client.
 func NewClient(region string) (*Client, error) {
-	configEnv, err := LoadConfig()
+	prof, err := LoadConfig()
 	if err != nil {
 		return nil, fmt.Errorf("load config: %w", err)
 	}
-	if configEnv.AccessKey == nil || configEnv.SecretKey == nil {
+	if prof.AccessKey == "" || prof.SecretKey == "" {
 		return nil, errors.New(("OSC_ACCESS_KEY/OSC_SECRET_KEY are required"))
 	}
-	sess, err := NewSession(region, configEnv)
+	sess, err := NewSession(region, prof)
 	if err != nil {
 		return nil, fmt.Errorf("new client: %w", err)
 	}
 	aws := elb.New(sess)
-	oapi, err := NewOscClient(region, configEnv)
+	oapi, err := NewOscClient(region, prof)
 	if err != nil {
 		return nil, fmt.Errorf("new client: %w", err)
 	}

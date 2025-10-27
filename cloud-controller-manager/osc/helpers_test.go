@@ -7,7 +7,7 @@ import (
 	"github.com/outscale/cloud-provider-osc/cloud-controller-manager/osc/cloud"
 	"github.com/outscale/cloud-provider-osc/cloud-controller-manager/osc/oapi"
 	oapimocks "github.com/outscale/cloud-provider-osc/cloud-controller-manager/osc/oapi/mocks"
-	sdk "github.com/outscale/osc-sdk-go/v2"
+	sdk "github.com/outscale/osc-sdk-go/v3/pkg/osc"
 	"go.uber.org/mock/gomock"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -154,9 +154,9 @@ func expectReadLoadBalancer(mock *oapimocks.MockOAPI, updates ...func(*sdk.LoadB
 		SecurityGroups:   &[]string{"sg-foo"},
 		Subnets:          &[]string{"subnet-service"},
 		Listeners: &[]sdk.Listener{{
-			LoadBalancerPort:     ptr.To[int32](80),
+			LoadBalancerPort:     ptr.To(80),
 			LoadBalancerProtocol: ptr.To("TCP"),
-			BackendPort:          ptr.To[int32](8080),
+			BackendPort:          ptr.To(8080),
 			BackendProtocol:      ptr.To("TCP"),
 		}},
 		HealthCheck: &sdk.HealthCheck{
@@ -382,8 +382,8 @@ func expectFindExistingIngressSecurityGroup(mock *oapimocks.MockOAPI, id string)
 			SecurityGroupId: ptr.To(id),
 			InboundRules: &[]sdk.SecurityGroupRule{{
 				IpProtocol:    ptr.To("tcp"),
-				FromPortRange: ptr.To[int32](80),
-				ToPortRange:   ptr.To[int32](80),
+				FromPortRange: ptr.To(80),
+				ToPortRange:   ptr.To(80),
 				IpRanges:      &[]string{"0.0.0.0/0"},
 			}},
 		}}, nil)
@@ -413,7 +413,7 @@ func expectFindExistingWorkerSG(mock *oapimocks.MockOAPI) {
 		Return([]sdk.SecurityGroup{
 			{SecurityGroupId: ptr.To("sg-worker"), Tags: &[]sdk.ResourceTag{{Key: cloud.RoleTagKeyPrefix + "worker"}},
 				InboundRules: &[]sdk.SecurityGroupRule{
-					{IpProtocol: ptr.To("tcp"), FromPortRange: ptr.To[int32](8080), ToPortRange: ptr.To[int32](8080), SecurityGroupsMembers: &[]sdk.SecurityGroupsMember{{
+					{IpProtocol: ptr.To("tcp"), FromPortRange: ptr.To(8080), ToPortRange: ptr.To(8080), SecurityGroupsMembers: &[]sdk.SecurityGroupsMember{{
 						SecurityGroupId: ptr.To("sg-foo"),
 					}}},
 				}},
@@ -428,8 +428,8 @@ func expectAddIngressSGRule(mock *oapimocks.MockOAPI, ipRanges []string, dstSG s
 		Flow:            "Inbound",
 		Rules: &[]sdk.SecurityGroupRule{{
 			IpProtocol:    ptr.To("tcp"),
-			FromPortRange: ptr.To[int32](80),
-			ToPortRange:   ptr.To[int32](80),
+			FromPortRange: ptr.To(80),
+			ToPortRange:   ptr.To(80),
 			IpRanges:      &ipRanges,
 		}},
 	}
@@ -446,8 +446,8 @@ func expectDeleteIngressSGRule(mock *oapimocks.MockOAPI, ipRanges []string, dstS
 		Flow:            "Inbound",
 		Rules: &[]sdk.SecurityGroupRule{{
 			IpProtocol:    ptr.To("tcp"),
-			FromPortRange: ptr.To[int32](80),
-			ToPortRange:   ptr.To[int32](80),
+			FromPortRange: ptr.To(80),
+			ToPortRange:   ptr.To(80),
 			IpRanges:      &ipRanges,
 		}},
 	}
@@ -461,8 +461,8 @@ func expectAddInternalSGRule(mock *oapimocks.MockOAPI, srcSG, dstSG string, upda
 		Flow:            "Inbound",
 		Rules: &[]sdk.SecurityGroupRule{{
 			IpProtocol:            ptr.To("tcp"),
-			FromPortRange:         ptr.To[int32](8080),
-			ToPortRange:           ptr.To[int32](8080),
+			FromPortRange:         ptr.To(8080),
+			ToPortRange:           ptr.To(8080),
 			SecurityGroupsMembers: &[]sdk.SecurityGroupsMember{{SecurityGroupId: &srcSG}},
 		}},
 	}
@@ -495,12 +495,12 @@ func expectDeleteListener(mock *oapimocks.MockOAPI) {
 	mock.EXPECT().
 		DeleteLoadBalancerListeners(gomock.Any(), gomock.Eq(sdk.DeleteLoadBalancerListenersRequest{
 			LoadBalancerName:  "lb-foo",
-			LoadBalancerPorts: []int32{80},
+			LoadBalancerPorts: []int{80},
 		})).
 		Return(&sdk.LoadBalancer{}, nil)
 }
 
-func expectCreateListener(mock *oapimocks.MockOAPI, port int32) {
+func expectCreateListener(mock *oapimocks.MockOAPI, port int) {
 	mock.EXPECT().
 		CreateLoadBalancerListeners(gomock.Any(), gomock.Eq(sdk.CreateLoadBalancerListenersRequest{
 			LoadBalancerName: "lb-foo",
@@ -568,7 +568,7 @@ func expectPurgeSecurityGroups(mock *oapimocks.MockOAPI) {
 				SecurityGroupId: ptr.To("sg-bar"),
 				InboundRules: &[]sdk.SecurityGroupRule{
 					{IpProtocol: ptr.To("-1"), IpRanges: &[]string{"0.0.0.0/0"}},
-					{IpProtocol: ptr.To("tcp"), FromPortRange: ptr.To[int32](8080), ToPortRange: ptr.To[int32](8080), SecurityGroupsMembers: &[]sdk.SecurityGroupsMember{{SecurityGroupId: ptr.To("sg-foo")}}},
+					{IpProtocol: ptr.To("tcp"), FromPortRange: ptr.To(8080), ToPortRange: ptr.To(8080), SecurityGroupsMembers: &[]sdk.SecurityGroupsMember{{SecurityGroupId: ptr.To("sg-foo")}}},
 				},
 			},
 		}, nil)
@@ -577,7 +577,7 @@ func expectPurgeSecurityGroups(mock *oapimocks.MockOAPI) {
 			SecurityGroupId: "sg-bar",
 			Flow:            "Inbound",
 			Rules: &[]sdk.SecurityGroupRule{{
-				IpProtocol: ptr.To("tcp"), FromPortRange: ptr.To[int32](8080), ToPortRange: ptr.To[int32](8080),
+				IpProtocol: ptr.To("tcp"), FromPortRange: ptr.To(8080), ToPortRange: ptr.To(8080),
 				SecurityGroupsMembers: &[]sdk.SecurityGroupsMember{{SecurityGroupId: ptr.To("sg-foo")}},
 			}},
 		})).

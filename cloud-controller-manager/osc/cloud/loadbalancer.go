@@ -17,7 +17,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/elb"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/outscale/cloud-provider-osc/cloud-controller-manager/osc/oapi"
-	"github.com/outscale/osc-sdk-go/v2"
+	"github.com/outscale/osc-sdk-go/v3/pkg/osc"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	controllerapi "k8s.io/cloud-provider/api"
@@ -68,12 +68,12 @@ var (
 
 // HealthCheck is the healcheck configuration.
 type HealthCheck struct {
-	Interval           int32 `annotation:"osc-load-balancer-healthcheck-interval"`
-	Timeout            int32 `annotation:"osc-load-balancer-healthcheck-timeout"`
-	HealthyThreshold   int32 `annotation:"osc-load-balancer-healthcheck-healthy-threshold"`
-	UnhealthyThreshold int32 `annotation:"osc-load-balancer-healthcheck-unhealthy-threshold"`
+	Interval           int `annotation:"osc-load-balancer-healthcheck-interval"`
+	Timeout            int `annotation:"osc-load-balancer-healthcheck-timeout"`
+	HealthyThreshold   int `annotation:"osc-load-balancer-healthcheck-healthy-threshold"`
+	UnhealthyThreshold int `annotation:"osc-load-balancer-healthcheck-unhealthy-threshold"`
 
-	Port     int32  `annotation:"osc-load-balancer-healthcheck-port"`
+	Port     int    `annotation:"osc-load-balancer-healthcheck-port"`
 	Protocol string `annotation:"osc-load-balancer-healthcheck-protocol"`
 	Path     string `annotation:"osc-load-balancer-healthcheck-path"`
 }
@@ -94,18 +94,18 @@ type ListenerDefaults struct {
 	SSLPorts        []string `annotation:"osc-load-balancer-ssl-ports"`
 }
 
-func isPortIn(port int32, allowed []string) bool {
+func isPortIn(port int, allowed []string) bool {
 	if slices.Contains(allowed, "*") {
 		return true
 	}
-	sport := strconv.FormatInt(int64(port), 10)
+	sport := strconv.Itoa(port)
 	return slices.Contains(allowed, sport)
 }
 
 // Listener defines a listener.
 type Listener struct {
-	Port        int32
-	BackendPort int32
+	Port        int
+	BackendPort int
 }
 
 // AccessLog defines the access log config.
@@ -204,8 +204,8 @@ func NewLoadBalancer(svc *v1.Service, addTags map[string]string) (*LoadBalancer,
 			continue
 		}
 		lb.Listeners = append(lb.Listeners, Listener{
-			Port:        port.Port,
-			BackendPort: port.NodePort,
+			Port:        int(port.Port),
+			BackendPort: int(port.NodePort),
 		})
 	}
 
@@ -225,7 +225,7 @@ func NewLoadBalancer(svc *v1.Service, addTags map[string]string) (*LoadBalancer,
 		}
 	case path != "":
 		lb.HealthCheck.Path = path
-		lb.HealthCheck.Port = port
+		lb.HealthCheck.Port = int(port)
 		lb.HealthCheck.Protocol = "http"
 	case len(lb.Listeners) == 0:
 	default:
@@ -365,10 +365,10 @@ func (c *Cloud) LoadBalancerExists(ctx context.Context, l *LoadBalancer) (bool, 
 	case lb == nil:
 		return false, nil
 	}
-	if getLBUClusterID(lb.GetTags()) != c.clusterID {
+	if getLBUClusterID(*lb.Tags) != c.clusterID {
 		return false, fmt.Errorf("%w another cluster", ErrBelongsToSomeoneElse)
 	}
-	svcName := getLBUServiceName(lb.GetTags())
+	svcName := getLBUServiceName(*lb.Tags)
 	if svcName != "" && svcName != l.ServiceName {
 		return false, fmt.Errorf("%w another service", ErrBelongsToSomeoneElse)
 	}
@@ -396,8 +396,10 @@ func (c *Cloud) GetLoadBalancer(ctx context.Context, l *LoadBalancer) (dns, ip s
 		return "", "", false, fmt.Errorf("unable to get LB: %w", err)
 	case lb == nil:
 		return "", "", false, nil
+	case lb.DnsName != nil && lb.PublicIp != nil:
+		return *lb.DnsName, *lb.PublicIp, true, nil
 	case lb.DnsName != nil:
-		return lb.GetDnsName(), lb.GetPublicIp(), true, nil
+		return *lb.DnsName, "", true, nil
 	default:
 		return "", "", true, nil
 	}
@@ -462,7 +464,7 @@ func (c *Cloud) CreateLoadBalancer(ctx context.Context, l *LoadBalancer, backend
 		})
 	}
 	createRequest.Tags = &ltags
-	slices.SortFunc(createRequest.GetTags(), func(a, b osc.ResourceTag) int {
+	slices.SortFunc(*createRequest.Tags, func(a, b osc.ResourceTag) int {
 		switch {
 		case a.Key < b.Key:
 			return -1
@@ -504,7 +506,7 @@ func (c *Cloud) CreateLoadBalancer(ctx context.Context, l *LoadBalancer, backend
 	case res.DnsName == nil:
 		return "", "", ErrLoadBalancerIsNotReady
 	default:
-		return res.GetDnsName(), res.GetPublicIp(), nil
+		return *res.DnsName, *res.PublicIp, nil
 	}
 }
 
@@ -524,7 +526,7 @@ func (c *Cloud) allocateFromPool(ctx context.Context, pool string) (*osc.PublicI
 	for i := range pips {
 		pip := pips[(off+i)%len(pips)]
 		if pip.LinkPublicIpId == nil {
-			log.V(3).Info("Found publicIp in pool", "publicIpId", pip.GetPublicIpId(), "publicIp", pip.GetPublicIp())
+			log.V(3).Info("Found publicIp in pool", "publicIpId", pip.PublicIpId, "publicIp", *pip.PublicIp)
 			return &pip, nil
 		}
 	}
@@ -544,7 +546,7 @@ func (c *Cloud) ensureSubnet(ctx context.Context, l *LoadBalancer) error {
 		case len(subnets) == 0:
 			return errors.New("find existing subnet: not found")
 		}
-		l.NetID = subnets[0].GetNetId()
+		l.NetID = *subnets[0].NetId
 		return nil
 	}
 	subnets, err := c.api.OAPI().ReadSubnets(ctx, osc.ReadSubnetsRequest{
@@ -558,9 +560,9 @@ func (c *Cloud) ensureSubnet(ctx context.Context, l *LoadBalancer) error {
 	// Find by role
 	ensureByTag := func(key string) bool {
 		for _, subnet := range subnets {
-			if hasTag(subnet.GetTags(), key) {
-				l.SubnetID = subnet.GetSubnetId()
-				l.NetID = subnet.GetNetId()
+			if hasTag(*subnet.Tags, key) {
+				l.SubnetID = *subnet.SubnetId
+				l.NetID = *subnet.NetId
 				return true
 			}
 		}
@@ -592,7 +594,7 @@ func (c *Cloud) ensureSecurityGroup(ctx context.Context, l *LoadBalancer) error 
 	if err != nil {
 		return fmt.Errorf("create SG: %w", err)
 	}
-	l.SecurityGroups = []string{resp.GetSecurityGroupId()}
+	l.SecurityGroups = []string{*resp.SecurityGroupId}
 	l.lbSecurityGroup = resp
 	err = c.api.OAPI().CreateTags(ctx, osc.CreateTagsRequest{
 		ResourceIds: l.SecurityGroups,
@@ -654,7 +656,7 @@ func (c *Cloud) UpdateLoadBalancer(ctx context.Context, l *LoadBalancer, backend
 	case existing.DnsName == nil:
 		return "", "", ErrLoadBalancerIsNotReady
 	default:
-		return existing.GetDnsName(), existing.GetPublicIp(), nil
+		return *existing.DnsName, *existing.PublicIp, nil
 	}
 }
 
@@ -733,14 +735,14 @@ func (c *Cloud) updateListeners(ctx context.Context, l *LoadBalancer, existing *
 	expect := l.listeners()
 
 	// Remove unused listeners
-	var del, delback []int32
-	for _, elistener := range existing.GetListeners() {
+	var del, delback []int
+	for _, elistener := range *existing.Listeners {
 		if !slices.ContainsFunc(expect, func(listener osc.ListenerForCreation) bool {
 			return oscListenersAreEqual(elistener, listener)
 		}) {
-			del = append(del, elistener.GetLoadBalancerPort())
-			if len(elistener.GetPolicyNames()) > 0 {
-				delback = append(delback, elistener.GetBackendPort())
+			del = append(del, *elistener.LoadBalancerPort)
+			if len(*elistener.PolicyNames) > 0 {
+				delback = append(delback, *elistener.BackendPort)
 			}
 		}
 	}
@@ -769,7 +771,7 @@ func (c *Cloud) updateListeners(ctx context.Context, l *LoadBalancer, existing *
 	// Add new listeners
 	var add []osc.ListenerForCreation
 	for _, listener := range expect {
-		if !slices.ContainsFunc(existing.GetListeners(), func(elistener osc.Listener) bool {
+		if !slices.ContainsFunc(*existing.Listeners, func(elistener osc.Listener) bool {
 			return oscListenersAreEqual(elistener, listener)
 		}) {
 			add = append(add, listener)
@@ -789,16 +791,16 @@ func (c *Cloud) updateListeners(ctx context.Context, l *LoadBalancer, existing *
 }
 
 func oscListenersAreEqual(actual osc.Listener, expected osc.ListenerForCreation) bool {
-	if !protocolsAreEqual(actual.GetLoadBalancerProtocol(), expected.LoadBalancerProtocol) {
+	if !protocolsAreEqual(*actual.LoadBalancerProtocol, expected.LoadBalancerProtocol) {
 		return false
 	}
-	if !protocolsAreEqual(actual.GetBackendProtocol(), expected.GetBackendProtocol()) {
+	if !protocolsAreEqual(*actual.BackendProtocol, *expected.BackendProtocol) {
 		return false
 	}
-	if actual.GetLoadBalancerPort() != expected.LoadBalancerPort {
+	if *actual.LoadBalancerPort != expected.LoadBalancerPort {
 		return false
 	}
-	if actual.GetBackendPort() != expected.BackendPort {
+	if *actual.BackendPort != expected.BackendPort {
 		return false
 	}
 	return true
@@ -810,10 +812,18 @@ func protocolsAreEqual(l, r string) bool {
 	return strings.EqualFold(l, r)
 }
 
+func certificateAreEqual(l *string, r string) bool {
+	var ls string
+	if l != nil {
+		ls = *l
+	}
+	return ls == r
+}
+
 func (c *Cloud) updateSSLCert(ctx context.Context, l *LoadBalancer, existing *osc.LoadBalancer) error {
-	for _, listener := range existing.GetListeners() {
-		if listener.GetServerCertificateId() != l.ListenerDefaults.SSLCertificate {
-			klog.FromContext(ctx).V(2).Info("Changing certificate", "port", listener.GetLoadBalancerPort())
+	for _, listener := range *existing.Listeners {
+		if certificateAreEqual(listener.ServerCertificateId, l.ListenerDefaults.SSLCertificate) {
+			klog.FromContext(ctx).V(2).Info("Changing certificate", "port", *listener.LoadBalancerPort)
 			err := c.api.OAPI().UpdateLoadBalancer(ctx, osc.UpdateLoadBalancerRequest{
 				LoadBalancerName:    l.Name,
 				LoadBalancerPort:    listener.LoadBalancerPort,
@@ -915,7 +925,7 @@ func (c *Cloud) updateHealthcheck(ctx context.Context, l *LoadBalancer, existing
 	case (existing == nil) != (expected == nil):
 	case existing != nil:
 		actual := existing.HealthCheck
-		if expected.GetPath() == actual.GetPath() &&
+		if expected.Path == actual.Path &&
 			expected.HealthyThreshold == actual.HealthyThreshold &&
 			expected.UnhealthyThreshold == actual.UnhealthyThreshold &&
 			expected.CheckInterval == actual.CheckInterval &&
@@ -939,7 +949,7 @@ func (c *Cloud) updateBackendVms(ctx context.Context, l *LoadBalancer, vms []VM,
 	// in most cases, there will be no change, preallocating would waste an alloc
 	var add []string //nolint:prealloc
 	for _, vm := range vms {
-		if existing != nil && slices.Contains(existing.GetBackendVmIds(), vm.ID) {
+		if existing != nil && slices.Contains(*existing.BackendVmIds, vm.ID) {
 			continue
 		}
 		add = append(add, vm.ID)
@@ -958,7 +968,7 @@ func (c *Cloud) updateBackendVms(ctx context.Context, l *LoadBalancer, vms []VM,
 		return nil
 	}
 	var remove []string //nolint:prealloc
-	for _, i := range existing.GetBackendVmIds() {
+	for _, i := range *existing.BackendVmIds {
 		if slices.ContainsFunc(vms, func(vm VM) bool {
 			return i == vm.ID
 		}) {
@@ -986,7 +996,7 @@ func (c *Cloud) getSecurityGroups(ctx context.Context, l *LoadBalancer, vms []VM
 			lbSG []string
 		)
 		if existing != nil {
-			lbSG = existing.GetSecurityGroups()
+			lbSG = *existing.SecurityGroups
 		} else {
 			lbSG = l.SecurityGroups
 		}
@@ -1008,7 +1018,7 @@ func (c *Cloud) getSecurityGroups(ctx context.Context, l *LoadBalancer, vms []VM
 		sgIDs := sets.Set[string]{}
 		for _, vm := range vms {
 			for _, sg := range *vm.cloudVm.SecurityGroups {
-				sgIDs.Insert(sg.GetSecurityGroupId())
+				sgIDs.Insert(*sg.SecurityGroupId)
 			}
 		}
 		sgs, err := c.api.OAPI().ReadSecurityGroups(ctx, osc.ReadSecurityGroupsRequest{
@@ -1024,21 +1034,21 @@ func (c *Cloud) getSecurityGroups(ctx context.Context, l *LoadBalancer, vms []VM
 		}
 		roleTagCount := math.MaxInt
 		for _, sg := range sgs {
-			if hasTag(sg.GetTags(), mainSGTagKey(c.clusterID)) {
-				klog.FromContext(ctx).V(4).Info("Found security group having main tag", "securityGroupId", sg.GetSecurityGroupId())
+			if hasTag(*sg.Tags, mainSGTagKey(c.clusterID)) {
+				klog.FromContext(ctx).V(4).Info("Found security group having main tag", "securityGroupId", sg.SecurityGroupId)
 				l.targetSecurityGroup = &sg
 			}
-			if hasTag(sg.GetTags(), roleTagKey(l.TargetRole)) {
-				nRoleTagCount := countRoleTags(sg.GetTags())
+			if hasTag(*sg.Tags, roleTagKey(l.TargetRole)) {
+				nRoleTagCount := countRoleTags(*sg.Tags)
 				if nRoleTagCount < roleTagCount {
-					klog.FromContext(ctx).V(4).Info("Found security group having role tag", "securityGroupId", sg.GetSecurityGroupId(), "role", l.TargetRole, "nroles", nRoleTagCount)
+					klog.FromContext(ctx).V(4).Info("Found security group having role tag", "securityGroupId", sg.SecurityGroupId, "role", l.TargetRole, "nroles", nRoleTagCount)
 					l.targetSecurityGroup = &sg
 					roleTagCount = nRoleTagCount
 				}
 			}
 		}
 		if l.targetSecurityGroup == nil {
-			klog.FromContext(ctx).V(3).Info("No security group found by tag, using a random one", "securityGroupId", sgs[0].GetSecurityGroupId())
+			klog.FromContext(ctx).V(3).Info("No security group found by tag, using a random one", "securityGroupId", sgs[0].SecurityGroupId)
 			l.targetSecurityGroup = &sgs[0]
 		}
 	}
@@ -1054,9 +1064,9 @@ func (c *Cloud) updateIngressSecurityGroupRules(ctx context.Context, l *LoadBala
 	for _, listener := range l.Listeners {
 		var addRanges []string
 		for _, allowFrom := range allowed {
-			if !slices.ContainsFunc(lbSG.GetInboundRules(), func(r osc.SecurityGroupRule) bool {
-				return r.GetFromPortRange() == listener.Port &&
-					slices.Contains(r.GetIpRanges(), allowFrom)
+			if !slices.ContainsFunc(*lbSG.InboundRules, func(r osc.SecurityGroupRule) bool {
+				return *r.FromPortRange == listener.Port && r.IpRanges != nil &&
+					slices.Contains(*r.IpRanges, allowFrom)
 			}) {
 				addRanges = append(addRanges, allowFrom)
 			}
@@ -1064,9 +1074,9 @@ func (c *Cloud) updateIngressSecurityGroupRules(ctx context.Context, l *LoadBala
 		if len(addRanges) == 0 {
 			continue
 		}
-		klog.FromContext(ctx).V(2).Info("Adding rule", "from", addRanges, "to", lbSG.GetSecurityGroupId(), "port", listener.Port)
+		klog.FromContext(ctx).V(2).Info("Adding rule", "from", addRanges, "to", lbSG.SecurityGroupId, "port", listener.Port)
 		_, err := c.api.OAPI().CreateSecurityGroupRule(ctx, osc.CreateSecurityGroupRuleRequest{
-			SecurityGroupId: lbSG.GetSecurityGroupId(),
+			SecurityGroupId: *lbSG.SecurityGroupId,
 			Flow:            "Inbound",
 			Rules: &[]osc.SecurityGroupRule{{
 				IpProtocol:    ptr.To("tcp"),
@@ -1081,20 +1091,25 @@ func (c *Cloud) updateIngressSecurityGroupRules(ctx context.Context, l *LoadBala
 	}
 
 	// Removing rules
-	for _, r := range lbSG.GetInboundRules() {
+	for _, r := range *lbSG.InboundRules {
 		del := false
-		var delRanges []string
+		delRule := osc.SecurityGroupRule{
+			IpProtocol:    r.IpProtocol,
+			FromPortRange: r.FromPortRange,
+			ToPortRange:   r.ToPortRange,
+		}
 		if !slices.ContainsFunc(l.Listeners, func(listener Listener) bool {
-			return listener.Port == r.GetFromPortRange()
+			return listener.Port == *r.FromPortRange
 		}) {
 			del = true
 		}
 		if del {
-			delRanges = r.GetIpRanges()
-		} else {
-			for _, ipRange := range r.GetIpRanges() {
+			delRule.IpRanges = r.IpRanges
+		} else if r.IpRanges != nil {
+			delRule.IpRanges = &[]string{}
+			for _, ipRange := range *r.IpRanges {
 				if !slices.Contains(allowed, ipRange) {
-					delRanges = append(delRanges, ipRange)
+					*delRule.IpRanges = append(*delRule.IpRanges, ipRange)
 					del = true
 				}
 			}
@@ -1102,16 +1117,11 @@ func (c *Cloud) updateIngressSecurityGroupRules(ctx context.Context, l *LoadBala
 		if !del {
 			continue
 		}
-		klog.FromContext(ctx).V(2).Info("Deleting rule", "from", delRanges, "to", lbSG.GetSecurityGroupId(), "port", r.GetFromPortRange())
+		klog.FromContext(ctx).V(2).Info("Deleting rule", "from", *delRule.IpRanges, "to", lbSG.SecurityGroupId, "port", r.FromPortRange)
 		_, err := c.api.OAPI().DeleteSecurityGroupRule(ctx, osc.DeleteSecurityGroupRuleRequest{
-			SecurityGroupId: lbSG.GetSecurityGroupId(),
+			SecurityGroupId: *lbSG.SecurityGroupId,
 			Flow:            "Inbound",
-			Rules: &[]osc.SecurityGroupRule{{
-				IpProtocol:    r.IpProtocol,
-				FromPortRange: r.FromPortRange,
-				ToPortRange:   r.ToPortRange,
-				IpRanges:      &delRanges,
-			}},
+			Rules:           &[]osc.SecurityGroupRule{delRule},
 		})
 		if err != nil {
 			return fmt.Errorf("delete ingress rule: %w", err)
@@ -1121,22 +1131,22 @@ func (c *Cloud) updateIngressSecurityGroupRules(ctx context.Context, l *LoadBala
 }
 
 func (c *Cloud) updateBackendSecurityGroupRules(ctx context.Context, l *LoadBalancer, existing *osc.LoadBalancer) error {
-	srcSGID := l.lbSecurityGroup.GetSecurityGroupId()
-	destSG := l.targetSecurityGroup
+	srcSGID := *l.lbSecurityGroup.SecurityGroupId
+	destSG := *l.targetSecurityGroup
 
 	// Adding new rules
 	for _, listener := range l.Listeners {
-		if slices.ContainsFunc(destSG.GetInboundRules(), func(r osc.SecurityGroupRule) bool {
-			return r.GetFromPortRange() == listener.BackendPort &&
-				slices.ContainsFunc(r.GetSecurityGroupsMembers(), func(m osc.SecurityGroupsMember) bool {
-					return m.HasSecurityGroupId() && srcSGID == m.GetSecurityGroupId()
+		if slices.ContainsFunc(*destSG.InboundRules, func(r osc.SecurityGroupRule) bool {
+			return *r.FromPortRange == listener.BackendPort && r.SecurityGroupsMembers != nil &&
+				slices.ContainsFunc(*r.SecurityGroupsMembers, func(m osc.SecurityGroupsMember) bool {
+					return m.SecurityGroupId != nil && srcSGID == *m.SecurityGroupId
 				})
 		}) {
 			continue
 		}
-		klog.FromContext(ctx).V(2).Info("Adding rule", "from", srcSGID, "to", destSG.GetSecurityGroupId(), "port", listener.BackendPort)
+		klog.FromContext(ctx).V(2).Info("Adding rule", "from", srcSGID, "to", destSG.SecurityGroupId, "port", listener.BackendPort)
 		_, err := c.api.OAPI().CreateSecurityGroupRule(ctx, osc.CreateSecurityGroupRuleRequest{
-			SecurityGroupId: destSG.GetSecurityGroupId(),
+			SecurityGroupId: *destSG.SecurityGroupId,
 			Flow:            "Inbound",
 			Rules: &[]osc.SecurityGroupRule{{
 				IpProtocol:    ptr.To("tcp"),
@@ -1153,22 +1163,23 @@ func (c *Cloud) updateBackendSecurityGroupRules(ctx context.Context, l *LoadBala
 	}
 
 	// Removing rules
-	for _, r := range destSG.GetInboundRules() {
+	for _, r := range *destSG.InboundRules {
 		// ignore if rule is not from the LB SG
-		if !slices.ContainsFunc(r.GetSecurityGroupsMembers(), func(m osc.SecurityGroupsMember) bool {
-			return m.GetSecurityGroupId() == srcSGID
-		}) {
+		if r.SecurityGroupsMembers == nil ||
+			!slices.ContainsFunc(*r.SecurityGroupsMembers, func(m osc.SecurityGroupsMember) bool {
+				return m.SecurityGroupId != nil && *m.SecurityGroupId == srcSGID
+			}) {
 			continue
 		}
 		// ignore if port is not from a lister
 		if slices.ContainsFunc(l.Listeners, func(listener Listener) bool {
-			return listener.BackendPort == r.GetFromPortRange()
+			return listener.BackendPort == *r.FromPortRange
 		}) {
 			continue
 		}
-		klog.FromContext(ctx).V(2).Info("Deleting rule", "from", srcSGID, "to", destSG.GetSecurityGroupId(), "port", r.GetFromPortRange())
+		klog.FromContext(ctx).V(2).Info("Deleting rule", "from", srcSGID, "to", destSG.SecurityGroupId, "port", r.FromPortRange)
 		_, err := c.api.OAPI().DeleteSecurityGroupRule(ctx, osc.DeleteSecurityGroupRuleRequest{
-			SecurityGroupId: destSG.GetSecurityGroupId(),
+			SecurityGroupId: *destSG.SecurityGroupId,
 			Flow:            "Inbound",
 			Rules: &[]osc.SecurityGroupRule{{
 				IpProtocol:    r.IpProtocol,
@@ -1201,7 +1212,7 @@ func (c *Cloud) DeleteLoadBalancer(ctx context.Context, l *LoadBalancer) error {
 		return fmt.Errorf("deregister instances: %w", err)
 	}
 	// Tag LB SG as to be deleted (only if it has been created)
-	for _, sg := range existing.GetSecurityGroups() {
+	for _, sg := range *existing.SecurityGroups {
 		if !slices.Contains(l.SecurityGroups, sg) && !slices.Contains(l.AdditionalSecurityGroups, sg) {
 			klog.FromContext(ctx).V(2).Info("Marking SG for deletion", "securityGroupId", sg)
 			err = c.api.OAPI().CreateTags(ctx, osc.CreateTagsRequest{
@@ -1240,21 +1251,21 @@ func (c *Cloud) RunGarbageCollector(ctx context.Context) error {
 	// Find SG to delete
 	var toDelete []string
 	for _, sg := range sgs {
-		if hasTag(sg.GetTags(), SGToDeleteTagKey) {
-			toDelete = append(toDelete, sg.GetSecurityGroupId())
+		if hasTag(*sg.Tags, SGToDeleteTagKey) {
+			toDelete = append(toDelete, *sg.SecurityGroupId)
 		}
 	}
 	klog.FromContext(ctx).V(4).Info("Security groups marked for deletion", "count", len(toDelete))
 	for _, delSGID := range toDelete {
 		// delete all inbound rules from this SG
 		for _, sg := range sgs {
-			klog.FromContext(ctx).V(2).Info("Deleting inbound rule", "from", delSGID, "to", sg.GetSecurityGroupId())
-			for _, r := range sg.GetInboundRules() {
-				if slices.ContainsFunc(r.GetSecurityGroupsMembers(), func(m osc.SecurityGroupsMember) bool {
-					return slices.Contains(toDelete, m.GetSecurityGroupId())
+			klog.FromContext(ctx).V(2).Info("Deleting inbound rule", "from", delSGID, "to", sg.SecurityGroupId)
+			for _, r := range *sg.InboundRules {
+				if r.SecurityGroupsMembers != nil && slices.ContainsFunc(*r.SecurityGroupsMembers, func(m osc.SecurityGroupsMember) bool {
+					return m.SecurityGroupId != nil && slices.Contains(toDelete, *m.SecurityGroupId)
 				}) {
 					_, err = c.api.OAPI().DeleteSecurityGroupRule(ctx, osc.DeleteSecurityGroupRuleRequest{
-						SecurityGroupId: sg.GetSecurityGroupId(),
+						SecurityGroupId: *sg.SecurityGroupId,
 						Flow:            "Inbound",
 						Rules: &[]osc.SecurityGroupRule{{
 							FromPortRange: r.FromPortRange,
@@ -1266,7 +1277,7 @@ func (c *Cloud) RunGarbageCollector(ctx context.Context) error {
 						}},
 					})
 					if err != nil {
-						return fmt.Errorf("delete rule from %s to %s: %w", delSGID, sg.GetSecurityGroupId(), err)
+						return fmt.Errorf("delete rule from %s to %s: %w", delSGID, sg.SecurityGroupId, err)
 					}
 				}
 			}

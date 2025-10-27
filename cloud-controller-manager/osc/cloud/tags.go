@@ -3,7 +3,7 @@ package cloud
 import (
 	"strings"
 
-	"github.com/outscale/osc-sdk-go/v2"
+	"github.com/outscale/osc-sdk-go/v3/pkg/osc"
 )
 
 const (
@@ -43,8 +43,8 @@ const (
 
 func getLBUClusterID(tags []osc.ResourceTag) string {
 	for _, t := range tags {
-		if strings.HasPrefix(t.GetKey(), ClusterIDTagKeyPrefix) {
-			return strings.TrimPrefix(t.GetKey(), ClusterIDTagKeyPrefix)
+		if strings.HasPrefix(t.Key, ClusterIDTagKeyPrefix) {
+			return strings.TrimPrefix(t.Key, ClusterIDTagKeyPrefix)
 		}
 	}
 	return ""
@@ -52,8 +52,8 @@ func getLBUClusterID(tags []osc.ResourceTag) string {
 
 func getLBUServiceName(tags []osc.ResourceTag) string {
 	for _, t := range tags {
-		if t.GetKey() == ServiceNameTagKey {
-			return t.GetValue()
+		if t.Key == ServiceNameTagKey {
+			return t.Value
 		}
 	}
 	return ""

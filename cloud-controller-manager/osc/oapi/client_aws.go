@@ -25,31 +25,28 @@ import (
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/outscale/cloud-provider-osc/cloud-controller-manager/utils"
-	"github.com/outscale/osc-sdk-go/v2"
+	"github.com/outscale/osc-sdk-go/v3/pkg/profile"
 )
 
 // NewSession create a new AWS client session, using OSC credentials.
-func NewSession(region string, config *osc.ConfigEnv) (*session.Session, error) {
-	cfg, err := config.Configuration()
-	if err != nil {
-		return nil, fmt.Errorf("configuration: %w", err)
-	}
+func NewSession(region string, prof *profile.Profile) (*session.Session, error) {
 	awsConfig := &aws.Config{
 		Region: aws.String(region),
 		Credentials: credentials.NewCredentials(&credentials.StaticProvider{
 			Value: credentials.Value{
-				AccessKeyID:     *config.AccessKey,
-				SecretAccessKey: *config.SecretKey,
+				AccessKeyID:     prof.AccessKey,
+				SecretAccessKey: prof.SecretKey,
 				ProviderName:    "osc",
 			},
 		}),
 		CredentialsChainVerboseErrors: aws.Bool(true),
 		EndpointResolver:              ServiceResolver(region),
-		HTTPClient:                    cfg.HTTPClient,
+		// FIXME: required for mTLS, use client from
+		// HTTPClient:                    cfg.HTTPClient,
 	}
 	sess, err := session.NewSession(awsConfig)
 	if err != nil {
-		return nil, fmt.Errorf("unable to initialize NewSession session: %w", err)
+		return nil, fmt.Errorf("unable to initialize AWS session: %w", err)
 	}
 	addHandlers(&sess.Handlers)
 	return sess, nil
