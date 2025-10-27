@@ -1277,7 +1277,7 @@ func (c *Cloud) RunGarbageCollector(ctx context.Context) error {
 						}},
 					})
 					if err != nil {
-						return fmt.Errorf("delete rule from %s to %s: %w", delSGID, sg.SecurityGroupId, err)
+						return fmt.Errorf("delete rule from %s to %s: %w", delSGID, *sg.SecurityGroupId, err)
 					}
 				}
 			}
