@@ -41,6 +41,7 @@ var (
 	vmNodeName = "10.0.0.10.eu-west-2.compute.internal"
 	sdkVM      = sdk.Vm{
 		VmId:           ptr.To("i-foo"),
+		VmType:         ptr.To("tinav3.c1r1p1"),
 		PrivateDnsName: &vmNodeName,
 		PrivateIp:      ptr.To("10.0.0.10"),
 		Placement:      &sdk.Placement{SubregionName: &subRegion},
@@ -61,6 +62,7 @@ var (
 	selfNodeName = "10.0.0.11.eu-west-2.compute.internal"
 	sdkSelf      = sdk.Vm{
 		VmId:           ptr.To("i-bar"),
+		VmType:         ptr.To("tinav3.c1r1p1"),
 		PrivateDnsName: &selfNodeName,
 		PrivateIp:      ptr.To("10.0.0.11"),
 		Tags: &[]sdk.ResourceTag{{
@@ -68,8 +70,8 @@ var (
 			Value: selfNodeName,
 		}},
 		Placement:      &sdk.Placement{SubregionName: &subRegion},
-		SubnetId:       ptr.To("subnet-bar"),
 		NetId:          ptr.To("net-bar"),
+		SubnetId:       ptr.To("subnet-bar"),
 		SecurityGroups: &[]sdk.SecurityGroupLight{{SecurityGroupId: ptr.To("sg-controlplane")}, {SecurityGroupId: ptr.To("sg-node")}},
 		State:          ptr.To("running"),
 	}

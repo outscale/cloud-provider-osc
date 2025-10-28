@@ -19,8 +19,11 @@ func TestNodeAddresses(t *testing.T) {
 	t.Run("Getting the addresses of the current node", func(t *testing.T) {
 		vm := cloud.FromOscVm(&sdk.Vm{
 			VmId:           ptr.To("i-foo"),
+			VmType:         ptr.To("tinav3.c1r1p1"),
 			PrivateDnsName: ptr.To("10.0.0.10.eu-west-2.compute.internal"),
 			PrivateIp:      ptr.To("10.0.0.10"),
+			NetId:          ptr.To("net-foo"),
+			SubnetId:       ptr.To("subnet-foo"),
 		})
 		c, _, _ := newAPI(t, vm, "foo")
 		p := osc.NewProviderWith(c, nil)
@@ -35,10 +38,13 @@ func TestNodeAddresses(t *testing.T) {
 	t.Run("Getting the addresses of the current node with public addresses", func(t *testing.T) {
 		vm := cloud.FromOscVm(&sdk.Vm{
 			VmId:           ptr.To("i-foo"),
+			VmType:         ptr.To("tinav3.c1r1p1"),
 			PrivateDnsName: ptr.To("10.0.0.10.eu-west-2.compute.internal"),
 			PrivateIp:      ptr.To("10.0.0.10"),
 			PublicDnsName:  ptr.To("ip-198-51-100-10.eu-west-2.compute.internal"),
 			PublicIp:       ptr.To("198.51.100.10"),
+			NetId:          ptr.To("net-foo"),
+			SubnetId:       ptr.To("subnet-foo"),
 		})
 		c, _, _ := newAPI(t, vm, "foo")
 		p := osc.NewProviderWith(c, nil)
@@ -56,17 +62,23 @@ func TestNodeAddresses(t *testing.T) {
 		name := "10.0.0.10.eu-west-2.compute.internal"
 		sdkvm := &sdk.Vm{
 			VmId:           ptr.To("i-foo"),
+			VmType:         ptr.To("tinav3.c1r1p1"),
 			PrivateDnsName: ptr.To(name),
 			PrivateIp:      ptr.To("10.0.0.10"),
 			Tags: &[]sdk.ResourceTag{{
 				Key:   cloud.TagVmNodeName,
 				Value: name,
 			}},
+			NetId:    ptr.To("net-foo"),
+			SubnetId: ptr.To("subnet-foo"),
 		}
 		sdkself := &sdk.Vm{
 			VmId:           ptr.To("i-bar"),
+			VmType:         ptr.To("tinav3.c1r1p1"),
 			PrivateDnsName: ptr.To("10.0.0.11.eu-west-2.compute.internal"),
 			PrivateIp:      ptr.To("10.0.0.11"),
+			NetId:          ptr.To("net-foo"),
+			SubnetId:       ptr.To("subnet-foo"),
 		}
 		self := cloud.FromOscVm(sdkself)
 		c, mock, _ := newAPI(t, self, "foo")
@@ -85,8 +97,11 @@ func TestNodeAddresses(t *testing.T) {
 func TestNodeAddressesByProviderID(t *testing.T) {
 	sdkvm := &sdk.Vm{
 		VmId:           ptr.To("i-foo"),
+		VmType:         ptr.To("tinav3.c1r1p1"),
 		PrivateDnsName: ptr.To("10.0.0.10.eu-west-2.compute.internal"),
 		PrivateIp:      ptr.To("10.0.0.10"),
+		NetId:          ptr.To("net-foo"),
+		SubnetId:       ptr.To("subnet-foo"),
 	}
 	vm := cloud.FromOscVm(sdkvm)
 	providerID := "aws:///eu-west-2a/i-foo"
@@ -110,8 +125,10 @@ func TestNodeAddressesByProviderID(t *testing.T) {
 
 func TestInstanceTypeByProviderID(t *testing.T) {
 	sdkvm := &sdk.Vm{
-		VmId:   ptr.To("i-foo"),
-		VmType: ptr.To("tinav7.c1r1p1"),
+		VmId:     ptr.To("i-foo"),
+		VmType:   ptr.To("tinav7.c1r1p1"),
+		NetId:    ptr.To("net-foo"),
+		SubnetId: ptr.To("subnet-foo"),
 	}
 	vm := cloud.FromOscVm(sdkvm)
 	providerID := "aws:///eu-west-2a/i-foo"
@@ -133,7 +150,10 @@ func TestInstanceID(t *testing.T) {
 	t.Run("Getting the id of the current node", func(t *testing.T) {
 		vm := cloud.FromOscVm(&sdk.Vm{
 			VmId:      ptr.To("i-foo"),
+			VmType:    ptr.To("tinav7.c1r1p1"),
 			Placement: &sdk.Placement{SubregionName: ptr.To("eu-west-2a")},
+			NetId:     ptr.To("net-foo"),
+			SubnetId:  ptr.To("subnet-foo"),
 		})
 		c, _, _ := newAPI(t, vm, "foo")
 		p := osc.NewProviderWith(c, nil)
@@ -145,16 +165,22 @@ func TestInstanceID(t *testing.T) {
 		name := "10.0.0.10.eu-west-2.compute.internal"
 		sdkvm := &sdk.Vm{
 			VmId:      ptr.To("i-foo"),
+			VmType:    ptr.To("tinav7.c1r1p1"),
 			Placement: &sdk.Placement{SubregionName: ptr.To("eu-west-2a")},
 			Tags: &[]sdk.ResourceTag{{
 				Key:   cloud.TagVmNodeName,
 				Value: name,
 			}},
+			NetId:    ptr.To("net-foo"),
+			SubnetId: ptr.To("subnet-foo"),
 		}
 		sdkself := &sdk.Vm{
 			VmId:           ptr.To("i-bar"),
+			VmType:         ptr.To("tinav7.c1r1p1"),
 			PrivateDnsName: ptr.To("10.0.0.11.eu-west-2.compute.internal"),
 			PrivateIp:      ptr.To("10.0.0.11"),
+			NetId:          ptr.To("net-foo"),
+			SubnetId:       ptr.To("subnet-foo"),
 		}
 		self := cloud.FromOscVm(sdkself)
 		c, mock, _ := newAPI(t, self, "foo")

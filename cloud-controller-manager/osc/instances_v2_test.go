@@ -60,9 +60,10 @@ func TestInstanceMetadata(t *testing.T) {
 	meta, err := p.InstanceMetadata(context.TODO(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
 	require.NoError(t, err)
 	assert.Equal(t, &cloudprovider.InstanceMetadata{
-		ProviderID: "aws:///eu-west-2a/i-foo",
-		Zone:       "eu-west-2a",
-		Region:     "eu-west-2",
+		ProviderID:   "aws:///eu-west-2a/i-foo",
+		InstanceType: "tinav3.c1r1p1",
+		Zone:         "eu-west-2a",
+		Region:       "eu-west-2",
 		NodeAddresses: []v1.NodeAddress{
 			{Type: v1.NodeInternalIP, Address: "10.0.0.10"},
 			{Type: v1.NodeInternalDNS, Address: "10.0.0.10.eu-west-2.compute.internal"},

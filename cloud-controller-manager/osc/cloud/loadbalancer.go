@@ -432,7 +432,7 @@ func (c *Cloud) CreateLoadBalancer(ctx context.Context, l *LoadBalancer, backend
 	}
 
 	// TODO: drop public cloud code ?
-	if c.Self.SubnetID == "" {
+	if c.Self.SubnetID == nil {
 		createRequest.SubregionNames = &[]string{c.Metadata.AvailabilityZone}
 	} else {
 		// subnet
@@ -560,7 +560,7 @@ func (c *Cloud) ensureSubnet(ctx context.Context, l *LoadBalancer) error {
 	// Find by role
 	ensureByTag := func(key string) bool {
 		for _, subnet := range subnets {
-			if hasTag(*subnet.Tags, key) {
+			if hasTag(subnet.Tags, key) {
 				l.SubnetID = *subnet.SubnetId
 				l.NetID = *subnet.NetId
 				return true
@@ -1034,11 +1034,11 @@ func (c *Cloud) getSecurityGroups(ctx context.Context, l *LoadBalancer, vms []VM
 		}
 		roleTagCount := math.MaxInt
 		for _, sg := range sgs {
-			if hasTag(*sg.Tags, mainSGTagKey(c.clusterID)) {
+			if hasTag(sg.Tags, mainSGTagKey(c.clusterID)) {
 				klog.FromContext(ctx).V(4).Info("Found security group having main tag", "securityGroupId", sg.SecurityGroupId)
 				l.targetSecurityGroup = &sg
 			}
-			if hasTag(*sg.Tags, roleTagKey(l.TargetRole)) {
+			if hasTag(sg.Tags, roleTagKey(l.TargetRole)) {
 				nRoleTagCount := countRoleTags(*sg.Tags)
 				if nRoleTagCount < roleTagCount {
 					klog.FromContext(ctx).V(4).Info("Found security group having role tag", "securityGroupId", sg.SecurityGroupId, "role", l.TargetRole, "nroles", nRoleTagCount)
@@ -1251,7 +1251,7 @@ func (c *Cloud) RunGarbageCollector(ctx context.Context) error {
 	// Find SG to delete
 	var toDelete []string
 	for _, sg := range sgs {
-		if hasTag(*sg.Tags, SGToDeleteTagKey) {
+		if hasTag(sg.Tags, SGToDeleteTagKey) {
 			toDelete = append(toDelete, *sg.SecurityGroupId)
 		}
 	}

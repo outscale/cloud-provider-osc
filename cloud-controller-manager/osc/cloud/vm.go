@@ -22,8 +22,7 @@ type VM struct {
 	NodeName         types.NodeName
 	AvailabilityZone string
 	Region           string
-	NetID            string
-	SubnetID         string
+	SubnetID         *string
 	VmType           string
 
 	cloudVm *osc.Vm
@@ -35,8 +34,7 @@ func FromOscVm(vm *osc.Vm) *VM {
 		ID:       *vm.VmId,
 		NodeName: mapInstanceToNodeName(vm),
 		VmType:   *vm.VmType,
-		NetID:    *vm.NetId,
-		SubnetID: *vm.SubnetId,
+		SubnetID: vm.SubnetId,
 
 		cloudVm: vm,
 	}
@@ -56,7 +54,7 @@ func (vm *VM) NodeAddresses() []v1.NodeAddress {
 	addresses := []v1.NodeAddress{}
 
 	// handle internal network interfaces
-	if len(*vm.cloudVm.Nics) > 0 {
+	if vm.cloudVm.Nics != nil && len(*vm.cloudVm.Nics) > 0 {
 		for _, networkInterface := range *vm.cloudVm.Nics {
 			// skip network interfaces that are not currently in use
 			if *networkInterface.State != "in-use" {
@@ -154,7 +152,7 @@ func (c *Cloud) GetVMsByNodeName(ctx context.Context, nodeNames ...string) ([]VM
 	vms := make([]VM, 0, len(nodeNames))
 	for _, nodeName := range nodeNames {
 		for _, sdkVM := range sdkVMs {
-			if hasTag(*sdkVM.Tags, TagVmNodeName, nodeName) ||
+			if hasTag(sdkVM.Tags, TagVmNodeName, nodeName) ||
 				mapInstanceToNodeName(&sdkVM) == types.NodeName(nodeName) {
 				vms = append(vms, *FromOscVm(&sdkVM))
 			}
