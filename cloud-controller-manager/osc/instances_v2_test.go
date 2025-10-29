@@ -10,7 +10,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	cloudprovider "k8s.io/cloud-provider"
-	"k8s.io/utils/ptr"
 )
 
 func TestInstanceExists(t *testing.T) {
@@ -43,7 +42,7 @@ func TestInstanceShutdown(t *testing.T) {
 	})
 	t.Run("If the instance is stopped, return true", func(t *testing.T) {
 		sdkVM := sdkVM
-		sdkVM.State = ptr.To("stopped")
+		sdkVM.State = "stopped"
 		c, mock, _ := newAPI(t, self, "foo")
 		expectVMs(mock, sdkSelf, sdkVM)
 		p := osc.NewProviderWith(c, nil)

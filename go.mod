@@ -10,7 +10,7 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.4.0
 	github.com/onsi/ginkgo/v2 v2.25.1
 	github.com/onsi/gomega v1.38.2
-	github.com/outscale/osc-sdk-go/v3 v3.0.0-alpha.6
+	github.com/outscale/osc-sdk-go/v3 v3.0.0-alpha.5.0.20251029131249-68d00ef05366
 	github.com/rs/xid v1.6.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.11.0

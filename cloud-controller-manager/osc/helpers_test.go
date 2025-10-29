@@ -40,19 +40,19 @@ var (
 
 	vmNodeName = "10.0.0.10.eu-west-2.compute.internal"
 	sdkVM      = sdk.Vm{
-		VmId:           ptr.To("i-foo"),
-		VmType:         ptr.To("tinav3.c1r1p1"),
+		VmId:           "i-foo",
+		VmType:         "tinav3.c1r1p1",
 		PrivateDnsName: &vmNodeName,
-		PrivateIp:      ptr.To("10.0.0.10"),
-		Placement:      &sdk.Placement{SubregionName: &subRegion},
-		Tags: &[]sdk.ResourceTag{{
+		PrivateIp:      "10.0.0.10",
+		Placement:      sdk.Placement{SubregionName: subRegion},
+		Tags: []sdk.ResourceTag{{
 			Key:   cloud.TagVmNodeName,
 			Value: vmNodeName,
 		}},
 		SubnetId:       ptr.To("subnet-bar"),
 		NetId:          ptr.To("net-bar"),
-		SecurityGroups: &[]sdk.SecurityGroupLight{{SecurityGroupId: ptr.To("sg-worker")}, {SecurityGroupId: ptr.To("sg-node")}},
-		State:          ptr.To("running"),
+		SecurityGroups: []sdk.SecurityGroupLight{{SecurityGroupId: "sg-worker"}, {SecurityGroupId: "sg-node"}},
+		State:          "running",
 	}
 	vmNode = v1.Node{
 		ObjectMeta: metav1.ObjectMeta{
@@ -61,19 +61,19 @@ var (
 	}
 	selfNodeName = "10.0.0.11.eu-west-2.compute.internal"
 	sdkSelf      = sdk.Vm{
-		VmId:           ptr.To("i-bar"),
-		VmType:         ptr.To("tinav3.c1r1p1"),
+		VmId:           "i-bar",
+		VmType:         "tinav3.c1r1p1",
 		PrivateDnsName: &selfNodeName,
-		PrivateIp:      ptr.To("10.0.0.11"),
-		Tags: &[]sdk.ResourceTag{{
+		PrivateIp:      "10.0.0.11",
+		Tags: []sdk.ResourceTag{{
 			Key:   cloud.TagVmNodeName,
 			Value: selfNodeName,
 		}},
-		Placement:      &sdk.Placement{SubregionName: &subRegion},
+		Placement:      sdk.Placement{SubregionName: subRegion},
 		NetId:          ptr.To("net-bar"),
 		SubnetId:       ptr.To("subnet-bar"),
-		SecurityGroups: &[]sdk.SecurityGroupLight{{SecurityGroupId: ptr.To("sg-controlplane")}, {SecurityGroupId: ptr.To("sg-node")}},
-		State:          ptr.To("running"),
+		SecurityGroups: []sdk.SecurityGroupLight{{SecurityGroupId: "sg-controlplane"}, {SecurityGroupId: "sg-node"}},
+		State:          "running",
 	}
 	self = cloud.FromOscVm(&sdkSelf)
 )
@@ -315,7 +315,7 @@ func expectFindExistingSubnet(mock *oapimocks.MockOAPI, id string) {
 			},
 		})).
 		Return([]sdk.Subnet{
-			{SubnetId: ptr.To(id), NetId: ptr.To("net-foo")},
+			{SubnetId: id, NetId: "net-foo"},
 		}, nil)
 }
 
@@ -327,8 +327,8 @@ func expectFindLBSubnet(mock *oapimocks.MockOAPI) {
 			},
 		})).
 		Return([]sdk.Subnet{
-			{SubnetId: ptr.To("subnet-service"), NetId: ptr.To("net-foo"), Tags: &[]sdk.ResourceTag{{Key: "OscK8sRole/service"}}},
-			{SubnetId: ptr.To("subnet-service.internal"), NetId: ptr.To("net-foo"), Tags: &[]sdk.ResourceTag{{Key: "OscK8sRole/service.internal"}}},
+			{SubnetId: "subnet-service", NetId: "net-foo", Tags: []sdk.ResourceTag{{Key: "OscK8sRole/service"}}},
+			{SubnetId: "subnet-service.internal", NetId: "net-foo", Tags: []sdk.ResourceTag{{Key: "OscK8sRole/service.internal"}}},
 		}, nil)
 }
 
@@ -340,8 +340,8 @@ func expectFindNoLBSubnet(mock *oapimocks.MockOAPI) {
 			},
 		})).
 		Return([]sdk.Subnet{
-			{SubnetId: ptr.To("subnet-service"), NetId: ptr.To("net-foo"), Tags: &[]sdk.ResourceTag{}},
-			{SubnetId: ptr.To("subnet-service.internal"), NetId: ptr.To("net-foo"), Tags: &[]sdk.ResourceTag{}},
+			{SubnetId: "subnet-service", NetId: "net-foo", Tags: []sdk.ResourceTag{}},
+			{SubnetId: "subnet-service.internal", NetId: "net-foo", Tags: []sdk.ResourceTag{}},
 		}, nil)
 }
 
@@ -352,7 +352,7 @@ func expectCreateSecurityGroup(mock *oapimocks.MockOAPI) {
 			Description:       "Security group for Kubernetes ELB lb-foo (svc-foo)",
 			NetId:             ptr.To("net-foo"),
 		})).
-		Return(&sdk.SecurityGroup{SecurityGroupId: ptr.To("sg-foo")}, nil)
+		Return(&sdk.SecurityGroup{SecurityGroupId: "sg-foo"}, nil)
 	mock.EXPECT().
 		CreateTags(gomock.Any(), gomock.Eq(sdk.CreateTagsRequest{
 			ResourceIds: []string{"sg-foo"},
@@ -370,7 +370,10 @@ func expectFindIngressSecurityGroup(mock *oapimocks.MockOAPI, id string) {
 				SecurityGroupIds: &[]string{id},
 			},
 		})).
-		Return([]sdk.SecurityGroup{{SecurityGroupId: ptr.To(id)}}, nil)
+		Return([]sdk.SecurityGroup{{
+			SecurityGroupId: id,
+			InboundRules:    []sdk.SecurityGroupRule{},
+		}}, nil)
 }
 
 func expectFindExistingIngressSecurityGroup(mock *oapimocks.MockOAPI, id string) {
@@ -381,12 +384,12 @@ func expectFindExistingIngressSecurityGroup(mock *oapimocks.MockOAPI, id string)
 			},
 		})).
 		Return([]sdk.SecurityGroup{{
-			SecurityGroupId: ptr.To(id),
-			InboundRules: &[]sdk.SecurityGroupRule{{
-				IpProtocol:    ptr.To("tcp"),
-				FromPortRange: ptr.To(80),
-				ToPortRange:   ptr.To(80),
-				IpRanges:      &[]string{"0.0.0.0/0"},
+			SecurityGroupId: id,
+			InboundRules: []sdk.SecurityGroupRule{{
+				IpProtocol:    "tcp",
+				FromPortRange: 80,
+				ToPortRange:   80,
+				IpRanges:      []string{"0.0.0.0/0"},
 			}},
 		}}, nil)
 }
@@ -399,9 +402,9 @@ func expectFindWorkerSGByRole(mock *oapimocks.MockOAPI) {
 			},
 		})).
 		Return([]sdk.SecurityGroup{
-			{SecurityGroupId: ptr.To("sg-worker"), Tags: &[]sdk.ResourceTag{{Key: cloud.RoleTagKeyPrefix + "worker"}}},
-			{SecurityGroupId: ptr.To("sg-controlplane"), Tags: &[]sdk.ResourceTag{{Key: cloud.RoleTagKeyPrefix + "controlplane"}}},
-			{SecurityGroupId: ptr.To("sg-node"), Tags: &[]sdk.ResourceTag{{Key: cloud.RoleTagKeyPrefix + "worker"}, {Key: cloud.RoleTagKeyPrefix + "controlplane"}}},
+			{SecurityGroupId: "sg-worker", Tags: []sdk.ResourceTag{{Key: cloud.RoleTagKeyPrefix + "worker"}}},
+			{SecurityGroupId: "sg-controlplane", Tags: []sdk.ResourceTag{{Key: cloud.RoleTagKeyPrefix + "controlplane"}}},
+			{SecurityGroupId: "sg-node", Tags: []sdk.ResourceTag{{Key: cloud.RoleTagKeyPrefix + "worker"}, {Key: cloud.RoleTagKeyPrefix + "controlplane"}}},
 		}, nil)
 }
 
@@ -413,14 +416,14 @@ func expectFindExistingWorkerSG(mock *oapimocks.MockOAPI) {
 			},
 		})).
 		Return([]sdk.SecurityGroup{
-			{SecurityGroupId: ptr.To("sg-worker"), Tags: &[]sdk.ResourceTag{{Key: cloud.RoleTagKeyPrefix + "worker"}},
-				InboundRules: &[]sdk.SecurityGroupRule{
-					{IpProtocol: ptr.To("tcp"), FromPortRange: ptr.To(8080), ToPortRange: ptr.To(8080), SecurityGroupsMembers: &[]sdk.SecurityGroupsMember{{
-						SecurityGroupId: ptr.To("sg-foo"),
+			{SecurityGroupId: "sg-worker", Tags: []sdk.ResourceTag{{Key: cloud.RoleTagKeyPrefix + "worker"}},
+				InboundRules: []sdk.SecurityGroupRule{
+					{IpProtocol: "tcp", FromPortRange: 8080, ToPortRange: 8080, SecurityGroupsMembers: []sdk.SecurityGroupsMember{{
+						SecurityGroupId: "sg-foo",
 					}}},
 				}},
-			{SecurityGroupId: ptr.To("sg-controlplane"), Tags: &[]sdk.ResourceTag{{Key: cloud.RoleTagKeyPrefix + "controlplane"}}},
-			{SecurityGroupId: ptr.To("sg-node"), Tags: &[]sdk.ResourceTag{{Key: cloud.RoleTagKeyPrefix + "worker"}, {Key: cloud.RoleTagKeyPrefix + "controlplane"}}},
+			{SecurityGroupId: "sg-controlplane", Tags: []sdk.ResourceTag{{Key: cloud.RoleTagKeyPrefix + "controlplane"}}},
+			{SecurityGroupId: "sg-node", Tags: []sdk.ResourceTag{{Key: cloud.RoleTagKeyPrefix + "worker"}, {Key: cloud.RoleTagKeyPrefix + "controlplane"}}},
 		}, nil)
 }
 
@@ -428,11 +431,11 @@ func expectAddIngressSGRule(mock *oapimocks.MockOAPI, ipRanges []string, dstSG s
 	req := sdk.CreateSecurityGroupRuleRequest{
 		SecurityGroupId: dstSG,
 		Flow:            "Inbound",
-		Rules: &[]sdk.SecurityGroupRule{{
-			IpProtocol:    ptr.To("tcp"),
-			FromPortRange: ptr.To(80),
-			ToPortRange:   ptr.To(80),
-			IpRanges:      &ipRanges,
+		Rules: []sdk.SecurityGroupRule{{
+			IpProtocol:    "tcp",
+			FromPortRange: 80,
+			ToPortRange:   80,
+			IpRanges:      ipRanges,
 		}},
 	}
 	for _, update := range updates {
@@ -446,11 +449,11 @@ func expectDeleteIngressSGRule(mock *oapimocks.MockOAPI, ipRanges []string, dstS
 	req := sdk.DeleteSecurityGroupRuleRequest{
 		SecurityGroupId: dstSG,
 		Flow:            "Inbound",
-		Rules: &[]sdk.SecurityGroupRule{{
-			IpProtocol:    ptr.To("tcp"),
-			FromPortRange: ptr.To(80),
-			ToPortRange:   ptr.To(80),
-			IpRanges:      &ipRanges,
+		Rules: []sdk.SecurityGroupRule{{
+			IpProtocol:    "tcp",
+			FromPortRange: 80,
+			ToPortRange:   80,
+			IpRanges:      ipRanges,
 		}},
 	}
 	mock.EXPECT().
@@ -461,11 +464,11 @@ func expectAddInternalSGRule(mock *oapimocks.MockOAPI, srcSG, dstSG string, upda
 	req := sdk.CreateSecurityGroupRuleRequest{
 		SecurityGroupId: dstSG,
 		Flow:            "Inbound",
-		Rules: &[]sdk.SecurityGroupRule{{
-			IpProtocol:            ptr.To("tcp"),
-			FromPortRange:         ptr.To(8080),
-			ToPortRange:           ptr.To(8080),
-			SecurityGroupsMembers: &[]sdk.SecurityGroupsMember{{SecurityGroupId: &srcSG}},
+		Rules: []sdk.SecurityGroupRule{{
+			IpProtocol:            "tcp",
+			FromPortRange:         8080,
+			ToPortRange:           8080,
+			SecurityGroupsMembers: []sdk.SecurityGroupsMember{{SecurityGroupId: srcSG}},
 		}},
 	}
 	for _, update := range updates {
@@ -563,14 +566,14 @@ func expectPurgeSecurityGroups(mock *oapimocks.MockOAPI) {
 		})).
 		Return([]sdk.SecurityGroup{
 			{
-				SecurityGroupId: ptr.To("sg-foo"),
-				Tags:            &[]sdk.ResourceTag{{Key: cloud.SGToDeleteTagKey}},
+				SecurityGroupId: "sg-foo",
+				Tags:            []sdk.ResourceTag{{Key: cloud.SGToDeleteTagKey}},
 			},
 			{
-				SecurityGroupId: ptr.To("sg-bar"),
-				InboundRules: &[]sdk.SecurityGroupRule{
-					{IpProtocol: ptr.To("-1"), IpRanges: &[]string{"0.0.0.0/0"}},
-					{IpProtocol: ptr.To("tcp"), FromPortRange: ptr.To(8080), ToPortRange: ptr.To(8080), SecurityGroupsMembers: &[]sdk.SecurityGroupsMember{{SecurityGroupId: ptr.To("sg-foo")}}},
+				SecurityGroupId: "sg-bar",
+				InboundRules: []sdk.SecurityGroupRule{
+					{IpProtocol: "-1", IpRanges: []string{"0.0.0.0/0"}},
+					{IpProtocol: "tcp", FromPortRange: 8080, ToPortRange: 8080, SecurityGroupsMembers: []sdk.SecurityGroupsMember{{SecurityGroupId: "sg-foo"}}},
 				},
 			},
 		}, nil)
@@ -578,9 +581,9 @@ func expectPurgeSecurityGroups(mock *oapimocks.MockOAPI) {
 		DeleteSecurityGroupRule(gomock.Any(), gomock.Eq(sdk.DeleteSecurityGroupRuleRequest{
 			SecurityGroupId: "sg-bar",
 			Flow:            "Inbound",
-			Rules: &[]sdk.SecurityGroupRule{{
-				IpProtocol: ptr.To("tcp"), FromPortRange: ptr.To(8080), ToPortRange: ptr.To(8080),
-				SecurityGroupsMembers: &[]sdk.SecurityGroupsMember{{SecurityGroupId: ptr.To("sg-foo")}},
+			Rules: []sdk.SecurityGroupRule{{
+				IpProtocol: "tcp", FromPortRange: 8080, ToPortRange: 8080,
+				SecurityGroupsMembers: []sdk.SecurityGroupsMember{{SecurityGroupId: "sg-foo"}},
 			}},
 		})).
 		Return(&sdk.SecurityGroup{}, nil)

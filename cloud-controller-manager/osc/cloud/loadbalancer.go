@@ -546,7 +546,7 @@ func (c *Cloud) ensureSubnet(ctx context.Context, l *LoadBalancer) error {
 		case len(subnets) == 0:
 			return errors.New("find existing subnet: not found")
 		}
-		l.NetID = *subnets[0].NetId
+		l.NetID = subnets[0].NetId
 		return nil
 	}
 	subnets, err := c.api.OAPI().ReadSubnets(ctx, osc.ReadSubnetsRequest{
@@ -561,8 +561,8 @@ func (c *Cloud) ensureSubnet(ctx context.Context, l *LoadBalancer) error {
 	ensureByTag := func(key string) bool {
 		for _, subnet := range subnets {
 			if hasTag(subnet.Tags, key) {
-				l.SubnetID = *subnet.SubnetId
-				l.NetID = *subnet.NetId
+				l.SubnetID = subnet.SubnetId
+				l.NetID = subnet.NetId
 				return true
 			}
 		}
@@ -594,7 +594,7 @@ func (c *Cloud) ensureSecurityGroup(ctx context.Context, l *LoadBalancer) error 
 	if err != nil {
 		return fmt.Errorf("create SG: %w", err)
 	}
-	l.SecurityGroups = []string{*resp.SecurityGroupId}
+	l.SecurityGroups = []string{resp.SecurityGroupId}
 	l.lbSecurityGroup = resp
 	err = c.api.OAPI().CreateTags(ctx, osc.CreateTagsRequest{
 		ResourceIds: l.SecurityGroups,
@@ -1017,8 +1017,8 @@ func (c *Cloud) getSecurityGroups(ctx context.Context, l *LoadBalancer, vms []VM
 	if l.targetSecurityGroup == nil {
 		sgIDs := sets.Set[string]{}
 		for _, vm := range vms {
-			for _, sg := range *vm.cloudVm.SecurityGroups {
-				sgIDs.Insert(*sg.SecurityGroupId)
+			for _, sg := range vm.cloudVm.SecurityGroups {
+				sgIDs.Insert(sg.SecurityGroupId)
 			}
 		}
 		sgs, err := c.api.OAPI().ReadSecurityGroups(ctx, osc.ReadSecurityGroupsRequest{
@@ -1039,7 +1039,7 @@ func (c *Cloud) getSecurityGroups(ctx context.Context, l *LoadBalancer, vms []VM
 				l.targetSecurityGroup = &sg
 			}
 			if hasTag(sg.Tags, roleTagKey(l.TargetRole)) {
-				nRoleTagCount := countRoleTags(*sg.Tags)
+				nRoleTagCount := countRoleTags(sg.Tags)
 				if nRoleTagCount < roleTagCount {
 					klog.FromContext(ctx).V(4).Info("Found security group having role tag", "securityGroupId", sg.SecurityGroupId, "role", l.TargetRole, "nroles", nRoleTagCount)
 					l.targetSecurityGroup = &sg
@@ -1064,9 +1064,9 @@ func (c *Cloud) updateIngressSecurityGroupRules(ctx context.Context, l *LoadBala
 	for _, listener := range l.Listeners {
 		var addRanges []string
 		for _, allowFrom := range allowed {
-			if !slices.ContainsFunc(*lbSG.InboundRules, func(r osc.SecurityGroupRule) bool {
-				return *r.FromPortRange == listener.Port && r.IpRanges != nil &&
-					slices.Contains(*r.IpRanges, allowFrom)
+			if !slices.ContainsFunc(lbSG.InboundRules, func(r osc.SecurityGroupRule) bool {
+				return r.FromPortRange == listener.Port && r.IpRanges != nil &&
+					slices.Contains(r.IpRanges, allowFrom)
 			}) {
 				addRanges = append(addRanges, allowFrom)
 			}
@@ -1076,13 +1076,13 @@ func (c *Cloud) updateIngressSecurityGroupRules(ctx context.Context, l *LoadBala
 		}
 		klog.FromContext(ctx).V(2).Info("Adding rule", "from", addRanges, "to", lbSG.SecurityGroupId, "port", listener.Port)
 		_, err := c.api.OAPI().CreateSecurityGroupRule(ctx, osc.CreateSecurityGroupRuleRequest{
-			SecurityGroupId: *lbSG.SecurityGroupId,
+			SecurityGroupId: lbSG.SecurityGroupId,
 			Flow:            "Inbound",
-			Rules: &[]osc.SecurityGroupRule{{
-				IpProtocol:    ptr.To("tcp"),
-				FromPortRange: &listener.Port,
-				ToPortRange:   &listener.Port,
-				IpRanges:      &addRanges,
+			Rules: []osc.SecurityGroupRule{{
+				IpProtocol:    "tcp",
+				FromPortRange: listener.Port,
+				ToPortRange:   listener.Port,
+				IpRanges:      addRanges,
 			}},
 		})
 		if err != nil {
@@ -1091,7 +1091,7 @@ func (c *Cloud) updateIngressSecurityGroupRules(ctx context.Context, l *LoadBala
 	}
 
 	// Removing rules
-	for _, r := range *lbSG.InboundRules {
+	for _, r := range lbSG.InboundRules {
 		del := false
 		delRule := osc.SecurityGroupRule{
 			IpProtocol:    r.IpProtocol,
@@ -1099,17 +1099,17 @@ func (c *Cloud) updateIngressSecurityGroupRules(ctx context.Context, l *LoadBala
 			ToPortRange:   r.ToPortRange,
 		}
 		if !slices.ContainsFunc(l.Listeners, func(listener Listener) bool {
-			return listener.Port == *r.FromPortRange
+			return listener.Port == r.FromPortRange
 		}) {
 			del = true
 		}
 		if del {
 			delRule.IpRanges = r.IpRanges
 		} else if r.IpRanges != nil {
-			delRule.IpRanges = &[]string{}
-			for _, ipRange := range *r.IpRanges {
+			delRule.IpRanges = []string{}
+			for _, ipRange := range r.IpRanges {
 				if !slices.Contains(allowed, ipRange) {
-					*delRule.IpRanges = append(*delRule.IpRanges, ipRange)
+					delRule.IpRanges = append(delRule.IpRanges, ipRange)
 					del = true
 				}
 			}
@@ -1117,11 +1117,11 @@ func (c *Cloud) updateIngressSecurityGroupRules(ctx context.Context, l *LoadBala
 		if !del {
 			continue
 		}
-		klog.FromContext(ctx).V(2).Info("Deleting rule", "from", *delRule.IpRanges, "to", lbSG.SecurityGroupId, "port", r.FromPortRange)
+		klog.FromContext(ctx).V(2).Info("Deleting rule", "from", delRule.IpRanges, "to", lbSG.SecurityGroupId, "port", r.FromPortRange)
 		_, err := c.api.OAPI().DeleteSecurityGroupRule(ctx, osc.DeleteSecurityGroupRuleRequest{
-			SecurityGroupId: *lbSG.SecurityGroupId,
+			SecurityGroupId: lbSG.SecurityGroupId,
 			Flow:            "Inbound",
-			Rules:           &[]osc.SecurityGroupRule{delRule},
+			Rules:           []osc.SecurityGroupRule{delRule},
 		})
 		if err != nil {
 			return fmt.Errorf("delete ingress rule: %w", err)
@@ -1131,29 +1131,29 @@ func (c *Cloud) updateIngressSecurityGroupRules(ctx context.Context, l *LoadBala
 }
 
 func (c *Cloud) updateBackendSecurityGroupRules(ctx context.Context, l *LoadBalancer, existing *osc.LoadBalancer) error {
-	srcSGID := *l.lbSecurityGroup.SecurityGroupId
+	srcSGID := l.lbSecurityGroup.SecurityGroupId
 	destSG := *l.targetSecurityGroup
 
 	// Adding new rules
 	for _, listener := range l.Listeners {
-		if slices.ContainsFunc(*destSG.InboundRules, func(r osc.SecurityGroupRule) bool {
-			return *r.FromPortRange == listener.BackendPort && r.SecurityGroupsMembers != nil &&
-				slices.ContainsFunc(*r.SecurityGroupsMembers, func(m osc.SecurityGroupsMember) bool {
-					return m.SecurityGroupId != nil && srcSGID == *m.SecurityGroupId
+		if slices.ContainsFunc(destSG.InboundRules, func(r osc.SecurityGroupRule) bool {
+			return r.FromPortRange == listener.BackendPort && r.SecurityGroupsMembers != nil &&
+				slices.ContainsFunc(r.SecurityGroupsMembers, func(m osc.SecurityGroupsMember) bool {
+					return srcSGID == m.SecurityGroupId
 				})
 		}) {
 			continue
 		}
 		klog.FromContext(ctx).V(2).Info("Adding rule", "from", srcSGID, "to", destSG.SecurityGroupId, "port", listener.BackendPort)
 		_, err := c.api.OAPI().CreateSecurityGroupRule(ctx, osc.CreateSecurityGroupRuleRequest{
-			SecurityGroupId: *destSG.SecurityGroupId,
+			SecurityGroupId: destSG.SecurityGroupId,
 			Flow:            "Inbound",
-			Rules: &[]osc.SecurityGroupRule{{
-				IpProtocol:    ptr.To("tcp"),
-				FromPortRange: &listener.BackendPort,
-				ToPortRange:   &listener.BackendPort,
-				SecurityGroupsMembers: &[]osc.SecurityGroupsMember{{
-					SecurityGroupId: &srcSGID,
+			Rules: []osc.SecurityGroupRule{{
+				IpProtocol:    "tcp",
+				FromPortRange: listener.BackendPort,
+				ToPortRange:   listener.BackendPort,
+				SecurityGroupsMembers: []osc.SecurityGroupsMember{{
+					SecurityGroupId: srcSGID,
 				}},
 			}},
 		})
@@ -1163,30 +1163,30 @@ func (c *Cloud) updateBackendSecurityGroupRules(ctx context.Context, l *LoadBala
 	}
 
 	// Removing rules
-	for _, r := range *destSG.InboundRules {
+	for _, r := range destSG.InboundRules {
 		// ignore if rule is not from the LB SG
 		if r.SecurityGroupsMembers == nil ||
-			!slices.ContainsFunc(*r.SecurityGroupsMembers, func(m osc.SecurityGroupsMember) bool {
-				return m.SecurityGroupId != nil && *m.SecurityGroupId == srcSGID
+			!slices.ContainsFunc(r.SecurityGroupsMembers, func(m osc.SecurityGroupsMember) bool {
+				return m.SecurityGroupId == srcSGID
 			}) {
 			continue
 		}
 		// ignore if port is not from a lister
 		if slices.ContainsFunc(l.Listeners, func(listener Listener) bool {
-			return listener.BackendPort == *r.FromPortRange
+			return listener.BackendPort == r.FromPortRange
 		}) {
 			continue
 		}
 		klog.FromContext(ctx).V(2).Info("Deleting rule", "from", srcSGID, "to", destSG.SecurityGroupId, "port", r.FromPortRange)
 		_, err := c.api.OAPI().DeleteSecurityGroupRule(ctx, osc.DeleteSecurityGroupRuleRequest{
-			SecurityGroupId: *destSG.SecurityGroupId,
+			SecurityGroupId: destSG.SecurityGroupId,
 			Flow:            "Inbound",
-			Rules: &[]osc.SecurityGroupRule{{
+			Rules: []osc.SecurityGroupRule{{
 				IpProtocol:    r.IpProtocol,
 				FromPortRange: r.FromPortRange,
 				ToPortRange:   r.ToPortRange,
-				SecurityGroupsMembers: &[]osc.SecurityGroupsMember{{
-					SecurityGroupId: &srcSGID,
+				SecurityGroupsMembers: []osc.SecurityGroupsMember{{
+					SecurityGroupId: srcSGID,
 				}},
 			}},
 		})
@@ -1252,7 +1252,7 @@ func (c *Cloud) RunGarbageCollector(ctx context.Context) error {
 	var toDelete []string
 	for _, sg := range sgs {
 		if hasTag(sg.Tags, SGToDeleteTagKey) {
-			toDelete = append(toDelete, *sg.SecurityGroupId)
+			toDelete = append(toDelete, sg.SecurityGroupId)
 		}
 	}
 	klog.FromContext(ctx).V(4).Info("Security groups marked for deletion", "count", len(toDelete))
@@ -1260,24 +1260,24 @@ func (c *Cloud) RunGarbageCollector(ctx context.Context) error {
 		// delete all inbound rules from this SG
 		for _, sg := range sgs {
 			klog.FromContext(ctx).V(2).Info("Deleting inbound rule", "from", delSGID, "to", sg.SecurityGroupId)
-			for _, r := range *sg.InboundRules {
-				if r.SecurityGroupsMembers != nil && slices.ContainsFunc(*r.SecurityGroupsMembers, func(m osc.SecurityGroupsMember) bool {
-					return m.SecurityGroupId != nil && slices.Contains(toDelete, *m.SecurityGroupId)
+			for _, r := range sg.InboundRules {
+				if slices.ContainsFunc(r.SecurityGroupsMembers, func(m osc.SecurityGroupsMember) bool {
+					return slices.Contains(toDelete, m.SecurityGroupId)
 				}) {
 					_, err = c.api.OAPI().DeleteSecurityGroupRule(ctx, osc.DeleteSecurityGroupRuleRequest{
-						SecurityGroupId: *sg.SecurityGroupId,
+						SecurityGroupId: sg.SecurityGroupId,
 						Flow:            "Inbound",
-						Rules: &[]osc.SecurityGroupRule{{
+						Rules: []osc.SecurityGroupRule{{
 							FromPortRange: r.FromPortRange,
 							ToPortRange:   r.ToPortRange,
 							IpProtocol:    r.IpProtocol,
-							SecurityGroupsMembers: &[]osc.SecurityGroupsMember{{
-								SecurityGroupId: &delSGID,
+							SecurityGroupsMembers: []osc.SecurityGroupsMember{{
+								SecurityGroupId: delSGID,
 							}},
 						}},
 					})
 					if err != nil {
-						return fmt.Errorf("delete rule from %s to %s: %w", delSGID, *sg.SecurityGroupId, err)
+						return fmt.Errorf("delete rule from %s to %s: %w", delSGID, sg.SecurityGroupId, err)
 					}
 				}
 			}

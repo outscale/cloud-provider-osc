@@ -170,7 +170,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectConfigureHealthCheck(oapimock)
 		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
-		expectRegisterInstances(oapimock, *sdkVM.VmId)
+		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := osc.NewProviderWith(c, staticDNSResolver{})
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
@@ -192,7 +192,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectConfigureHealthCheck(oapimock)
 		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
-		expectRegisterInstances(oapimock, *sdkVM.VmId)
+		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := osc.NewProviderWith(c, staticDNSResolver{})
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
@@ -217,7 +217,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectConfigureHealthCheck(oapimock)
 		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
-		expectRegisterInstances(oapimock, *sdkVM.VmId)
+		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := osc.NewProviderWith(c, staticDNSResolver{})
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
@@ -264,7 +264,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectConfigureHealthCheck(oapimock)
 		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
-		expectRegisterInstances(oapimock, *sdkVM.VmId)
+		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := osc.NewProviderWith(c, staticDNSResolver{})
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
@@ -284,7 +284,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectConfigureHealthCheck(oapimock)
 		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
-		expectRegisterInstances(oapimock, *sdkVM.VmId)
+		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := osc.NewProviderWith(c, staticDNSResolver{})
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
@@ -306,7 +306,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectConfigureHealthCheck(oapimock)
 		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
-		expectRegisterInstances(oapimock, *sdkVM.VmId)
+		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := osc.NewProviderWith(c, staticDNSResolver{})
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
@@ -326,7 +326,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectConfigureHealthCheck(oapimock)
 		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
-		expectRegisterInstances(oapimock, *sdkVM.VmId)
+		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := osc.NewProviderWith(c, staticDNSResolver{})
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
@@ -348,7 +348,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectConfigureHealthCheck(oapimock)
 		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
-		expectRegisterInstances(oapimock, *sdkVM.VmId)
+		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := osc.NewProviderWith(c, staticDNSResolver{})
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
@@ -365,8 +365,8 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectCreateSecurityGroup(oapimock)
 		expectFindWorkerSGByRole(oapimock)
 		expectAddIngressSGRule(oapimock, []string{"0.0.0.0/0"}, "sg-foo", func(req *sdk.CreateSecurityGroupRuleRequest) {
-			(*req.Rules)[0].FromPortRange = ptr.To(443)
-			(*req.Rules)[0].ToPortRange = ptr.To(443)
+			req.Rules[0].FromPortRange = 443
+			req.Rules[0].ToPortRange = 443
 		})
 		expectAddInternalSGRule(oapimock, "sg-foo", "sg-worker")
 		expectCreateLoadBalancer(oapimock, func(clbi *sdk.CreateLoadBalancerRequest) {
@@ -378,7 +378,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectConfigureHealthCheck(oapimock)
 		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
-		expectRegisterInstances(oapimock, *sdkVM.VmId)
+		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := osc.NewProviderWith(c, staticDNSResolver{})
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
@@ -401,8 +401,8 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectFindWorkerSGByRole(oapimock)
 		expectAddIngressSGRule(oapimock, []string{"0.0.0.0/0"}, "sg-foo")
 		expectAddIngressSGRule(oapimock, []string{"0.0.0.0/0"}, "sg-foo", func(req *sdk.CreateSecurityGroupRuleRequest) {
-			(*req.Rules)[0].FromPortRange = ptr.To(443)
-			(*req.Rules)[0].ToPortRange = ptr.To(443)
+			req.Rules[0].FromPortRange = 443
+			req.Rules[0].ToPortRange = 443
 		})
 		expectAddInternalSGRule(oapimock, "sg-foo", "sg-worker")
 		expectAddInternalSGRule(oapimock, "sg-foo", "sg-worker")
@@ -420,7 +420,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectConfigureHealthCheck(oapimock)
 		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
-		expectRegisterInstances(oapimock, *sdkVM.VmId)
+		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := osc.NewProviderWith(c, staticDNSResolver{})
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
@@ -436,8 +436,8 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectCreateSecurityGroup(oapimock)
 		expectFindWorkerSGByRole(oapimock)
 		expectAddIngressSGRule(oapimock, []string{"0.0.0.0/0"}, "sg-foo", func(req *sdk.CreateSecurityGroupRuleRequest) {
-			(*req.Rules)[0].FromPortRange = ptr.To(465)
-			(*req.Rules)[0].ToPortRange = ptr.To(465)
+			req.Rules[0].FromPortRange = 465
+			req.Rules[0].ToPortRange = 465
 		})
 		expectAddInternalSGRule(oapimock, "sg-foo", "sg-worker")
 		expectCreateLoadBalancer(oapimock, func(clbi *sdk.CreateLoadBalancerRequest) {
@@ -449,7 +449,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectConfigureHealthCheck(oapimock)
 		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
-		expectRegisterInstances(oapimock, *sdkVM.VmId)
+		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := osc.NewProviderWith(c, staticDNSResolver{})
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
@@ -472,7 +472,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectConfigureHealthCheck(oapimock)
 		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
-		expectRegisterInstances(oapimock, *sdkVM.VmId)
+		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := osc.NewProviderWith(c, staticDNSResolver{})
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
@@ -493,13 +493,13 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectFindWorkerSGByRole(oapimock)
 		expectAddIngressSGRule(oapimock, []string{"0.0.0.0/0"}, "sg-foo")
 		expectAddIngressSGRule(oapimock, []string{"0.0.0.0/0"}, "sg-foo", func(req *sdk.CreateSecurityGroupRuleRequest) {
-			(*req.Rules)[0].FromPortRange = ptr.To(443)
-			(*req.Rules)[0].ToPortRange = ptr.To(443)
+			req.Rules[0].FromPortRange = 443
+			req.Rules[0].ToPortRange = 443
 		})
 		expectAddInternalSGRule(oapimock, "sg-foo", "sg-worker")
 		expectAddInternalSGRule(oapimock, "sg-foo", "sg-worker", func(req *sdk.CreateSecurityGroupRuleRequest) {
-			(*req.Rules)[0].FromPortRange = ptr.To(8443)
-			(*req.Rules)[0].ToPortRange = ptr.To(8443)
+			req.Rules[0].FromPortRange = 8443
+			req.Rules[0].ToPortRange = 8443
 		})
 		expectCreateLoadBalancer(oapimock, func(req *sdk.CreateLoadBalancerRequest) {
 			req.Listeners = append(req.Listeners, sdk.ListenerForCreation{
@@ -513,7 +513,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectDescribeProxyProtocol(lbmock, false, 8080, 8443)
 		expectConfigureProxyProtocol(lbmock, false, true, 8080, 8443)
 		expectDescribeLoadBalancerAttributes(lbmock)
-		expectRegisterInstances(oapimock, *sdkVM.VmId)
+		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := osc.NewProviderWith(c, staticDNSResolver{})
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
@@ -534,13 +534,13 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectFindWorkerSGByRole(oapimock)
 		expectAddIngressSGRule(oapimock, []string{"0.0.0.0/0"}, "sg-foo")
 		expectAddIngressSGRule(oapimock, []string{"0.0.0.0/0"}, "sg-foo", func(req *sdk.CreateSecurityGroupRuleRequest) {
-			(*req.Rules)[0].FromPortRange = ptr.To(443)
-			(*req.Rules)[0].ToPortRange = ptr.To(443)
+			req.Rules[0].FromPortRange = 443
+			req.Rules[0].ToPortRange = 443
 		})
 		expectAddInternalSGRule(oapimock, "sg-foo", "sg-worker")
 		expectAddInternalSGRule(oapimock, "sg-foo", "sg-worker", func(req *sdk.CreateSecurityGroupRuleRequest) {
-			(*req.Rules)[0].FromPortRange = ptr.To(8443)
-			(*req.Rules)[0].ToPortRange = ptr.To(8443)
+			req.Rules[0].FromPortRange = 8443
+			req.Rules[0].ToPortRange = 8443
 		})
 		expectCreateLoadBalancer(oapimock, func(req *sdk.CreateLoadBalancerRequest) {
 			req.Listeners = append(req.Listeners, sdk.ListenerForCreation{
@@ -554,7 +554,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectDescribeProxyProtocol(lbmock, false)
 		expectConfigureProxyProtocol(lbmock, false, true)
 		expectDescribeLoadBalancerAttributes(lbmock)
-		expectRegisterInstances(oapimock, *sdkVM.VmId)
+		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := osc.NewProviderWith(c, staticDNSResolver{})
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
@@ -585,7 +585,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 				S3BucketPrefix: ptr.To("prefix"),
 			},
 		})
-		expectRegisterInstances(oapimock, *sdkVM.VmId)
+		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := osc.NewProviderWith(c, staticDNSResolver{})
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
@@ -609,7 +609,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectConfigureHealthCheck(oapimock)
 		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
-		expectRegisterInstances(oapimock, *sdkVM.VmId)
+		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := osc.NewProviderWith(c, staticDNSResolver{})
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode1, &vmNode2})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
@@ -643,7 +643,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		})
 		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
-		expectRegisterInstances(oapimock, *sdkVM.VmId)
+		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := osc.NewProviderWith(c, staticDNSResolver{})
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
@@ -677,7 +677,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		})
 		expectDescribeProxyProtocol(lbmock, false)
 		expectDescribeLoadBalancerAttributes(lbmock)
-		expectRegisterInstances(oapimock, *sdkVM.VmId)
+		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := osc.NewProviderWith(c, staticDNSResolver{})
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
@@ -810,8 +810,8 @@ func TestEnsureLoadBalancer_Update(t *testing.T) {
 		expectFindExistingWorkerSG(oapimock)
 		expectDeleteIngressSGRule(oapimock, []string{"0.0.0.0/0"}, "sg-foo")
 		expectAddIngressSGRule(oapimock, []string{"0.0.0.0/0"}, "sg-foo", func(req *sdk.CreateSecurityGroupRuleRequest) {
-			(*req.Rules)[0].FromPortRange = ptr.To(8080)
-			(*req.Rules)[0].ToPortRange = ptr.To(8080)
+			req.Rules[0].FromPortRange = 8080
+			req.Rules[0].ToPortRange = 8080
 		})
 		p := osc.NewProviderWith(c, staticDNSResolver{})
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
@@ -897,8 +897,8 @@ func TestUpdateLoadBalancer(t *testing.T) {
 		expectFindExistingWorkerSG(oapimock)
 		expectDeleteIngressSGRule(oapimock, []string{"0.0.0.0/0"}, "sg-foo")
 		expectAddIngressSGRule(oapimock, []string{"0.0.0.0/0"}, "sg-foo", func(req *sdk.CreateSecurityGroupRuleRequest) {
-			(*req.Rules)[0].FromPortRange = ptr.To(8080)
-			(*req.Rules)[0].ToPortRange = ptr.To(8080)
+			req.Rules[0].FromPortRange = 8080
+			req.Rules[0].ToPortRange = 8080
 		})
 		p := osc.NewProviderWith(c, staticDNSResolver{})
 		err := p.UpdateLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})

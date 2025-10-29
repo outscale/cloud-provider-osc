@@ -6,7 +6,6 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/outscale/osc-sdk-go/v3/pkg/osc"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -31,17 +30,14 @@ type VM struct {
 // FromOscVm creates a new awsInstance object
 func FromOscVm(vm *osc.Vm) *VM {
 	v := &VM{
-		ID:       *vm.VmId,
-		NodeName: mapInstanceToNodeName(vm),
-		VmType:   *vm.VmType,
-		SubnetID: vm.SubnetId,
-
-		cloudVm: vm,
+		ID:               vm.VmId,
+		NodeName:         mapInstanceToNodeName(vm),
+		VmType:           vm.VmType,
+		SubnetID:         vm.SubnetId,
+		AvailabilityZone: vm.Placement.SubregionName,
+		cloudVm:          vm,
 	}
-	if vm.Placement != nil {
-		v.AvailabilityZone = *vm.Placement.SubregionName
-		v.Region = v.AvailabilityZone[:len(v.AvailabilityZone)-1]
-	}
+	v.Region = v.AvailabilityZone[:len(v.AvailabilityZone)-1]
 	return v
 }
 
@@ -54,24 +50,19 @@ func (vm *VM) NodeAddresses() []v1.NodeAddress {
 	addresses := []v1.NodeAddress{}
 
 	// handle internal network interfaces
-	if vm.cloudVm.Nics != nil && len(*vm.cloudVm.Nics) > 0 {
-		for _, networkInterface := range *vm.cloudVm.Nics {
+	if vm.cloudVm.Nics != nil && len(vm.cloudVm.Nics) > 0 {
+		for _, networkInterface := range vm.cloudVm.Nics {
 			// skip network interfaces that are not currently in use
-			if *networkInterface.State != "in-use" {
+			if networkInterface.State != "in-use" {
 				continue
 			}
 
-			for _, internalIP := range *networkInterface.PrivateIps {
-				if ipAddress := *internalIP.PrivateIp; ipAddress != "" {
-					addresses = append(addresses, v1.NodeAddress{Type: v1.NodeInternalIP, Address: ipAddress})
-				}
+			for _, internalIP := range networkInterface.PrivateIps {
+				addresses = append(addresses, v1.NodeAddress{Type: v1.NodeInternalIP, Address: internalIP.PrivateIp})
 			}
 		}
 	} else {
-		ipAddress := vm.cloudVm.PrivateIp
-		if ipAddress != nil {
-			addresses = append(addresses, v1.NodeAddress{Type: v1.NodeInternalIP, Address: *ipAddress})
-		}
+		addresses = append(addresses, v1.NodeAddress{Type: v1.NodeInternalIP, Address: vm.cloudVm.PrivateIp})
 	}
 	publicIPAddress := vm.cloudVm.PublicIp
 	if publicIPAddress != nil {
@@ -91,16 +82,16 @@ func (vm *VM) NodeAddresses() []v1.NodeAddress {
 }
 
 func (vm *VM) IsStopped() bool {
-	return *vm.cloudVm.State == "stopped"
+	return vm.cloudVm.State == "stopped"
 }
 
 // InstanceID returns the instance ID
 func (vm *VM) InstanceID() string {
-	return "/" + *vm.cloudVm.Placement.SubregionName + "/" + *vm.cloudVm.VmId
+	return "/" + vm.cloudVm.Placement.SubregionName + "/" + vm.cloudVm.VmId
 }
 
 func (vm *VM) ClusterID() string {
-	for _, t := range *vm.cloudVm.Tags {
+	for _, t := range vm.cloudVm.Tags {
 		if strings.HasPrefix(t.Key, ClusterIDTagKeyPrefix) {
 			return strings.TrimPrefix(t.Key, ClusterIDTagKeyPrefix)
 		}
@@ -219,7 +210,7 @@ func (c *Cloud) GetVMsByID(ctx context.Context, vmIDs ...string) ([]VM, error) {
 
 // mapInstanceToNodeName maps an OSC instance to a k8s NodeName, by extracting the PrivateDNSName
 func mapInstanceToNodeName(i *osc.Vm) types.NodeName {
-	return types.NodeName(aws.StringValue(i.PrivateDnsName))
+	return types.NodeName(*i.PrivateDnsName)
 }
 
 func ParseProviderID(providerID string) (subregion, vmID string, err error) {

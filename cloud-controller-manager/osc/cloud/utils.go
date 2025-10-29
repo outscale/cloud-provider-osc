@@ -7,11 +7,8 @@ import (
 	"github.com/outscale/osc-sdk-go/v3/pkg/osc"
 )
 
-func hasTag(tags *[]osc.ResourceTag, k string, v ...string) bool {
-	if tags == nil {
-		return false
-	}
-	return slices.ContainsFunc(*tags, func(t osc.ResourceTag) bool {
+func hasTag(tags []osc.ResourceTag, k string, v ...string) bool {
+	return slices.ContainsFunc(tags, func(t osc.ResourceTag) bool {
 		return t.Key == k && (len(v) == 0 || t.Value == v[0])
 	})
 }
