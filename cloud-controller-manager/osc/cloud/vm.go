@@ -50,7 +50,7 @@ func (vm *VM) NodeAddresses() []v1.NodeAddress {
 	addresses := []v1.NodeAddress{}
 
 	// handle internal network interfaces
-	if vm.cloudVm.Nics != nil && len(vm.cloudVm.Nics) > 0 {
+	if len(vm.cloudVm.Nics) > 0 {
 		for _, networkInterface := range vm.cloudVm.Nics {
 			// skip network interfaces that are not currently in use
 			if networkInterface.State != "in-use" {
