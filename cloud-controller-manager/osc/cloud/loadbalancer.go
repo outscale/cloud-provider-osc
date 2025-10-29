@@ -1065,8 +1065,7 @@ func (c *Cloud) updateIngressSecurityGroupRules(ctx context.Context, l *LoadBala
 		var addRanges []string
 		for _, allowFrom := range allowed {
 			if !slices.ContainsFunc(lbSG.InboundRules, func(r osc.SecurityGroupRule) bool {
-				return r.FromPortRange == listener.Port && r.IpRanges != nil &&
-					slices.Contains(r.IpRanges, allowFrom)
+				return r.FromPortRange == listener.Port && slices.Contains(r.IpRanges, allowFrom)
 			}) {
 				addRanges = append(addRanges, allowFrom)
 			}
@@ -1105,7 +1104,7 @@ func (c *Cloud) updateIngressSecurityGroupRules(ctx context.Context, l *LoadBala
 		}
 		if del {
 			delRule.IpRanges = r.IpRanges
-		} else if r.IpRanges != nil {
+		} else if len(r.IpRanges) > 0 {
 			delRule.IpRanges = []string{}
 			for _, ipRange := range r.IpRanges {
 				if !slices.Contains(allowed, ipRange) {
@@ -1137,7 +1136,7 @@ func (c *Cloud) updateBackendSecurityGroupRules(ctx context.Context, l *LoadBala
 	// Adding new rules
 	for _, listener := range l.Listeners {
 		if slices.ContainsFunc(destSG.InboundRules, func(r osc.SecurityGroupRule) bool {
-			return r.FromPortRange == listener.BackendPort && r.SecurityGroupsMembers != nil &&
+			return r.FromPortRange == listener.BackendPort &&
 				slices.ContainsFunc(r.SecurityGroupsMembers, func(m osc.SecurityGroupsMember) bool {
 					return srcSGID == m.SecurityGroupId
 				})
@@ -1165,10 +1164,9 @@ func (c *Cloud) updateBackendSecurityGroupRules(ctx context.Context, l *LoadBala
 	// Removing rules
 	for _, r := range destSG.InboundRules {
 		// ignore if rule is not from the LB SG
-		if r.SecurityGroupsMembers == nil ||
-			!slices.ContainsFunc(r.SecurityGroupsMembers, func(m osc.SecurityGroupsMember) bool {
-				return m.SecurityGroupId == srcSGID
-			}) {
+		if !slices.ContainsFunc(r.SecurityGroupsMembers, func(m osc.SecurityGroupsMember) bool {
+			return m.SecurityGroupId == srcSGID
+		}) {
 			continue
 		}
 		// ignore if port is not from a lister
