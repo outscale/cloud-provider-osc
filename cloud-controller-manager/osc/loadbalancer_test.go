@@ -115,6 +115,36 @@ func TestGetLoadBalancer(t *testing.T) {
 		require.NoError(t, err)
 		assert.False(t, exists)
 	})
+	t.Run("The ingress ipmode is not set by when ipmode annotation in 'Proxy' but IP is not defined", func(t *testing.T) {
+		svc := testSvc()
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-ingress-address"] = "hostname"
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-ingress-ipmode"] = "Proxy"
+		c, mock, _ := newAPI(t, self, "foo")
+		expectReadLoadBalancer(mock, func(desc *sdk.LoadBalancer) {
+			desc.DnsName = ptr.To("bar.example.com")
+			desc.PublicIp = ptr.To("198.51.100.42")
+		})
+		p := osc.NewProviderWith(c, staticDNSResolver{})
+		status, exists, err := p.GetLoadBalancer(context.TODO(), "foo", svc)
+		require.NoError(t, err)
+		assert.True(t, exists)
+		assert.Equal(t, &v1.LoadBalancerStatus{Ingress: []v1.LoadBalancerIngress{{Hostname: "bar.example.com"}}}, status)
+	})
+	t.Run("The ingress ipmode is Proxy when IP is defined and ipmode annotation in 'Proxy'", func(t *testing.T) {
+		svc := testSvc()
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-ingress-address"] = "both"
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-ingress-ipmode"] = "Proxy"
+		c, mock, _ := newAPI(t, self, "foo")
+		expectReadLoadBalancer(mock, func(desc *sdk.LoadBalancer) {
+			desc.DnsName = ptr.To("bar.example.com")
+			desc.PublicIp = ptr.To("198.51.100.42")
+		})
+		p := osc.NewProviderWith(c, staticDNSResolver{})
+		status, exists, err := p.GetLoadBalancer(context.TODO(), "foo", svc)
+		require.NoError(t, err)
+		assert.True(t, exists)
+		assert.Equal(t, &v1.LoadBalancerStatus{Ingress: []v1.LoadBalancerIngress{{Hostname: "bar.example.com", IP: "198.51.100.42", IPMode: ptr.To(v1.LoadBalancerIPModeProxy)}}}, status)
+	})
 }
 
 func TestGetLoadBalancerName(t *testing.T) {

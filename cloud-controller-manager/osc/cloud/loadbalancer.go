@@ -153,7 +153,8 @@ type LoadBalancer struct {
 	SessionAffinity          string
 	AccessLog                AccessLog `annotation:",squash"`
 	AllowFrom                utilnet.IPNetSet
-	IngressAddress           IngressAddress `annotation:"osc-load-balancer-ingress-address"`
+	IngressAddress           IngressAddress         `annotation:"osc-load-balancer-ingress-address"`
+	IPMode                   *v1.LoadBalancerIPMode `annotation:"osc-load-balancer-ingress-ipmode"`
 
 	lbSecurityGroup     *osc.SecurityGroup
 	targetSecurityGroup *osc.SecurityGroup

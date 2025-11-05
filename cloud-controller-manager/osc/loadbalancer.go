@@ -170,7 +170,9 @@ func (c *Provider) ingressStatus(ctx context.Context, lb *cloud.LoadBalancer, dn
 				return res, fmt.Errorf("resolve hostname: %w", err)
 			}
 		}
+
 		res.IP = ip
+		res.IPMode = lb.IPMode
 	}
 	if lb.IngressAddress.NeedHostname() {
 		res.Hostname = dns
