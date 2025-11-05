@@ -700,7 +700,11 @@ func (c *Cloud) updateProxyProtocol(ctx context.Context, l *LoadBalancer, _ *osc
 		}
 		klog.FromContext(ctx).V(2).Info("Creating proxy protocol policy")
 		_, err := c.api.LBU().CreateLoadBalancerPolicyWithContext(ctx, request)
-		if err != nil && oapi.AWSErrorCode(err) != elb.ErrCodeDuplicatePolicyNameException {
+		switch {
+		case err == nil:
+		case oapi.AWSErrorCode(err) == elb.ErrCodeDuplicatePolicyNameException:
+			klog.FromContext(ctx).V(4).Info("Policy already exists")
+		default:
 			return fmt.Errorf("create proxy protocol policy: %w", err)
 		}
 		policies = []*string{aws.String(proxyProtocolPolicyName)}

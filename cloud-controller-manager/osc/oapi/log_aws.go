@@ -36,7 +36,7 @@ import (
 // 	}
 // }
 
-func awsSendHandlerLogger(req *request.Request) {
+func awsLogRequestLogger(req *request.Request) {
 	_, call := awsServiceAndName(req)
 	logger := klog.FromContext(req.HTTPRequest.Context())
 	if logger.V(5).Enabled() {
@@ -44,7 +44,7 @@ func awsSendHandlerLogger(req *request.Request) {
 	}
 }
 
-func awsValidateResponseHandlerLogger(req *request.Request) {
+func awsLogResponseHandlerLogger(req *request.Request) {
 	_, call := awsServiceAndName(req)
 	logger := klog.FromContext(req.HTTPRequest.Context())
 	switch {
