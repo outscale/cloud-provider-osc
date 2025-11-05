@@ -67,13 +67,13 @@ func addHandlers(h *request.Handlers) {
 	// })
 
 	h.Send.PushBackNamed(request.NamedHandler{
-		Name: "k8s/api-request",
-		Fn:   awsSendHandlerLogger,
+		Name: "k8s/api-log-request",
+		Fn:   awsLogRequestLogger,
 	})
 
-	h.ValidateResponse.PushFrontNamed(request.NamedHandler{
-		Name: "k8s/api-validate-response",
-		Fn:   awsValidateResponseHandlerLogger,
+	h.CompleteAttempt.PushFrontNamed(request.NamedHandler{
+		Name: "k8s/api-log-response",
+		Fn:   awsLogResponseHandlerLogger,
 	})
 }
 

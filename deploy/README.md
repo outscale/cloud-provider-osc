@@ -9,7 +9,7 @@ You will need a Kubernetes cluster on 3DS Outscale cloud. The next sections deta
 |  <= v0.0.10beta | 1.20                       | 1.23                           |
 | v0.2.1 - v0.2.3 | 1.20                       | 1.25                           |
 | v0.2.4 - v0.2.8 | 1.20                       | 1.30                           |
-|    >= v1.0.0    | 1.20                       | 1.31                           |
+|     v1.0.x      | 1.20                       | 1.31                           |
 
 # Tagging
 
