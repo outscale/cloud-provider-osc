@@ -4,7 +4,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/outscale/osc-sdk-go/v2"
+	"github.com/outscale/osc-sdk-go/v3/pkg/osc"
 )
 
 func hasTag(tags []osc.ResourceTag, k string, v ...string) bool {

@@ -23,7 +23,7 @@ import (
 	"github.com/outscale/cloud-provider-osc/cloud-controller-manager/osc/cloud"
 	"github.com/outscale/cloud-provider-osc/cloud-controller-manager/osc/oapi"
 	e2eutils "github.com/outscale/cloud-provider-osc/tests/e2e/utils"
-	"github.com/outscale/osc-sdk-go/v2"
+	"github.com/outscale/osc-sdk-go/v3/pkg/osc"
 	"github.com/rs/xid"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -254,7 +254,6 @@ var _ = Describe("[e2e][loadbalancer] Checking proxy-protocol", func() {
 		e2eutils.DeleteSvc(ctx, cs, svc)
 	})
 })
-
 
 var _ = Describe("[e2e][loadbalancer] Checking IP restriction", func() {
 	f := framework.NewDefaultFramework("ccm")
