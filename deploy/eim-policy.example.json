@@ -9,6 +9,7 @@
         "api:CreateLoadBalancer",
         "api:UpdateLoadBalancer",
         "api:CreateLoadBalancerListeners",
+        "api:CreateLoadBalancerPolicy",
         "api:DeleteLoadBalancer",
         "api:DeleteLoadBalancerListeners",
         "api:RegisterVmsInLoadBalancer",
@@ -20,12 +21,7 @@
         "api:CreateSecurityGroupRule",
         "api:DeleteSecurityGroupRule",
         "api:ReadSubnets",
-        "api:CreateTags",
-        "elasticloadbalancing:DescribeLoadBalancers",
-        "elasticloadbalancing:CreateLoadBalancerPolicy",
-        "elasticloadbalancing:SetLoadBalancerPoliciesForBackendServer",
-        "elasticloadbalancing:DescribeLoadBalancerAttributes",
-        "elasticloadbalancing:ModifyLoadBalancerAttributes"
+        "api:CreateTags"
       ],
       "Resource": "*"
     }
