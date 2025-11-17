@@ -52,7 +52,7 @@ runs:
         OSC_SECRET_KEY: ${{ inputs.osc_secret_key }}
         OSC_REGION: ${{ inputs.osc_region }}
         CLUSTER_NAME: "ccm"
-        IMAGE_NAME: ${{ inputs.omi_name }}
+        IMAGE_NAME: ${{ inputs.image_name }}
         WORKER_COUNT: 2
         CCM: "false"
     - name: 👷 Install CCM
