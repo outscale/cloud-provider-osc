@@ -33,7 +33,7 @@ jobs:
     - name: ⬇️ Install Python
       uses: actions/setup-python@v5
     - name: ⬇️ Install Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         go-version-file: 'go.mod'
     - name: 🔐 Set ak/sk name based on runner region
