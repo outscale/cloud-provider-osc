@@ -17,11 +17,14 @@ on:
   schedule:
     - cron: "28 17 * * 0"
     
+permissions:
+  contents: read
+
 jobs:
   Build:
     runs-on: ubuntu-22.04
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Docker Lint
       run: bash -c "make dockerlint"
     - name: golangci-lint

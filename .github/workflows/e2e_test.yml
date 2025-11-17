@@ -15,12 +15,15 @@ on:
       - ".github/local_action/start_ccm_e2e/action.yml"
   workflow_dispatch:
     
+permissions:
+  contents: read
+ 
 jobs:
   create_cluster:
     runs-on: [self-hosted, linux]
     steps:
     - name: ⬇️ Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
     - name: ⬇️ Install kubectl
       uses: azure/setup-kubectl@v4
       with:
