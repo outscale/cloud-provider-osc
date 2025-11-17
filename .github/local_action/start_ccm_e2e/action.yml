@@ -21,10 +21,10 @@ inputs:
     required: true
   public_cloud:
     description: 'Create cluster in public cloud'
-    required: true
+    required: false
     default: "false"
-  image_id:
-    description: 'OMI ID'
+  image_name:
+    description: 'OMI name'
     required: true
   version:
     description: 'version of the image'
@@ -36,7 +36,7 @@ runs:
   using: "composite"
   steps:
     - name: ⬇️ Checkout CAPOSC
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         repository: 'outscale/cluster-api-provider-outscale'
         path: "cluster-api-provider-outscale"
@@ -52,7 +52,7 @@ runs:
         OSC_SECRET_KEY: ${{ inputs.osc_secret_key }}
         OSC_REGION: ${{ inputs.osc_region }}
         CLUSTER_NAME: "ccm"
-        IMAGE_NAME: "ubuntu-2204-kubernetes-v1.31.12-2025-08-27"
+        IMAGE_NAME: ${{ inputs.omi_name }}
         WORKER_COUNT: 2
         CCM: "false"
     - name: 👷 Install CCM
