@@ -152,6 +152,7 @@ spec:
             {{- end }}
           resources:
           {{- toYaml .Values.resources | nindent 12 }}
+          {{- if or .Values.caBundle.name (and .Values.oscCredentialsFromFile .Values.oscSecretName) }}
           volumeMounts:
           {{- if .Values.caBundle.name }}
             - name: ca-bundle
@@ -162,6 +163,7 @@ spec:
             - name: credentials
               mountPath: /root/.osc
               readOnly: true
+          {{- end }}
           {{- end }}
           env:
             {{- if not .Values.oscCredentialsFromFile }}
@@ -259,6 +261,7 @@ spec:
             - name: OSC_CLUSTER_ID
               value: {{ .Values.customClusterID }}
             {{- end }}
+      {{- if or .Values.caBundle.name (and .Values.oscCredentialsFromFile .Values.oscSecretName) }}
       volumes:
       {{- if .Values.caBundle.name }}
         - name: ca-bundle
@@ -272,6 +275,7 @@ spec:
         - name: credentials
           secret:
             secretName: {{ .Values.oscSecretName }}
+      {{- end }}
       {{- end }}
       hostNetwork: true
       affinity: {{ toYaml .Values.affinity | nindent 8}}
