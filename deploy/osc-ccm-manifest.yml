@@ -155,7 +155,6 @@ spec:
             - -v=5
           resources:
             {}
-          volumeMounts:
           env:
             - name: OSC_ACCESS_KEY
               valueFrom:
@@ -169,7 +168,6 @@ spec:
                   name: osc-secret
                   key: secret_key
                   optional: true
-      volumes:
       hostNetwork: true
       affinity: 
         nodeAffinity:
