@@ -61,7 +61,7 @@ jobs:
         oks_access_key: ${{ secrets.OKS_ACCESS_KEY }}
         oks_secret_key: ${{ secrets.OKS_SECRET_KEY }}
         oks_region: ${{ vars.OKS_REGION }}
-        image_name: ${{ vars.OMI_NAME }}
+        image_name: "ubuntu-2204-kubernetes-v1.31.14-2025-11-17"
         version: ${{ format('{0}.{1}', github.sha, github.run_attempt) }}
         registry: ${{ vars.REGISTRY }}
     ## Create Public Cloud Cluster
