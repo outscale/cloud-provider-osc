@@ -4,14 +4,14 @@ name: release
 on:
   push:
     tags:
-    - 'v*'
+    - 'helm-v*'
   workflow_dispatch:  
     
 permissions:
   contents: write
 
 jobs:
-  release:
+  release-helm:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -24,12 +24,18 @@ jobs:
         with:
           path: "docs/CHANGELOG.md"
           version: ${{ github.ref_name }}
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.18.3
+      - name : Create Helm-package
+        run: make helm-package
       - name: Create Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
           tag_name: ${{ github.ref_name }}
-          name: Release ${{ github.ref_name }}
+          name: Helm Release ${{ github.ref_name }}
           draft: true
           prerelease: false
           body: ${{ steps.changelog.outputs.changes }}
+          files: out-helm/*
