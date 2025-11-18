@@ -2,7 +2,9 @@ name: Credential Scanner
 
 on:
   pull_request:
-    branches: [ OSC-MIGRATION, main ]
+    branches:
+      - main
+      - kubernetes-*
 
 permissions:
   contents: read

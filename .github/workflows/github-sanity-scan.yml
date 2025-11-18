@@ -2,7 +2,9 @@ name: Github sanity scanner
 
 on:
   pull_request:
-    branches: [ OSC-MIGRATION, main ]
+    branches:
+      - main
+      - kubernetes-*
 
 permissions:
   contents: read
