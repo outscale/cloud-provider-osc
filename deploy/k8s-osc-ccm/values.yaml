@@ -15,8 +15,8 @@ customEndpointEim: ""
 image:
   # -- Container image to use
   repository: outscale/cloud-provider-osc
-  # -- Container image tag to deploy
-  tag: v1.0.1
+  # -- Container image tag to deploy, you need to use the version matching your Kubernetes version.
+  tag:
   # -- Container pull policy
   pullPolicy: IfNotPresent
 

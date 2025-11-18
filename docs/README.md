@@ -8,15 +8,46 @@ This component is required to operate a cluster on the OUTSCALE Cloud.
 More details on the [cloud-controller role](https://kubernetes.io/docs/concepts/architecture/cloud-controller/) in a Kubernetes cluster.
 
 # Features
-- Node controller: provides information and status about nodes,
+- Node controller: manages nodes and node metadata,
 - Service controller: allows creation of LoadBalancer services, based on [Load Balancer Units (LBU)](https://docs.outscale.com/en/userguide/About-Load-Balancers.html). 
 
 # Installation
+
+## Kubernetes version support
+
+Each Kubernetes version requires a specific CCM version.
+
+CCM versions use the same major and minor version numbers as their corresponding Kubernetes releases. Patch version numbering is specific to the Outscale CCM and does not match Kubernetes patch releases.
+
+E.g. Kubernetes v1.32.x will need CCM v1.32.y.
+
+CCM v0.2.8 can be safely used with Kubernetes 1.30.x, and CCM v1.0.x can be safely used with Kubernetes 1.32.x.
+
+CCM versions are available for Kubernetes 1.31, 1.32, and 1.33. As Kubernetes 1.31 has reached end of life (EOL), CCM v1.31 releases will be discontinued in the near future. Support for Kubernetes 1.34 will be added soon.
+
+## Support matrix
+
+| Kubernetes version | Recommended CCM version |
+|--------------------|-------------------------|
+| v1.30.x            | v0.2.8                  |
+| v1.31.x            | v1.31.0                 |
+| v1.32.x            | v1.32.0                 |
+| v1.33.x            | v1.33.0                 |
+| v1.34.x            | to be released          |
+
+## Deployment on a new cluster
+
 See the [deployment documentation](../deploy/README.md)
 
-# Upgrading to v1.0
+## Upgrading a cluster to a new Kubernetes version
 
-Annotations have changed, but the old ones remain valid. You do not need to update your existing LoadBalancer services.
+When upgrading a cluster, the CCM needs to be upgraded for the target Kubernetes version before the creation of the new nodes.
+
+Nodes created with a mismatched CCM version might not be properly configured.
+
+## Upgrading CCM from v0 to v1
+
+Annotations have changed, but the old ones still work. You do not need to update your existing LoadBalancer services.
 
 The secret has now the same format as the CSI driver. You need to rename:
 * `key_id` to `access_key`,

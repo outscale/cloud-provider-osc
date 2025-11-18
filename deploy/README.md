@@ -2,14 +2,9 @@ This documentation explains how to deploy Outscale Cloud Controller Manager.
 
 # Prerequisites
 
-You will need a Kubernetes cluster on 3DS Outscale cloud. The next sections details prerequisites on some cloud resources.
+You will need a Kubernetes cluster on the 3DS Outscale cloud.
 
-| Plugin Version  | Minimal Kubernetes Version | Recommended Kubernetes Version |
-| --------------- | -------------------------- | ------------------------------ |
-|  <= v0.0.10beta | 1.20                       | 1.23                           |
-| v0.2.1 - v0.2.3 | 1.20                       | 1.25                           |
-| v0.2.4 - v0.2.8 | 1.20                       | 1.30                           |
-|     v1.0.x      | 1.20                       | 1.31                           |
+> Each major Kubernetes release requires a specific version of the CCM. You will need to install the CCM version tailored for your Kubernetes version.
 
 # Tagging
 
@@ -27,7 +22,7 @@ The tag key must be `OscK8sClusterID/[cluster-id]` (`[cluster-id]` being the ID 
 
 The CCM will fetch the `OscK8sClusterID` tag of the node it is running on and will expect to find the other resources with matching tag keys.
 
-The Cluster API Provider for Outscale (CAPOSC) sets the tag, no need to do anything.
+The Cluster API Provider for Outscale (CAPOSC) sets the `OscK8sClusterID` tag, no need to do anything.
 
 ## Instances Tagging
 
@@ -89,29 +84,31 @@ It is recommended to use a specific [Access Key](https://docs.outscale.com/en/us
 
 # Deploy
 
-## Add Secret
+## Create Secret
 
 Create a secret with your cloud credentials:
-```
-  kubectl create secret generic osc-secret \
-    --from-literal=access_key=$OSC_ACCESS_KEY --from-literal=secret_key=$OSC_SECRET_KEY \
-    -n kube-system
-```
-
-## Add Cloud Controller Manager
-
-You can then deploy Outscale Cloud Controller Manager using a simple manifest:
-```
-kubectl apply -f deploy/osc-ccm-manifest.yml
+```shell
+kubectl create secret generic osc-secret \
+  --from-literal=access_key=$OSC_ACCESS_KEY --from-literal=secret_key=$OSC_SECRET_KEY \
+  -n kube-system
 ```
 
-Alternatively, you can deploy using Helm:
+## Deploy Cloud Controller Manager
+
+You can either deploy using a simple manifest:
+```shell
+kube_version=`kubectl get nodes --no-headers -o custom-columns=VERSION:.status.nodeInfo.kubeletVersion|cut -d . -f 1,2|head -1`
+kubectl apply -f deploy/osc-ccm-manifest-$kube_version.yml
 ```
-helm upgrade --install --wait --wait-for-jobs k8s-osc-ccm oci://registry-1.docker.io/outscalehelm/osc-cloud-controller-manager --set oscSecretName=osc-secret
+
+Or, you can use Helm:
+```shell
+helm upgrade --install --wait --wait-for-jobs k8s-osc-ccm oci://registry-1.docker.io/outscalehelm/osc-cloud-controller-manager --set oscSecretName=osc-secret --set image.tag=[the version compatible with your Kubernetes version]
 ```
+
 More [helm options are available](../docs/helm.md)
 
-# Upgrading to v1.0
+# Upgrading CCM v0.x to v1.x
 
 The secret has now the same format as the CSI driver. You need to rename:
 * `key_id` to `access_key`,
@@ -120,11 +117,3 @@ The secret has now the same format as the CSI driver. You need to rename:
 All other entries can be deleted.
 
 If you use an EIM user, you also need to update your policies with [the updated EIM policy](eim-policy.example.json).
-
-# Troubleshooting
-
-When troubleshooting issues, you can follow this debug tree to identify and resolve common problems.
-
-## Debug Tree
-
-![Debug Tree](debug-tree.png)

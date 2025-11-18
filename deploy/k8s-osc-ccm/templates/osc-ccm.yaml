@@ -140,7 +140,7 @@ spec:
       {{- end }}
       containers:
         - name: osc-cloud-controller-manager
-          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          image: {{ .Values.image.repository }}:{{ required "image.tag needs to be set to the version matching your Kubernetes version" .Values.image.tag }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
             - /bin/osc-cloud-controller-manager

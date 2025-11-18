@@ -20,7 +20,7 @@ import (
 )
 
 func getHelmSpecs(t *testing.T, vars []string) []runtime.Object {
-	args := []string{"template", "--debug"}
+	args := []string{"template", "--debug", "--set", "image.tag=foo"}
 	if len(vars) > 0 {
 		args = append(args, "--set", strings.Join(vars, ","))
 	}

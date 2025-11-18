@@ -4,4 +4,4 @@ set -e
 
 make helm-manifest
 
-git diff --exit-code deploy/osc-ccm-manifest.yml
+git diff --exit-code deploy/osc-ccm-manifest*
