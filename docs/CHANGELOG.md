@@ -1,5 +1,31 @@
 # Changelog
 
+## [v1.33.0] - 2025-11-19
+
+### ✨ Added
+* ✨feat(loadbalancer): implement ipmode by @moh2a in https://github.com/outscale/cloud-provider-osc/pull/518
+### 🛠️ Changed / Refactoring
+* 🔊 logs: fix LBU response logging / switch to Go 1.25 by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/519
+
+## [v1.32.0] - 2025-11-19
+
+### ✨ Added
+* ✨feat(loadbalancer): implement ipmode by @moh2a in https://github.com/outscale/cloud-provider-osc/pull/518
+### 🛠️ Changed / Refactoring
+* 🔊 logs: fix LBU response logging / switch to Go 1.25 by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/519
+
+## [v1.31.0] - 2025-11-19
+
+### ✨ Added
+* ✨feat(loadbalancer): implement ipmode by @moh2a in https://github.com/outscale/cloud-provider-osc/pull/518
+### 🛠️ Changed / Refactoring
+* 🔊 logs: fix LBU response logging / switch to Go 1.25 by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/519
+
+## [helm-v0.7.0] - 2025-11-19
+
+### 🐛 Fixed
+* 🐛 fix(helm): fix empty volume/volumeMounts blocks by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/527
+
 ## [v1.0.1] - 2025-10-13
 
 Change: by default, v1.0.1 only returns the hostname of a load-balancer ingress instead of hostname + IP.
