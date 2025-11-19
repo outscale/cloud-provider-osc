@@ -1,5 +1,4 @@
-# Github action for releasing the binaries
-name: release
+name: Release
 
 on:
   push:
