@@ -20,3 +20,5 @@
 .idea/
 *.tmproj
 .vscode/
+.helmignore
+helm_test.go
