@@ -11,6 +11,7 @@ permissions:
 
 jobs:
   release:
+    if: ${{ !contains(github.ref, 'helm') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
