@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   push-helm-chart:
-    if: startsWith(github.ref, 'refs/tags/helm')
+    if: ${{ contains(github.ref, 'helm') }}
     runs-on: ubuntu-22.04
     steps:
       - name: Check the repo
