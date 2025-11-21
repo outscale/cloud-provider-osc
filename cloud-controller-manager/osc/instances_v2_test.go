@@ -22,9 +22,19 @@ func TestInstanceExists(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, exists)
 	})
-	t.Run("If the instance does not exists, return true", func(t *testing.T) {
+	t.Run("If the instance does not exists, return false", func(t *testing.T) {
 		c, mock, _ := newAPI(t, self, "foo")
 		expectVMs(mock, sdkSelf)
+		p := osc.NewProviderWith(c, nil)
+		exists, err := p.InstanceExists(context.TODO(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
+		require.NoError(t, err)
+		assert.False(t, exists)
+	})
+	t.Run("If the instance is terminated, return false", func(t *testing.T) {
+		sdkTerminated := sdkVM
+		sdkTerminated.State = ptr.To("terminated")
+		c, mock, _ := newAPI(t, self, "foo")
+		expectVMs(mock, sdkSelf, sdkTerminated)
 		p := osc.NewProviderWith(c, nil)
 		exists, err := p.InstanceExists(context.TODO(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
 		require.NoError(t, err)
