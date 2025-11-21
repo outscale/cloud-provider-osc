@@ -3,7 +3,7 @@ name: Release Helm
 on:
   push:
     tags:
-    - 'helm-v*'
+    - 'v*'
   workflow_dispatch:  
     
 permissions:
@@ -11,18 +11,19 @@ permissions:
 
 jobs:
   release-helm:
+    if: ${{ contains(github.ref, 'helm') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      # - name: Get changelog for release
-      #   id: changelog
-      #   uses: mindsers/changelog-reader-action@v2
-      #   with:
-      #     path: "docs/CHANGELOG.md"
-      #     version: ${{ github.ref_name }}
+      - name: Get changelog for release
+        id: changelog
+        uses: mindsers/changelog-reader-action@v2
+        with:
+          path: "docs/CHANGELOG.md"
+          version: ${{ github.ref_name }}
       - uses: azure/setup-helm@v4
         with:
           version: v3.18.3
@@ -36,5 +37,5 @@ jobs:
           name: Helm Release ${{ github.ref_name }}
           draft: true
           prerelease: false
-          # body: ${{ steps.changelog.outputs.changes }}
+          body: ${{ steps.changelog.outputs.changes }}
           files: out-helm/*
