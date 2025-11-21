@@ -96,6 +96,10 @@ func (vm *VM) IsStopped() bool {
 	return vm.cloudVm.GetState() == "stopped"
 }
 
+func (vm *VM) IsTerminated() bool {
+	return vm.cloudVm.GetState() == "terminated"
+}
+
 // InstanceID returns the instance ID
 func (vm *VM) InstanceID() string {
 	return "/" + vm.cloudVm.Placement.GetSubregionName() + "/" + vm.cloudVm.GetVmId()

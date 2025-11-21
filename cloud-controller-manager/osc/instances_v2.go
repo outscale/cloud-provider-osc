@@ -15,6 +15,7 @@ package osc
 
 import (
 	"context"
+	"errors"
 
 	v1 "k8s.io/api/core/v1"
 	cloudprovider "k8s.io/cloud-provider"
@@ -22,13 +23,14 @@ import (
 
 // InstanceExists indicates whether a given node exists according to the cloud provider
 func (c *Provider) InstanceExists(ctx context.Context, node *v1.Node) (bool, error) {
-	_, err := c.getVmByNodeName(ctx, node.Name)
-
+	vm, err := c.getVmByNodeName(ctx, node.Name)
 	switch {
-	case err == cloudprovider.InstanceNotFound:
+	case errors.Is(err, cloudprovider.InstanceNotFound):
 		return false, nil
 	case err != nil:
 		return false, err
+	case vm.IsTerminated():
+		return false, nil
 	default:
 		return true, nil
 	}
