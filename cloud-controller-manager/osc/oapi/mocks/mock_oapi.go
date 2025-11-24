@@ -41,6 +41,20 @@ func (m *MockOAPI) EXPECT() *MockOAPIMockRecorder {
 	return m.recorder
 }
 
+// CheckCredentials mocks base method.
+func (m *MockOAPI) CheckCredentials(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CheckCredentials", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CheckCredentials indicates an expected call of CheckCredentials.
+func (mr *MockOAPIMockRecorder) CheckCredentials(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckCredentials", reflect.TypeOf((*MockOAPI)(nil).CheckCredentials), ctx)
+}
+
 // CreateLoadBalancer mocks base method.
 func (m *MockOAPI) CreateLoadBalancer(ctx context.Context, req osc.CreateLoadBalancerRequest) (*osc.LoadBalancer, error) {
 	m.ctrl.T.Helper()
