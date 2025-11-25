@@ -30,7 +30,7 @@ jobs:
     - name: ⬇️ Install kubectl
       uses: azure/setup-kubectl@v4
       with:
-        version: v1.31.12
+        version: v1.34.2
     - name: ⬇️ Install Helm
       uses: azure/setup-helm@v4
     - name: ⬇️ Install Python
@@ -39,7 +39,7 @@ jobs:
       uses: actions/setup-go@v6
       with:
         go-version-file: 'go.mod'
-    - name: 🔐 Set ak/sk name based on runner region
+    - name: 🔐 Set AK/SK name based on runner region
       run: .github/scripts/runneraksk.sh
     - name: 🧹 Frieza
       uses: outscale/frieza-github-actions/frieza-clean@master

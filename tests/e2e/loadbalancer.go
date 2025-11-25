@@ -99,19 +99,14 @@ var _ = Describe("[e2e][loadbalancer][fast] Creating a load-balancer", func() {
 			}
 		})
 
-		It("ingress is configured", func() {
+		It("ingress is configured and can connect to the load-balancer", func() {
 			svc = e2eutils.WaitForSvc(ctx, cs, svc)
 			gomega.Expect(svc.Status.LoadBalancer.Ingress, gomega.Not(gomega.BeEmpty()))
 			gomega.Expect(svc.Status.LoadBalancer.Ingress[0].Hostname, gomega.Not(gomega.BeEmpty()))
 			gomega.Expect(svc.Status.LoadBalancer.Ingress[0].IP, gomega.Not(gomega.BeEmpty()))
-		})
-
-		It("can connect to the load-balancer", func() {
-			svc = e2eutils.WaitForSvc(ctx, cs, svc)
 			e2esvc.TestReachableHTTP(ctx, svc.Status.LoadBalancer.Ingress[0].Hostname, 80, testTimeout)
-		})
 
-		It("sets tags from cli args and annotations in addition to the standard ones", func() {
+			By("Checking tags from cli args and annotations in addition to the standard ones")
 			e2eutils.ExpectLoadBalancerTags(ctx, oapi, lbName, gomega.And(
 				gomega.ContainElement(osc.ResourceTag{Key: "annotationkey", Value: "annotationvalue"}),
 				gomega.ContainElement(osc.ResourceTag{Key: "clikey", Value: "clivalue"}),
