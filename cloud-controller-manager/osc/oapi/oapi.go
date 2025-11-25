@@ -18,8 +18,13 @@ package oapi
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"net/http"
+	"slices"
 
 	osc "github.com/outscale/osc-sdk-go/v2"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -28,6 +33,36 @@ const (
 
 func (c *OscClient) APIClient() *osc.APIClient {
 	return c.api
+}
+
+var (
+	authErrorCodes        = []string{"1", "5", "7", "14", "20", "4120"}
+	ErrInvalidCredentials = errors.New("authentication error (invalid credentials ?)")
+)
+
+func (c *OscClient) CheckCredentials(ctx context.Context) error {
+	logger := klog.FromContext(ctx)
+	req := osc.ReadVmsRequest{}
+	logger.V(4).Info("Check credentials", "OAPI", "ReadVms")
+	_, httpRes, err := c.api.VmApi.ReadVms(c.WithAuth(ctx)).ReadVmsRequest(req).Execute()
+	switch {
+	case err == nil || httpRes.StatusCode == http.StatusTooManyRequests:
+		return nil
+	case httpRes == nil:
+		logger.V(3).Error(err, "OAPI error", "OAPI", "ReadVms")
+		return fmt.Errorf("check credentials: %w", err)
+	default:
+		logger.V(3).Info(fmt.Sprintf("OAPI error response: %+v", err), "OAPI", "ReadVms", "http_status", httpRes.Status)
+		var oapiErr osc.GenericOpenAPIError
+		if errors.As(err, &oapiErr) {
+			if errs, ok := oapiErr.Model().(osc.ErrorResponse); ok && len(errs.GetErrors()) > 0 {
+				if slices.Contains(authErrorCodes, errs.GetErrors()[0].GetCode()) {
+					err = ErrInvalidCredentials
+				}
+			}
+		}
+		return fmt.Errorf("check credentials: %w", err)
+	}
 }
 
 func (c *OscClient) ReadVms(ctx context.Context, req osc.ReadVmsRequest) ([]osc.Vm, error) {
