@@ -27,6 +27,9 @@ func New(ctx context.Context, clusterID string) (*Cloud, error) {
 	if err != nil {
 		return nil, fmt.Errorf("init cloud: %w", err)
 	}
+	if err := api.OAPI().CheckCredentials(ctx); err != nil {
+		return nil, fmt.Errorf("init cloud: %w", err)
+	}
 	c := &Cloud{api: api, Metadata: metadata, clusterID: clusterID}
 
 	id := c.Metadata.InstanceID
