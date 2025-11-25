@@ -1,6 +1,9 @@
 name: e2e_test
 
 on:
+  push:
+    branches:
+      - kubernetes-*
   pull_request:
     branches:
       - main

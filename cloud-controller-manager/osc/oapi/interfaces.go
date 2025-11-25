@@ -27,6 +27,8 @@ import (
 
 // OAPI is the interface for OAPI calls.
 type OAPI interface {
+	CheckCredentials(ctx context.Context) error
+
 	ReadVms(ctx context.Context, req osc.ReadVmsRequest) ([]osc.Vm, error)
 
 	ReadLoadBalancers(ctx context.Context, req osc.ReadLoadBalancersRequest) ([]osc.LoadBalancer, error)
