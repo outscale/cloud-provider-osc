@@ -71,7 +71,7 @@ func ListSvc(ctx context.Context, client clientset.Interface, namespace *v1.Name
 	svcClient := client.CoreV1().Services(namespace.Name)
 	list, err := svcClient.List(ctx, metav1.ListOptions{})
 	framework.ExpectNoError(err)
-	fmt.Printf("svc:  %v\n", list.Items)
+	fmt.Printf("svc: %v", list.Items)
 }
 
 // GetSvc return an svc
@@ -79,7 +79,7 @@ func GetSvc(ctx context.Context, client clientset.Interface, namespace *v1.Names
 	svcClient := client.CoreV1().Services(namespace.Name)
 	result, err := svcClient.Get(ctx, name, metav1.GetOptions{})
 	framework.ExpectNoError(err)
-	framework.Logf("Get Svc:  %+v\n", result)
+	framework.Logf("Get Svc: %+v", result)
 	return result
 }
 
@@ -89,16 +89,16 @@ func WaitForSvc(ctx context.Context, client clientset.Interface, svc *v1.Service
 	e2esvc.WaitForServiceUpdatedWithFinalizer(ctx, client, svc.Namespace, name, true)
 	ginkgo.By("Wait for ingress")
 	svcClient := client.CoreV1().Services(svc.Namespace)
-	err := wait.PollUntilContextTimeout(ctx, 30*time.Second, e2esvc.GetServiceLoadBalancerCreationTimeout(ctx, client), true, func(ctx context.Context) (bool, error) {
+	err := wait.PollUntilContextTimeout(ctx, 10*time.Second, e2esvc.GetServiceLoadBalancerCreationTimeout(ctx, client), true, func(ctx context.Context) (bool, error) {
 		var err error
 		svc, err = svcClient.Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
-		framework.Logf("ingress: %+v\n", svc.Status.LoadBalancer.Ingress)
 		return len(svc.Status.LoadBalancer.Ingress) > 0, nil
 	})
 	framework.ExpectNoError(err)
+	framework.Logf("ingress: %+v", svc.Status.LoadBalancer.Ingress)
 	return svc
 }
 
