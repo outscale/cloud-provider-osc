@@ -1,6 +1,9 @@
 name: Build
 
 on:
+  push:
+    branches:
+      - kubernetes-*
   pull_request:
     branches:
       - main
@@ -14,8 +17,6 @@ on:
       - "deploy/**"
       - "!tests/**"
   workflow_dispatch:
-  schedule:
-    - cron: "28 17 * * 0"
     
 permissions:
   contents: read

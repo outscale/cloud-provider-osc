@@ -109,20 +109,47 @@ make build-image image-tag image-push helm_deploy test-e2e
 
 # Release
 
-1.  Update [CHANGELOG.md](CHANGELOG.md)
-2.  Update chart version (if needed) in [Chart.yaml](../deploy/k8s-osc-ccm/Chart.yaml)
-3.  Update cloud-provider-osc version in [values.yaml](../deploy/k8s-osc-ccm/values.yaml)
-4.  Update prerequisites section in [deploy/README.md](../deploy/README.md)
-5.  Generate helm doc `make helm-docs`
-6.  Update [deploy/osc-ccm-manifest.yml](../deploy/osc-ccm-manifest.yml) `make helm-manifest`
-7.  Commit version with `git commit -am "cloud-controller-manager vX.Y.Z"`
-8.  Create PR and merge it to main
-9. Tag the release
+## Helm release
+
+1. In [CHANGELOG.md](CHANGELOG.md), add a new vX.Y.Z-helm version
+2. Update chart version (if needed) in [Chart.yaml](../deploy/k8s-osc-ccm/Chart.yaml)
+3. Update cloud-provider-osc version in [values.yaml](../deploy/k8s-osc-ccm/values.yaml) (listing all active container versions)
+4. Generate helm doc `make helm-docs`
+5. Update manifests `make helm-manifest`
+6. Commit version with `git commit -am "cloud-controller-manager vX.Y.Z"`
+7. Create PR and merge it to main
+8. Tag & push the release
 ```shell
-git tag -a vX.X.X -m "🔖 Release vX.X.X"
-```
-10. Push the tag
-```shell
-git push origin vX.X.X
+export HELM_VERSION=vX.Y.Z-helm
+git tag -a $HELM_VERSION -m "🔖 Helm $HELM_VERSION"
+git push origin $HELM_VERSION
 ```
 11. Publish the release on Github
+
+## Container release
+
+There must be a release for each active Kubernetes release.
+Each Kubernetes release has its own release branch (kubernetes-1.31, kubernetes-1.32, kubernetes-1.33, kubernetes-1.34)
+
+Versioning is vX.Y.Z, where X.Y are the major/minor version numbers of each Kubernetes release.
+Z is the version of the CCM, is increased at each release, and is the same for every Kubernetes release branch.
+
+1. In [CHANGELOG.md](CHANGELOG.md), add a new version for every release branch
+2. In [README.md](README.md), update the recommended version for each Kubernetes release
+3. Create PR and merge it to main
+4. Merge main into each release branch
+```shell
+git co kubernetes-X.Y
+git merge main
+git push origin kubernetes-X.Y
+```
+5. Check that CI is OK on every release branch
+6. Tag release for each release branch
+```shell
+git co kubernetes-X.Y
+git pull --rebase
+export VERSION=vX.Y.Z
+git tag -a $VERSION -m "🔖 CCM $VERSION"
+git push origin $VERSION
+```
+7. Publish the releases on Github
