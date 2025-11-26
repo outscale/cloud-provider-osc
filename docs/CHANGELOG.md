@@ -1,6 +1,50 @@
 # Changelog
 
+## [v1.34.1] - 2025-11-26
+
+New release for Kubernetes 1.34.
+
+### ✨ Added
+* ✨ feat: check credentials at boot by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/547
+### 🐛 Fixed
+* 🐛 fix: nodes should be removed when terminated by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/546
+### 📦 Dependency updates
+* ⬆️ deps: Bump github.com/outscale/osc-sdk-go/v2 from 2.29.0 to 2.31.0 by @dependabot[bot] in https://github.com/outscale/cloud-provider-osc/pull/524
+* ⬆️ build(deps): bump golang.org/x/crypto from 0.41.0 to 0.45.0 by @dependabot[bot] in https://github.com/outscale/cloud-provider-osc/pull/542
+
+## [v1.33.1] - 2025-11-26
+
+### ✨ Added
+* ✨ feat: check credentials at boot by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/547
+### 🐛 Fixed
+* 🐛 fix: nodes should be removed when terminated by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/546
+### 📦 Dependency updates
+* ⬆️ deps: Bump github.com/outscale/osc-sdk-go/v2 from 2.29.0 to 2.31.0 by @dependabot[bot] in https://github.com/outscale/cloud-provider-osc/pull/524
+* ⬆️ build(deps): bump golang.org/x/crypto from 0.41.0 to 0.45.0 by @dependabot[bot] in https://github.com/outscale/cloud-provider-osc/pull/542
+
+## [v1.32.1] - 2025-11-26
+
+### ✨ Added
+* ✨ feat: check credentials at boot by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/547
+### 🐛 Fixed
+* 🐛 fix: nodes should be removed when terminated by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/546
+### 📦 Dependency updates
+* ⬆️ deps: Bump github.com/outscale/osc-sdk-go/v2 from 2.29.0 to 2.31.0 by @dependabot[bot] in https://github.com/outscale/cloud-provider-osc/pull/524
+* ⬆️ build(deps): bump golang.org/x/crypto from 0.41.0 to 0.45.0 by @dependabot[bot] in https://github.com/outscale/cloud-provider-osc/pull/542
+
+## [v1.31.1] - 2025-11-26
+
+### ✨ Added
+* ✨ feat: check credentials at boot by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/547
+### 🐛 Fixed
+* 🐛 fix: nodes should be removed when terminated by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/546
+### 📦 Dependency updates
+* ⬆️ deps: Bump github.com/outscale/osc-sdk-go/v2 from 2.29.0 to 2.31.0 by @dependabot[bot] in https://github.com/outscale/cloud-provider-osc/pull/524
+* ⬆️ build(deps): bump golang.org/x/crypto from 0.41.0 to 0.45.0 by @dependabot[bot] in https://github.com/outscale/cloud-provider-osc/pull/542
+
 ## [v1.33.0] - 2025-11-19
+
+New release for Kubernetes 1.33.
 
 ### ✨ Added
 * ✨feat(loadbalancer): implement ipmode by @moh2a in https://github.com/outscale/cloud-provider-osc/pull/518
@@ -9,12 +53,16 @@
 
 ## [v1.32.0] - 2025-11-19
 
+New release for Kubernetes 1.32.
+
 ### ✨ Added
 * ✨feat(loadbalancer): implement ipmode by @moh2a in https://github.com/outscale/cloud-provider-osc/pull/518
 ### 🛠️ Changed / Refactoring
 * 🔊 logs: fix LBU response logging / switch to Go 1.25 by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/519
 
 ## [v1.31.0] - 2025-11-19
+
+New release for Kubernetes 1.31.
 
 ### ✨ Added
 * ✨feat(loadbalancer): implement ipmode by @moh2a in https://github.com/outscale/cloud-provider-osc/pull/518
