@@ -25,7 +25,7 @@ func getHelmSpecs(t *testing.T, vars []string) []runtime.Object {
 		args = append(args, "--set", strings.Join(vars, ","))
 	}
 	args = append(args, "k8s-osc-ccm")
-	cmd := exec.Command("helm", args...)
+	cmd := exec.CommandContext(t.Context(), "helm", args...)
 	stdout, err := cmd.StdoutPipe()
 	require.NoError(t, err)
 	err = cmd.Start()

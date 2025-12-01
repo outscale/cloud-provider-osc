@@ -584,24 +584,47 @@ func (c *Cloud) ensureSecurityGroup(ctx context.Context, l *LoadBalancer) error 
 		return nil
 	}
 	sgName := "k8s-elb-" + l.Name
-	sgDescription := fmt.Sprintf("Security group for Kubernetes ELB %s (%v)", l.Name, l.ServiceName)
-	resp, err := c.api.OAPI().CreateSecurityGroup(ctx, osc.CreateSecurityGroupRequest{
+	sgDescription := fmt.Sprintf("Security group for Kubernetes LB %s (%s)", l.Name, l.ServiceName)
+	sg, err := c.api.OAPI().CreateSecurityGroup(ctx, osc.CreateSecurityGroupRequest{
 		SecurityGroupName: sgName,
 		Description:       sgDescription,
 		NetId:             &l.NetID,
 	})
-	if err != nil {
+	switch {
+	case oapi.ErrorCode(err) == "9008": // ErrorDuplicateGroup: the SecurityGroupName '{group_name}' already exists.
+		// the SG might have been created by a previous request, try to load it
+		sgs, err := c.api.OAPI().ReadSecurityGroups(ctx, osc.ReadSecurityGroupsRequest{
+			Filters: &osc.FiltersSecurityGroup{
+				SecurityGroupNames: &[]string{sgName},
+			},
+		})
+		switch {
+		case err != nil:
+			return fmt.Errorf("read security groups: %w", err)
+		case len(sgs) == 0: // this has a tiny chance of occurring, but we would not want the CCM to panic
+			return errors.New("duplicate SG but none found")
+		default:
+			sg = &sgs[0]
+		}
+	case err != nil:
 		return fmt.Errorf("create SG: %w", err)
 	}
-	l.SecurityGroups = []string{resp.GetSecurityGroupId()}
-	l.lbSecurityGroup = resp
-	err = c.api.OAPI().CreateTags(ctx, osc.CreateTagsRequest{
-		ResourceIds: l.SecurityGroups,
-		Tags:        []osc.ResourceTag{{Key: clusterIDTagKey(c.clusterID), Value: ResourceLifecycleOwned}},
-	})
-	if err != nil {
-		return fmt.Errorf("create SG: %w", err)
+	// check clusterID tag
+	switch getLBUClusterID(sg.GetTags()) {
+	case c.clusterID: // existing SG with valid tag => noop
+	case "": // new SG or existing SG without tag => create
+		err = c.api.OAPI().CreateTags(ctx, osc.CreateTagsRequest{
+			ResourceIds: []string{sg.GetSecurityGroupId()},
+			Tags:        []osc.ResourceTag{{Key: clusterIDTagKey(c.clusterID), Value: ResourceLifecycleOwned}},
+		})
+		if err != nil {
+			return fmt.Errorf("create SG: %w", err)
+		}
+	default: // existing SG with invalid tag/belonging to another cluster
+		return errors.New("a segurity group of the same name already exists")
 	}
+	l.SecurityGroups = []string{sg.GetSecurityGroupId()}
+	l.lbSecurityGroup = sg
 	return nil
 }
 

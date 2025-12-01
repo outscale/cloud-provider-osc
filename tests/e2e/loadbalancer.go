@@ -126,6 +126,75 @@ var _ = Describe("[e2e][loadbalancer][fast] Creating a load-balancer", func() {
 	})
 })
 
+var _ = Describe("[e2e][loadbalancer] Fixing annotation errors", func() {
+	f := framework.NewDefaultFramework("ccm")
+	f.NamespacePodSecurityEnforceLevel = admissionapi.LevelPrivileged
+
+	var (
+		cs     clientset.Interface
+		ns     *v1.Namespace
+		ctx    context.Context
+		lbName string
+	)
+
+	BeforeEach(func() {
+		cs = f.ClientSet
+		ns = f.Namespace
+		ctx = context.Background()
+		lbName = "ccm-fix-" + xid.New().String()
+	})
+
+	Context("When creating service with a bad annotation", func() {
+		var (
+			deployment *appsv1.Deployment
+			svc        *v1.Service
+		)
+		BeforeEach(func() {
+			deployment = e2eutils.CreateDeployment(ctx, cs, ns, 1, []v1.ContainerPort{
+				{
+					Name:          "tcp",
+					Protocol:      v1.ProtocolTCP,
+					ContainerPort: 8080,
+				},
+			})
+			e2eutils.WaitForDeploymentReady(ctx, cs, deployment)
+
+			svc = e2eutils.CreateSvc(ctx, cs, ns, map[string]string{
+				"service.beta.kubernetes.io/osc-load-balancer-name":         lbName,
+				"service.beta.kubernetes.io/osc-load-balancer-public-ip-id": "invalid",
+			}, []v1.ServicePort{
+				{
+					Name:       "tcp",
+					Protocol:   v1.ProtocolTCP,
+					TargetPort: intstr.FromInt(8080),
+					Port:       80,
+				},
+			}, nil)
+		})
+
+		AfterEach(func() {
+			if deployment != nil {
+				e2eutils.DeleteDeployment(ctx, cs, deployment)
+				deployment = nil
+			}
+			if svc != nil {
+				e2eutils.DeleteSvc(ctx, cs, svc)
+				svc = nil
+			}
+		})
+
+		It("works after removing to bad annotation", func() {
+			e2esvc.WaitForServiceUpdatedWithFinalizer(ctx, cs, svc.Namespace, svc.Name, true)
+			svc, err := e2esvc.UpdateService(ctx, cs, svc.Namespace, svc.Name, func(d *v1.Service) {
+				delete(svc.Annotations, "service.beta.kubernetes.io/osc-load-balancer-public-ip-id")
+			})
+			framework.ExpectNoError(err)
+			svc = e2eutils.WaitForSvc(ctx, cs, svc)
+			e2esvc.TestReachableHTTP(ctx, svc.Status.LoadBalancer.Ingress[0].Hostname, 80, testTimeout)
+		})
+	})
+})
+
 var _ = Describe("[e2e][loadbalancer] Creating an internal load-balancer", func() {
 	f := framework.NewDefaultFramework("ccm")
 	f.NamespacePodSecurityEnforceLevel = admissionapi.LevelPrivileged
