@@ -27,7 +27,7 @@ func getAnnotations() map[string]string {
 	}
 }
 
-// CreateSvc create an svc
+// CreateSvc creates a svc
 func CreateSvc(ctx context.Context, client clientset.Interface, namespace *v1.Namespace, additional map[string]string, servicePort []v1.ServicePort, sourceRangesCidr []string) *v1.Service {
 	name := "echoserver"
 	ginkgo.By(fmt.Sprintf("Creating service %q", name))
@@ -58,7 +58,7 @@ func CreateSvc(ctx context.Context, client clientset.Interface, namespace *v1.Na
 	return result
 }
 
-// DeleteSvc delete an svc
+// DeleteSvc deletes a svc
 func DeleteSvc(ctx context.Context, client clientset.Interface, svc *v1.Service) {
 	ginkgo.By(fmt.Sprintf("Deleting service %q", svc.Name))
 	svcClient := client.CoreV1().Services(svc.Namespace)
@@ -66,7 +66,7 @@ func DeleteSvc(ctx context.Context, client clientset.Interface, svc *v1.Service)
 	framework.ExpectNoError(err)
 }
 
-// ListSvc list and svc
+// ListSvc lists existing svcs
 func ListSvc(ctx context.Context, client clientset.Interface, namespace *v1.Namespace) {
 	svcClient := client.CoreV1().Services(namespace.Name)
 	list, err := svcClient.List(ctx, metav1.ListOptions{})
@@ -74,7 +74,7 @@ func ListSvc(ctx context.Context, client clientset.Interface, namespace *v1.Name
 	fmt.Printf("svc: %v", list.Items)
 }
 
-// GetSvc return an svc
+// GetSvc returns a svc
 func GetSvc(ctx context.Context, client clientset.Interface, namespace *v1.Namespace, name string) (result *v1.Service) {
 	svcClient := client.CoreV1().Services(namespace.Name)
 	result, err := svcClient.Get(ctx, name, metav1.GetOptions{})
@@ -83,7 +83,7 @@ func GetSvc(ctx context.Context, client clientset.Interface, namespace *v1.Names
 	return result
 }
 
-// WaitForSvc wait for an svc to be ready
+// WaitForSvc waits for a svc to be ready
 func WaitForSvc(ctx context.Context, client clientset.Interface, svc *v1.Service) *v1.Service {
 	name := svc.Name
 	e2esvc.WaitForServiceUpdatedWithFinalizer(ctx, client, svc.Namespace, name, true)
@@ -102,7 +102,7 @@ func WaitForSvc(ctx context.Context, client clientset.Interface, svc *v1.Service
 	return svc
 }
 
-// WaitForDeletedSvc waits for an svc to be deleted
+// WaitForDeletedSvc waits for a svc to be deleted
 func WaitForDeletedSvc(ctx context.Context, client clientset.Interface, svc *v1.Service) {
 	e2esvc.WaitForServiceDeletedWithFinalizer(ctx, client, svc.Namespace, svc.Name)
 }

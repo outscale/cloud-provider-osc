@@ -343,11 +343,31 @@ func expectFindNoLBSubnet(mock *oapimocks.MockOAPI) {
 		}, nil)
 }
 
+func expectSGAlreadyExists(mock *oapimocks.MockOAPI) {
+	mock.EXPECT().
+		CreateSecurityGroup(gomock.Any(), gomock.Eq(sdk.CreateSecurityGroupRequest{
+			SecurityGroupName: "k8s-elb-lb-foo",
+			Description:       "Security group for Kubernetes LB lb-foo (svc-foo)",
+			NetId:             ptr.To("net-foo"),
+		})).
+		Return(nil, oapi.NewOAPIError(sdk.Errors{Code: ptr.To("9008")}))
+	mock.EXPECT().
+		ReadSecurityGroups(gomock.Any(), gomock.Eq(sdk.ReadSecurityGroupsRequest{
+			Filters: &sdk.FiltersSecurityGroup{
+				SecurityGroupNames: &[]string{"k8s-elb-lb-foo"},
+			},
+		})).
+		Return([]sdk.SecurityGroup{{
+			SecurityGroupId: ptr.To("sg-foo"),
+			Tags:            &[]sdk.ResourceTag{{Key: "OscK8sClusterID/foo"}},
+		}}, nil)
+}
+
 func expectCreateSecurityGroup(mock *oapimocks.MockOAPI) {
 	mock.EXPECT().
 		CreateSecurityGroup(gomock.Any(), gomock.Eq(sdk.CreateSecurityGroupRequest{
 			SecurityGroupName: "k8s-elb-lb-foo",
-			Description:       "Security group for Kubernetes ELB lb-foo (svc-foo)",
+			Description:       "Security group for Kubernetes LB lb-foo (svc-foo)",
 			NetId:             ptr.To("net-foo"),
 		})).
 		Return(&sdk.SecurityGroup{SecurityGroupId: ptr.To("sg-foo")}, nil)
