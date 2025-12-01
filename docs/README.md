@@ -41,7 +41,7 @@ See the [deployment documentation](../deploy/README.md)
 
 ## Upgrading a cluster to a new Kubernetes version
 
-When upgrading a cluster, the CCM needs to be upgraded for the target Kubernetes version before the creation of the new nodes.
+When upgrading a cluster, the CCM needs to be upgraded for the target Kubernetes version before the creation of any kind of nodes (control-plane or worker).
 
 Nodes created with a mismatched CCM version might not be properly configured.
 
