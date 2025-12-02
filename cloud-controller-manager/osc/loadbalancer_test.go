@@ -224,9 +224,32 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
 	})
-	t.Run("A public LB is created with a predefined public IP", func(t *testing.T) {
+	t.Run("A public LB is created with a predefined public IP (by ID)", func(t *testing.T) {
 		svc := testSvc()
-		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-ip-id"] = "ip-foo"
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-ip-id"] = "ipalloc-foo"
+		c, oapimock, lbmock := newAPI(t, self, "foo")
+		expectVMs(oapimock, sdkSelf, sdkVM)
+		expectNoLoadbalancer(oapimock)
+		expectPublicIP(oapimock, "ipalloc-foo", &sdk.PublicIp{PublicIp: ptr.To("1.2.3.4")})
+		expectFindLBSubnet(oapimock)
+		expectCreateSecurityGroup(oapimock)
+		expectFindWorkerSGByRole(oapimock)
+		expectAddIngressSGRule(oapimock, []string{"0.0.0.0/0"}, "sg-foo")
+		expectAddInternalSGRule(oapimock, "sg-foo", "sg-worker")
+		expectCreateLoadBalancer(oapimock, func(clbr *sdk.CreateLoadBalancerRequest) {
+			clbr.PublicIp = ptr.To("1.2.3.4")
+		})
+		expectConfigureHealthCheck(oapimock)
+		expectDescribeProxyProtocol(lbmock, false)
+		expectDescribeLoadBalancerAttributes(lbmock)
+		expectRegisterInstances(oapimock, *sdkVM.VmId)
+		p := osc.NewProviderWith(c, staticDNSResolver{})
+		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*v1.Node{&vmNode})
+		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
+	})
+	t.Run("A public LB is created with a predefined public IP (by IP)", func(t *testing.T) {
+		svc := testSvc()
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-ip-id"] = "1.2.3.4"
 		c, oapimock, lbmock := newAPI(t, self, "foo")
 		expectVMs(oapimock, sdkSelf, sdkVM)
 		expectNoLoadbalancer(oapimock)
@@ -236,7 +259,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectAddIngressSGRule(oapimock, []string{"0.0.0.0/0"}, "sg-foo")
 		expectAddInternalSGRule(oapimock, "sg-foo", "sg-worker")
 		expectCreateLoadBalancer(oapimock, func(clbr *sdk.CreateLoadBalancerRequest) {
-			clbr.PublicIp = ptr.To("ip-foo")
+			clbr.PublicIp = ptr.To("1.2.3.4")
 		})
 		expectConfigureHealthCheck(oapimock)
 		expectDescribeProxyProtocol(lbmock, false)
@@ -253,7 +276,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectVMs(oapimock, sdkSelf, sdkVM)
 		expectNoLoadbalancer(oapimock)
 		expectPublicIPFromPool(oapimock, []sdk.PublicIp{
-			{PublicIpId: ptr.To("ip-foo")},
+			{PublicIpId: ptr.To("ipalloc-foo"), PublicIp: ptr.To("1.2.3.4")},
 		})
 		expectFindLBSubnet(oapimock)
 		expectCreateSecurityGroup(oapimock)
@@ -261,7 +284,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectAddIngressSGRule(oapimock, []string{"0.0.0.0/0"}, "sg-foo")
 		expectAddInternalSGRule(oapimock, "sg-foo", "sg-worker")
 		expectCreateLoadBalancer(oapimock, func(clbr *sdk.CreateLoadBalancerRequest) {
-			clbr.PublicIp = ptr.To("ip-foo")
+			clbr.PublicIp = ptr.To("1.2.3.4")
 		})
 		expectConfigureHealthCheck(oapimock)
 		expectDescribeProxyProtocol(lbmock, false)

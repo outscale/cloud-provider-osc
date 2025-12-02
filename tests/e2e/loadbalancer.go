@@ -126,6 +126,141 @@ var _ = Describe("[e2e][loadbalancer][fast] Creating a load-balancer", func() {
 	})
 })
 
+var _ = Describe("[e2e][loadbalancer] Setting a public IP", func() {
+	f := framework.NewDefaultFramework("ccm")
+	f.NamespacePodSecurityEnforceLevel = admissionapi.LevelPrivileged
+
+	var (
+		cs     clientset.Interface
+		ns     *v1.Namespace
+		ctx    context.Context
+		lbName string
+	)
+
+	BeforeEach(func() {
+		cs = f.ClientSet
+		ns = f.Namespace
+		ctx = context.Background()
+		lbName = "ccm-public-" + xid.New().String()
+	})
+
+	Context("When creating service with a public ip from a pool", func() {
+		var (
+			deployment *appsv1.Deployment
+			svc        *v1.Service
+		)
+		BeforeEach(func() {
+			deployment = e2eutils.CreateDeployment(ctx, cs, ns, 1, []v1.ContainerPort{
+				{
+					Name:          "tcp",
+					Protocol:      v1.ProtocolTCP,
+					ContainerPort: 8080,
+				},
+			})
+			e2eutils.WaitForDeploymentReady(ctx, cs, deployment)
+
+			svc = e2eutils.CreateSvc(ctx, cs, ns, map[string]string{
+				"service.beta.kubernetes.io/osc-load-balancer-name":           lbName,
+				"service.beta.kubernetes.io/osc-load-balancer-public-ip-pool": "ccm",
+			}, []v1.ServicePort{
+				{
+					Name:       "tcp",
+					Protocol:   v1.ProtocolTCP,
+					TargetPort: intstr.FromInt(8080),
+					Port:       80,
+				},
+			}, nil)
+		})
+
+		AfterEach(func() {
+			if deployment != nil {
+				e2eutils.DeleteDeployment(ctx, cs, deployment)
+				deployment = nil
+			}
+			if svc != nil {
+				e2eutils.DeleteSvc(ctx, cs, svc)
+				svc = nil
+			}
+		})
+
+		It("can connect to the service", func() {
+			svc = e2eutils.WaitForSvc(ctx, cs, svc)
+			e2esvc.TestReachableHTTP(ctx, svc.Status.LoadBalancer.Ingress[0].Hostname, 80, testTimeout)
+		})
+	})
+
+	Context("When creating service with a preconfigured public ip", func() {
+		var (
+			oapi       *oapi.Client
+			deployment *appsv1.Deployment
+			pip        *osc.PublicIp
+		)
+		BeforeEach(func() {
+			var err error
+			oapi, err = e2eutils.OAPI()
+			framework.ExpectNoError(err)
+			pips, err := oapi.OAPI().ListPublicIpsFromPool(ctx, "ccm")
+			framework.ExpectNoError(err)
+			pip = &pips[0]
+			deployment = e2eutils.CreateDeployment(ctx, cs, ns, 1, []v1.ContainerPort{
+				{
+					Name:          "tcp",
+					Protocol:      v1.ProtocolTCP,
+					ContainerPort: 8080,
+				},
+			})
+			e2eutils.WaitForDeploymentReady(ctx, cs, deployment)
+		})
+
+		AfterEach(func() {
+			if deployment != nil {
+				e2eutils.DeleteDeployment(ctx, cs, deployment)
+				deployment = nil
+			}
+		})
+
+		It("setting public ip by id works", func() {
+			svc := e2eutils.CreateSvc(ctx, cs, ns, map[string]string{
+				"service.beta.kubernetes.io/osc-load-balancer-name":            lbName,
+				"service.beta.kubernetes.io/osc-load-balancer-public-ip-id":    pip.GetPublicIpId(),
+				"service.beta.kubernetes.io/osc-load-balancer-ingress-address": "both",
+				"service.beta.kubernetes.io/osc-load-balancer-ingress-ipmode":  "Proxy",
+			}, []v1.ServicePort{
+				{
+					Name:       "tcp",
+					Protocol:   v1.ProtocolTCP,
+					TargetPort: intstr.FromInt(8080),
+					Port:       80,
+				},
+			}, nil)
+			defer e2eutils.DeleteSvc(ctx, cs, svc)
+			svc = e2eutils.WaitForSvc(ctx, cs, svc)
+			e2esvc.TestReachableHTTP(ctx, svc.Status.LoadBalancer.Ingress[0].Hostname, 80, testTimeout)
+			gomega.Expect(svc.Status.LoadBalancer.Ingress[0].IP, gomega.Equal(pip.PublicIp))
+		})
+
+		It("setting public ip by IP works", func() {
+			svc := e2eutils.CreateSvc(ctx, cs, ns, map[string]string{
+				"service.beta.kubernetes.io/osc-load-balancer-name":            lbName,
+				"service.beta.kubernetes.io/osc-load-balancer-public-ip-id":    pip.GetPublicIp(),
+				"service.beta.kubernetes.io/osc-load-balancer-ingress-address": "both",
+				"service.beta.kubernetes.io/osc-load-balancer-ingress-ipmode":  "Proxy",
+			}, []v1.ServicePort{
+				{
+					Name:       "tcp",
+					Protocol:   v1.ProtocolTCP,
+					TargetPort: intstr.FromInt(8080),
+					Port:       80,
+				},
+			}, nil)
+			defer e2eutils.DeleteSvc(ctx, cs, svc)
+			svc = e2eutils.WaitForSvc(ctx, cs, svc)
+			e2esvc.TestReachableHTTP(ctx, svc.Status.LoadBalancer.Ingress[0].Hostname, 80, testTimeout)
+			gomega.Expect(svc.Status.LoadBalancer.Ingress[0].IP, gomega.Equal(pip.PublicIp))
+		})
+	})
+})
+
 var _ = Describe("[e2e][loadbalancer] Fixing annotation errors", func() {
 	f := framework.NewDefaultFramework("ccm")
 	f.NamespacePodSecurityEnforceLevel = admissionapi.LevelPrivileged

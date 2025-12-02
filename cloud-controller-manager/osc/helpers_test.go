@@ -614,3 +614,9 @@ func expectPublicIPFromPool(mock *oapimocks.MockOAPI, ips []sdk.PublicIp) {
 		ListPublicIpsFromPool(gomock.Any(), gomock.Eq("pool-foo")).
 		Return(ips, nil)
 }
+
+func expectPublicIP(mock *oapimocks.MockOAPI, id string, ip *sdk.PublicIp) {
+	mock.EXPECT().
+		GetPublicIp(gomock.Any(), gomock.Eq(id)).
+		Return(ip, nil)
+}

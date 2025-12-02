@@ -78,6 +78,22 @@ func (c *OscClient) ReadVms(ctx context.Context, req osc.ReadVmsRequest) ([]osc.
 	return resp.GetVms(), nil
 }
 
+func (c *OscClient) GetPublicIp(ctx context.Context, id string) (*osc.PublicIp, error) {
+	req := osc.ReadPublicIpsRequest{
+		Filters: &osc.FiltersPublicIp{PublicIpIds: &[]string{id}},
+	}
+	resp, httpRes, err := c.api.PublicIpApi.ReadPublicIps(c.WithAuth(ctx)).ReadPublicIpsRequest(req).Execute()
+	err = logAndExtractError(ctx, "ReadPublicIps", req, httpRes, err)
+	switch {
+	case err != nil:
+		return nil, err
+	case len(resp.GetPublicIps()) == 0:
+		return nil, errors.New("not found")
+	default:
+		return &resp.GetPublicIps()[0], nil
+	}
+}
+
 func (c *OscClient) ListPublicIpsFromPool(ctx context.Context, pool string) ([]osc.PublicIp, error) {
 	req := osc.ReadPublicIpsRequest{
 		Filters: &osc.FiltersPublicIp{

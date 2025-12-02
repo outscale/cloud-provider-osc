@@ -421,13 +421,21 @@ func (c *Cloud) CreateLoadBalancer(ctx context.Context, l *LoadBalancer, backend
 	}
 	switch {
 	case l.PublicIPID != "":
-		createRequest.PublicIp = ptr.To(l.PublicIPID)
+		ip := l.PublicIPID
+		if strings.HasPrefix(ip, "ipalloc-") {
+			pip, err := c.api.OAPI().GetPublicIp(ctx, l.PublicIPID)
+			if err != nil {
+				return "", "", fmt.Errorf("get ip: %w", err)
+			}
+			ip = *pip.PublicIp
+		}
+		createRequest.PublicIp = &ip
 	case l.PublicIPPool != "":
 		ip, err := c.allocateFromPool(ctx, l.PublicIPPool)
 		if err != nil {
 			return "", "", fmt.Errorf("allocate ip: %w", err)
 		}
-		createRequest.PublicIp = ip.PublicIpId
+		createRequest.PublicIp = ip.PublicIp
 	}
 
 	// TODO: drop public cloud code ?
