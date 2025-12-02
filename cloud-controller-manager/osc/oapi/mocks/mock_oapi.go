@@ -201,6 +201,21 @@ func (mr *MockOAPIMockRecorder) DeregisterVmsInLoadBalancer(ctx, req any) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeregisterVmsInLoadBalancer", reflect.TypeOf((*MockOAPI)(nil).DeregisterVmsInLoadBalancer), ctx, req)
 }
 
+// GetPublicIp mocks base method.
+func (m *MockOAPI) GetPublicIp(ctx context.Context, id string) (*osc.PublicIp, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPublicIp", ctx, id)
+	ret0, _ := ret[0].(*osc.PublicIp)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPublicIp indicates an expected call of GetPublicIp.
+func (mr *MockOAPIMockRecorder) GetPublicIp(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPublicIp", reflect.TypeOf((*MockOAPI)(nil).GetPublicIp), ctx, id)
+}
+
 // ListPublicIpsFromPool mocks base method.
 func (m *MockOAPI) ListPublicIpsFromPool(ctx context.Context, pool string) ([]osc.PublicIp, error) {
 	m.ctrl.T.Helper()

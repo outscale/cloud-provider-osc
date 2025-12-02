@@ -40,6 +40,7 @@ type OAPI interface {
 	RegisterVmsInLoadBalancer(ctx context.Context, req osc.RegisterVmsInLoadBalancerRequest) error
 	DeregisterVmsInLoadBalancer(ctx context.Context, req osc.DeregisterVmsInLoadBalancerRequest) error
 
+	GetPublicIp(ctx context.Context, id string) (*osc.PublicIp, error)
 	ListPublicIpsFromPool(ctx context.Context, pool string) ([]osc.PublicIp, error)
 
 	ReadSecurityGroups(ctx context.Context, req osc.ReadSecurityGroupsRequest) ([]osc.SecurityGroup, error)
