@@ -502,9 +502,10 @@ var _ = Describe("[e2e][loadbalancer] Checking cleanup of resources", func() {
 		framework.ExpectNoError(err)
 		e2eutils.DeleteDeployment(ctx, cs, deployment)
 		e2eutils.DeleteSvc(ctx, cs, svc)
-		By("Checking that load-balancer & security groups have been deleted")
+		By("Waiting for load-balancer deletion")
 		e2eutils.ExpectNoLoadBalancer(ctx, oapi, lbName)
-		e2eutils.ExpectSecurityGroups(ctx, oapi, lb, gomega.BeEmpty())
+		By("Waiting for SG deletion")
+		e2eutils.ExpectNoSecurityGroups(ctx, oapi, lb)
 	})
 })
 

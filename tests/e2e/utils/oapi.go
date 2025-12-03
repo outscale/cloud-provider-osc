@@ -85,9 +85,13 @@ func ExpectLoadBalancerTags(ctx context.Context, api *oapi.Client, name string, 
 
 func ExpectNoLoadBalancer(ctx context.Context, api *oapi.Client, name string) {
 	_ = framework.Gomega().Eventually(ctx, func(ctx context.Context) (*elb.LoadBalancerDescription, error) {
-		return GetLoadBalancer(ctx, api, name)
+		lb, err := GetLoadBalancer(ctx, api, name)
+		if lb != nil {
+			framework.Logf("LBU still present...")
+		}
+		return lb, err
 	}).
-		WithTimeout(10 * time.Minute).WithPolling(10 * time.Second).
+		WithTimeout(10 * time.Minute).WithPolling(20 * time.Second).
 		Should(gomega.BeNil())
 }
 
@@ -99,12 +103,16 @@ func GetSecurityGroups(ctx context.Context, api *oapi.Client, lb *elb.LoadBalanc
 	})
 }
 
-func ExpectSecurityGroups(ctx context.Context, api *oapi.Client, lb *elb.LoadBalancerDescription, matcher types.GomegaMatcher) {
+func ExpectNoSecurityGroups(ctx context.Context, api *oapi.Client, lb *elb.LoadBalancerDescription) {
 	err := framework.Gomega().Eventually(ctx, func(ctx context.Context) ([]osc.SecurityGroup, error) {
-		return GetSecurityGroups(ctx, api, lb)
+		sgs, err := GetSecurityGroups(ctx, api, lb)
+		if len(sgs) > 0 {
+			framework.Logf("SG still present...")
+		}
+		return sgs, err
 	}).
-		WithTimeout(10 * time.Minute).WithPolling(10 * time.Second).
-		Should(matcher)
+		WithTimeout(10 * time.Minute).WithPolling(20 * time.Second).
+		Should(gomega.BeEmpty())
 	framework.ExpectNoError(err)
 }
 
