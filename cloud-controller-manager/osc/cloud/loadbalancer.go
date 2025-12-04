@@ -18,7 +18,7 @@ import (
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/outscale/cloud-provider-osc/cloud-controller-manager/osc/oapi"
 	"github.com/outscale/osc-sdk-go/v2"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	controllerapi "k8s.io/cloud-provider/api"
 	servicehelpers "k8s.io/cloud-provider/service/helpers"
@@ -153,8 +153,8 @@ type LoadBalancer struct {
 	SessionAffinity          string
 	AccessLog                AccessLog `annotation:",squash"`
 	AllowFrom                utilnet.IPNetSet
-	IngressAddress           IngressAddress         `annotation:"osc-load-balancer-ingress-address"`
-	IPMode                   *v1.LoadBalancerIPMode `annotation:"osc-load-balancer-ingress-ipmode"`
+	IngressAddress           IngressAddress             `annotation:"osc-load-balancer-ingress-address"`
+	IPMode                   *corev1.LoadBalancerIPMode `annotation:"osc-load-balancer-ingress-ipmode"`
 
 	lbSecurityGroup     *osc.SecurityGroup
 	targetSecurityGroup *osc.SecurityGroup
@@ -163,8 +163,8 @@ type LoadBalancer struct {
 var reName = regexp.MustCompile("^[a-zA-Z0-9-]+$")
 
 // NewLoadBalancer creates a new LoadBalancer instance from a Kubernetes Service.
-func NewLoadBalancer(svc *v1.Service, addTags map[string]string) (*LoadBalancer, error) {
-	if svc.Spec.SessionAffinity != v1.ServiceAffinityNone {
+func NewLoadBalancer(svc *corev1.Service, addTags map[string]string) (*LoadBalancer, error) {
+	if svc.Spec.SessionAffinity != corev1.ServiceAffinityNone {
 		return nil, fmt.Errorf("unsupported SessionAffinity %q", svc.Spec.SessionAffinity)
 	}
 	if len(svc.Spec.Ports) == 0 {
@@ -198,7 +198,7 @@ func NewLoadBalancer(svc *v1.Service, addTags map[string]string) (*LoadBalancer,
 	}
 
 	for _, port := range svc.Spec.Ports {
-		if port.Protocol != v1.ProtocolTCP {
+		if port.Protocol != corev1.ProtocolTCP {
 			return nil, errors.New("only TCP load balancers are supported")
 		}
 		if port.NodePort == 0 {
@@ -233,10 +233,15 @@ func NewLoadBalancer(svc *v1.Service, addTags map[string]string) (*LoadBalancer,
 		lb.HealthCheck.Port = lb.Listeners[0].BackendPort
 		lb.HealthCheck.Protocol = "tcp"
 	}
+	// set defaults
 	err = mergo.Merge(lb, DefaultLoadBalancerConfiguration)
 	if err != nil {
 		return nil, fmt.Errorf("unable to set defaults: %w", err)
 	}
+	if lb.IngressAddress.NeedIP() && lb.IPMode == nil {
+		lb.IPMode = ptr.To(corev1.LoadBalancerIPModeProxy)
+	}
+
 	return lb, nil
 }
 

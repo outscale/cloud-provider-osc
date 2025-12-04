@@ -219,12 +219,11 @@ var _ = Describe("[e2e][loadbalancer] Setting a public IP", func() {
 			}
 		})
 
-		It("setting public ip by id works", func() {
+		It("setting public ip by id with 'both' ingress address works", func() {
 			svc := e2eutils.CreateSvc(ctx, cs, ns, map[string]string{
 				"service.beta.kubernetes.io/osc-load-balancer-name":            lbName,
 				"service.beta.kubernetes.io/osc-load-balancer-public-ip-id":    pip.GetPublicIpId(),
 				"service.beta.kubernetes.io/osc-load-balancer-ingress-address": "both",
-				"service.beta.kubernetes.io/osc-load-balancer-ingress-ipmode":  "Proxy",
 			}, []v1.ServicePort{
 				{
 					Name:       "tcp",
@@ -237,14 +236,15 @@ var _ = Describe("[e2e][loadbalancer] Setting a public IP", func() {
 			svc = e2eutils.WaitForSvc(ctx, cs, svc)
 			e2esvc.TestReachableHTTP(ctx, svc.Status.LoadBalancer.Ingress[0].Hostname, 80, testTimeout)
 			gomega.Expect(svc.Status.LoadBalancer.Ingress[0].IP, gomega.Equal(pip.PublicIp))
+			gomega.Expect(svc.Status.LoadBalancer.Ingress[0].Hostname, gomega.Not(gomega.BeEmpty()))
+			gomega.Expect(svc.Status.LoadBalancer.Ingress[0].IPMode, gomega.Equal("Proxy"))
 		})
 
-		It("setting public ip by IP works", func() {
+		It("setting public ip by IP with 'IP' ingress address works", func() {
 			svc := e2eutils.CreateSvc(ctx, cs, ns, map[string]string{
 				"service.beta.kubernetes.io/osc-load-balancer-name":            lbName,
 				"service.beta.kubernetes.io/osc-load-balancer-public-ip-id":    pip.GetPublicIp(),
-				"service.beta.kubernetes.io/osc-load-balancer-ingress-address": "both",
-				"service.beta.kubernetes.io/osc-load-balancer-ingress-ipmode":  "Proxy",
+				"service.beta.kubernetes.io/osc-load-balancer-ingress-address": "ip",
 			}, []v1.ServicePort{
 				{
 					Name:       "tcp",
@@ -255,8 +255,10 @@ var _ = Describe("[e2e][loadbalancer] Setting a public IP", func() {
 			}, nil)
 			defer e2eutils.DeleteSvc(ctx, cs, svc)
 			svc = e2eutils.WaitForSvc(ctx, cs, svc)
-			e2esvc.TestReachableHTTP(ctx, svc.Status.LoadBalancer.Ingress[0].Hostname, 80, testTimeout)
+			e2esvc.TestReachableHTTP(ctx, svc.Status.LoadBalancer.Ingress[0].IP, 80, testTimeout)
 			gomega.Expect(svc.Status.LoadBalancer.Ingress[0].IP, gomega.Equal(pip.PublicIp))
+			gomega.Expect(svc.Status.LoadBalancer.Ingress[0].Hostname, gomega.BeEmpty())
+			gomega.Expect(svc.Status.LoadBalancer.Ingress[0].IPMode, gomega.Equal("Proxy"))
 		})
 	})
 })
