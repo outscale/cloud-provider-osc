@@ -41,7 +41,7 @@ const (
 	ResourceLifecycleShared = "shared"
 )
 
-func getLBUClusterID(tags []osc.ResourceTag) string {
+func getClusterIDFromTags(tags []osc.ResourceTag) string {
 	for _, t := range tags {
 		if strings.HasPrefix(t.GetKey(), ClusterIDTagKeyPrefix) {
 			return strings.TrimPrefix(t.GetKey(), ClusterIDTagKeyPrefix)
@@ -50,7 +50,7 @@ func getLBUClusterID(tags []osc.ResourceTag) string {
 	return ""
 }
 
-func getLBUServiceName(tags []osc.ResourceTag) string {
+func getServiceNameFromTags(tags []osc.ResourceTag) string {
 	for _, t := range tags {
 		if t.GetKey() == ServiceNameTagKey {
 			return t.GetValue()
