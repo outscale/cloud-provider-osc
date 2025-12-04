@@ -71,7 +71,7 @@ func NewProvider(ctx context.Context, opts Options) (*Provider, error) {
 	}
 
 	self := c.Self
-	klog.V(3).Infof("Instance: %q", self.ID)
+	klog.V(3).Infof("Instance: %s", self.ID)
 	return &Provider{
 		opts:     opts,
 		cloud:    c,

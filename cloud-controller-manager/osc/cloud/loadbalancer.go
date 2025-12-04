@@ -371,10 +371,10 @@ func (c *Cloud) LoadBalancerExists(ctx context.Context, l *LoadBalancer) (bool, 
 	case lb == nil:
 		return false, nil
 	}
-	if getLBUClusterID(lb.GetTags()) != c.clusterID {
+	if !c.sameCluster(lb.GetTags()) {
 		return false, fmt.Errorf("%w another cluster", ErrBelongsToSomeoneElse)
 	}
-	svcName := getLBUServiceName(lb.GetTags())
+	svcName := getServiceNameFromTags(lb.GetTags())
 	if svcName != "" && svcName != l.ServiceName {
 		return false, fmt.Errorf("%w another service", ErrBelongsToSomeoneElse)
 	}
@@ -467,7 +467,7 @@ func (c *Cloud) CreateLoadBalancer(ctx context.Context, l *LoadBalancer, backend
 		tags = map[string]string{}
 	}
 	tags[ServiceNameTagKey] = l.ServiceName
-	tags[clusterIDTagKey(c.clusterID)] = ResourceLifecycleOwned
+	tags[c.clusterIDTagKey()] = ResourceLifecycleOwned
 
 	ltags := make([]osc.ResourceTag, 0, len(tags))
 	for k, v := range tags {
@@ -563,7 +563,7 @@ func (c *Cloud) ensureSubnet(ctx context.Context, l *LoadBalancer) error {
 	}
 	subnets, err := c.api.OAPI().ReadSubnets(ctx, osc.ReadSubnetsRequest{
 		Filters: &osc.FiltersSubnet{
-			TagKeys: &[]string{clusterIDTagKey(c.clusterID)},
+			TagKeys: ptr.To(c.clusterIDTagKeys()),
 		},
 	})
 	if err != nil {
@@ -623,12 +623,12 @@ func (c *Cloud) ensureSecurityGroup(ctx context.Context, l *LoadBalancer) error 
 		return fmt.Errorf("create SG: %w", err)
 	}
 	// check clusterID tag
-	switch getLBUClusterID(sg.GetTags()) {
-	case c.clusterID: // existing SG with valid tag => noop
-	case "": // new SG or existing SG without tag => create
+	switch {
+	case c.sameCluster(sg.GetTags()): // existing SG with valid tag => noop
+	case getClusterIDFromTags(sg.GetTags()) == "": // new SG or existing SG without tag => create
 		err = c.api.OAPI().CreateTags(ctx, osc.CreateTagsRequest{
 			ResourceIds: []string{sg.GetSecurityGroupId()},
-			Tags:        []osc.ResourceTag{{Key: clusterIDTagKey(c.clusterID), Value: ResourceLifecycleOwned}},
+			Tags:        []osc.ResourceTag{{Key: c.clusterIDTagKey(), Value: ResourceLifecycleOwned}},
 		})
 		if err != nil {
 			return fmt.Errorf("create SG: %w", err)
@@ -1065,7 +1065,7 @@ func (c *Cloud) getSecurityGroups(ctx context.Context, l *LoadBalancer, vms []VM
 		}
 		roleTagCount := math.MaxInt
 		for _, sg := range sgs {
-			if hasTag(sg.GetTags(), mainSGTagKey(c.clusterID)) {
+			if hasTag(sg.GetTags(), c.mainSGTagKey()) {
 				klog.FromContext(ctx).V(4).Info("Found security group having main tag", "securityGroupId", sg.GetSecurityGroupId())
 				l.targetSecurityGroup = &sg
 			}
@@ -1272,7 +1272,7 @@ func (c *Cloud) RunGarbageCollector(ctx context.Context) error {
 	// This is the list of SG we will scan to find rules linking to the SG to be deleted.
 	sgs, err := c.api.OAPI().ReadSecurityGroups(ctx, osc.ReadSecurityGroupsRequest{
 		Filters: &osc.FiltersSecurityGroup{
-			TagKeys: &[]string{clusterIDTagKey(c.clusterID)},
+			TagKeys: ptr.To(c.clusterIDTagKeys()),
 		},
 	})
 	if err != nil {
