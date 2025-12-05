@@ -20,10 +20,10 @@ import (
 
 	. "github.com/onsi/ginkgo/v2" //nolint: staticcheck
 	"github.com/onsi/gomega"
-	"github.com/outscale/cloud-provider-osc/cloud-controller-manager/osc/cloud"
-	"github.com/outscale/cloud-provider-osc/cloud-controller-manager/osc/oapi"
+	"github.com/outscale/cloud-provider-osc/ccm/cloud"
+	"github.com/outscale/cloud-provider-osc/ccm/oapi"
 	e2eutils "github.com/outscale/cloud-provider-osc/tests/e2e/utils"
-	"github.com/outscale/osc-sdk-go/v2"
+	"github.com/outscale/osc-sdk-go/v3/pkg/osc"
 	"github.com/rs/xid"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -222,7 +222,7 @@ var _ = Describe("[e2e][loadbalancer] Setting a public IP", func() {
 		It("setting public ip by id with 'both' ingress address works", func() {
 			svc := e2eutils.CreateSvc(ctx, cs, ns, map[string]string{
 				"service.beta.kubernetes.io/osc-load-balancer-name":            lbName,
-				"service.beta.kubernetes.io/osc-load-balancer-public-ip-id":    pip.GetPublicIpId(),
+				"service.beta.kubernetes.io/osc-load-balancer-public-ip-id":    pip.PublicIpId,
 				"service.beta.kubernetes.io/osc-load-balancer-ingress-address": "both",
 			}, []v1.ServicePort{
 				{
@@ -243,7 +243,7 @@ var _ = Describe("[e2e][loadbalancer] Setting a public IP", func() {
 		It("setting public ip by IP with 'IP' ingress address works", func() {
 			svc := e2eutils.CreateSvc(ctx, cs, ns, map[string]string{
 				"service.beta.kubernetes.io/osc-load-balancer-name":            lbName,
-				"service.beta.kubernetes.io/osc-load-balancer-public-ip-id":    pip.GetPublicIp(),
+				"service.beta.kubernetes.io/osc-load-balancer-public-ip-id":    pip.PublicIp,
 				"service.beta.kubernetes.io/osc-load-balancer-ingress-address": "ip",
 			}, []v1.ServicePort{
 				{
