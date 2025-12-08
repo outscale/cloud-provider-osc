@@ -587,8 +587,37 @@ func (c *Cloud) ensureSubnet(ctx context.Context, l *LoadBalancer) error {
 	case ensureByTag("OscK8sRole/service"):
 	case ensureByTag("OscK8sRole/loadbalancer"):
 	default:
-		return errors.New("no subnet found with the correct tag")
+		return c.discoverSubnet(ctx, l, subnets)
 	}
+	return nil
+}
+
+// discoverSubnet tries to find a public or private subnet for the LB.
+func (c *Cloud) discoverSubnet(ctx context.Context, l *LoadBalancer, subnets []osc.Subnet) error {
+	rtbls, err := c.api.OAPI().ReadRouteTables(ctx, osc.ReadRouteTablesRequest{
+		Filters: &osc.FiltersRouteTable{
+			NetIds: &[]string{subnets[0].GetNetId()},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("discover subnet: %w", err)
+	}
+
+	// find a public or private subnet, depending on LB type
+	var discovered *osc.Subnet
+	for _, subnet := range subnets {
+		if oapi.IsSubnetPublic(subnet.GetSubnetId(), rtbls) == !l.Internal {
+			// take the first, in lexical order
+			if discovered == nil || getName(subnet.GetTags()) < getName(discovered.GetTags()) {
+				discovered = &subnet
+			}
+		}
+	}
+	if discovered == nil {
+		return errors.New("discover subnet: none found")
+	}
+	l.SubnetID = discovered.GetSubnetId()
+	l.NetID = discovered.GetNetId()
 	return nil
 }
 

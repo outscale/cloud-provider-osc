@@ -41,6 +41,15 @@ const (
 	ResourceLifecycleShared = "shared"
 )
 
+func getName(tags []osc.ResourceTag) string {
+	for _, t := range tags {
+		if t.GetKey() == "Name" {
+			return t.GetValue()
+		}
+	}
+	return ""
+}
+
 func getClusterIDFromTags(tags []osc.ResourceTag) string {
 	for _, t := range tags {
 		if strings.HasPrefix(t.GetKey(), ClusterIDTagKeyPrefix) {

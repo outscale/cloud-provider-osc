@@ -15,7 +15,7 @@ import (
 
 func TestInstanceExists(t *testing.T) {
 	t.Run("If the instance exists, return true", func(t *testing.T) {
-		c, mock, _ := newAPI(t, self, "foo")
+		c, mock, _ := newAPI(t, self, []string{"foo"})
 		expectVMs(mock, sdkSelf, sdkVM)
 		p := osc.NewProviderWith(c, nil)
 		exists, err := p.InstanceExists(context.TODO(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
@@ -23,7 +23,7 @@ func TestInstanceExists(t *testing.T) {
 		assert.True(t, exists)
 	})
 	t.Run("If the instance does not exists, return false", func(t *testing.T) {
-		c, mock, _ := newAPI(t, self, "foo")
+		c, mock, _ := newAPI(t, self, []string{"foo"})
 		expectVMs(mock, sdkSelf)
 		p := osc.NewProviderWith(c, nil)
 		exists, err := p.InstanceExists(context.TODO(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
@@ -33,7 +33,7 @@ func TestInstanceExists(t *testing.T) {
 	t.Run("If the instance is terminated, return false", func(t *testing.T) {
 		sdkTerminated := sdkVM
 		sdkTerminated.State = ptr.To("terminated")
-		c, mock, _ := newAPI(t, self, "foo")
+		c, mock, _ := newAPI(t, self, []string{"foo"})
 		expectVMs(mock, sdkSelf, sdkTerminated)
 		p := osc.NewProviderWith(c, nil)
 		exists, err := p.InstanceExists(context.TODO(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
@@ -44,7 +44,7 @@ func TestInstanceExists(t *testing.T) {
 
 func TestInstanceShutdown(t *testing.T) {
 	t.Run("If the instance is running, return false", func(t *testing.T) {
-		c, mock, _ := newAPI(t, self, "foo")
+		c, mock, _ := newAPI(t, self, []string{"foo"})
 		expectVMs(mock, sdkSelf, sdkVM)
 		p := osc.NewProviderWith(c, nil)
 		shut, err := p.InstanceShutdown(context.TODO(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
@@ -54,7 +54,7 @@ func TestInstanceShutdown(t *testing.T) {
 	t.Run("If the instance is stopped, return true", func(t *testing.T) {
 		sdkVM := sdkVM
 		sdkVM.State = ptr.To("stopped")
-		c, mock, _ := newAPI(t, self, "foo")
+		c, mock, _ := newAPI(t, self, []string{"foo"})
 		expectVMs(mock, sdkSelf, sdkVM)
 		p := osc.NewProviderWith(c, nil)
 		shut, err := p.InstanceShutdown(context.TODO(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
@@ -64,7 +64,7 @@ func TestInstanceShutdown(t *testing.T) {
 }
 
 func TestInstanceMetadata(t *testing.T) {
-	c, mock, _ := newAPI(t, self, "foo")
+	c, mock, _ := newAPI(t, self, []string{"foo"})
 	expectVMs(mock, sdkSelf, sdkVM)
 	p := osc.NewProviderWith(c, nil)
 	meta, err := p.InstanceMetadata(context.TODO(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})

@@ -27,7 +27,7 @@ func (m MockOAPIClient) LBU() oapi.LBU {
 	return m.lb
 }
 
-func newAPI(t *testing.T, self *cloud.VM, clusterID string) (*cloud.Cloud, *oapimocks.MockOAPI, *oapimocks.MockLBU) {
+func newAPI(t *testing.T, self *cloud.VM, clusterID []string) (*cloud.Cloud, *oapimocks.MockOAPI, *oapimocks.MockLBU) {
 	ctrl := gomock.NewController(t)
 	oa := oapimocks.NewMockOAPI(ctrl)
 	lb := oapimocks.NewMockLBU(ctrl)
@@ -317,7 +317,7 @@ func expectFindExistingSubnet(mock *oapimocks.MockOAPI, id string) {
 		}, nil)
 }
 
-func expectFindLBSubnet(mock *oapimocks.MockOAPI) {
+func expectFindLBSubnetWithRole(mock *oapimocks.MockOAPI) {
 	mock.EXPECT().
 		ReadSubnets(gomock.Any(), gomock.Eq(sdk.ReadSubnetsRequest{
 			Filters: &sdk.FiltersSubnet{
@@ -330,7 +330,7 @@ func expectFindLBSubnet(mock *oapimocks.MockOAPI) {
 		}, nil)
 }
 
-func expectFindNoLBSubnet(mock *oapimocks.MockOAPI) {
+func expectFindNoLBSubnetWithRole(mock *oapimocks.MockOAPI) {
 	mock.EXPECT().
 		ReadSubnets(gomock.Any(), gomock.Eq(sdk.ReadSubnetsRequest{
 			Filters: &sdk.FiltersSubnet{
@@ -338,8 +338,34 @@ func expectFindNoLBSubnet(mock *oapimocks.MockOAPI) {
 			},
 		})).
 		Return([]sdk.Subnet{
-			{SubnetId: ptr.To("subnet-service"), NetId: ptr.To("net-foo"), Tags: &[]sdk.ResourceTag{}},
-			{SubnetId: ptr.To("subnet-service.internal"), NetId: ptr.To("net-foo"), Tags: &[]sdk.ResourceTag{}},
+			{SubnetId: ptr.To("subnet-public"), NetId: ptr.To("net-foo"), Tags: &[]sdk.ResourceTag{}},
+			{SubnetId: ptr.To("subnet-private"), NetId: ptr.To("net-foo"), Tags: &[]sdk.ResourceTag{}},
+		}, nil)
+}
+
+func expectFindRouteTables(mock *oapimocks.MockOAPI) {
+	mock.EXPECT().
+		ReadRouteTables(gomock.Any(), gomock.Eq(sdk.ReadRouteTablesRequest{
+			Filters: &sdk.FiltersRouteTable{
+				NetIds: &[]string{"net-foo"},
+			},
+		})).
+		Return([]sdk.RouteTable{
+			{LinkRouteTables: &[]sdk.LinkRouteTable{{SubnetId: ptr.To("subnet-public")}}, Routes: &[]sdk.Route{{GatewayId: ptr.To("igw-foo")}}},
+			{LinkRouteTables: &[]sdk.LinkRouteTable{{SubnetId: ptr.To("subnet-private")}}, Routes: &[]sdk.Route{{NatServiceId: ptr.To("nat-foo")}}},
+		}, nil)
+}
+
+func expectFindNoPublicRouteTables(mock *oapimocks.MockOAPI) {
+	mock.EXPECT().
+		ReadRouteTables(gomock.Any(), gomock.Eq(sdk.ReadRouteTablesRequest{
+			Filters: &sdk.FiltersRouteTable{
+				NetIds: &[]string{"net-foo"},
+			},
+		})).
+		Return([]sdk.RouteTable{
+			{LinkRouteTables: &[]sdk.LinkRouteTable{{SubnetId: ptr.To("subnet-public")}}, Routes: &[]sdk.Route{{GatewayId: ptr.To("nat-foo")}}},
+			{LinkRouteTables: &[]sdk.LinkRouteTable{{SubnetId: ptr.To("subnet-private")}}, Routes: &[]sdk.Route{{NatServiceId: ptr.To("nat-foo")}}},
 		}, nil)
 }
 

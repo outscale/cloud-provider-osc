@@ -246,6 +246,21 @@ func (mr *MockOAPIMockRecorder) ReadLoadBalancers(ctx, req any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadLoadBalancers", reflect.TypeOf((*MockOAPI)(nil).ReadLoadBalancers), ctx, req)
 }
 
+// ReadRouteTables mocks base method.
+func (m *MockOAPI) ReadRouteTables(ctx context.Context, req osc.ReadRouteTablesRequest) ([]osc.RouteTable, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReadRouteTables", ctx, req)
+	ret0, _ := ret[0].([]osc.RouteTable)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ReadRouteTables indicates an expected call of ReadRouteTables.
+func (mr *MockOAPIMockRecorder) ReadRouteTables(ctx, req any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadRouteTables", reflect.TypeOf((*MockOAPI)(nil).ReadRouteTables), ctx, req)
+}
+
 // ReadSecurityGroups mocks base method.
 func (m *MockOAPI) ReadSecurityGroups(ctx context.Context, req osc.ReadSecurityGroupsRequest) ([]osc.SecurityGroup, error) {
 	m.ctrl.T.Helper()

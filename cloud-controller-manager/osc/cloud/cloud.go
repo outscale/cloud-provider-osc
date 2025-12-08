@@ -68,7 +68,7 @@ func New(ctx context.Context, clusterID string) (*Cloud, error) {
 	return c, nil
 }
 
-func NewWith(api oapi.Clienter, self *VM, clusterID string) *Cloud {
+func NewWith(api oapi.Clienter, self *VM, clusterID []string) *Cloud {
 	return &Cloud{
 		api: api,
 		Metadata: oapi.Metadata{
@@ -77,7 +77,7 @@ func NewWith(api oapi.Clienter, self *VM, clusterID string) *Cloud {
 			AvailabilityZone: self.AvailabilityZone,
 		},
 		Self:      self,
-		clusterID: []string{clusterID},
+		clusterID: clusterID,
 	}
 }
 
