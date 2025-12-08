@@ -22,7 +22,7 @@ import (
 
 func TestGarbageCollector(t *testing.T) {
 	t.Run("If the load-balancer exists, delete it", func(t *testing.T) {
-		c, oapimock, _ := newAPI(t, self, "foo")
+		c, oapimock, _ := newAPI(t, self, []string{"foo"})
 		expectPurgeSecurityGroups(oapimock)
 		err := c.RunGarbageCollector(context.TODO())
 		require.NoError(t, err)
