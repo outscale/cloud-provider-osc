@@ -21,6 +21,7 @@
         "api:DeleteSecurityGroupRule",
         "api:ReadSubnets",
         "api:CreateTags",
+        "api:ReadRouteTables",
         "elasticloadbalancing:DescribeLoadBalancers",
         "elasticloadbalancing:CreateLoadBalancerPolicy",
         "elasticloadbalancing:SetLoadBalancerPoliciesForBackendServer",

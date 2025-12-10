@@ -38,7 +38,7 @@ func NewOscClient(region string, configEnv *osc.ConfigEnv) (*OscClient, error) {
 	if err != nil {
 		return nil, fmt.Errorf("load osc config: %w", err)
 	}
-	config.UserAgent = fmt.Sprintf("osc-cloud-controller-manager/%v", utils.GetVersion())
+	config.UserAgent = "osc-cloud-controller-manager/" + utils.GetVersion()
 	client := osc.NewAPIClient(config)
 
 	if configEnv.AccessKey == nil {

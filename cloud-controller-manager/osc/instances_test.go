@@ -22,7 +22,7 @@ func TestNodeAddresses(t *testing.T) {
 			PrivateDnsName: ptr.To("10.0.0.10.eu-west-2.compute.internal"),
 			PrivateIp:      ptr.To("10.0.0.10"),
 		})
-		c, _, _ := newAPI(t, vm, "foo")
+		c, _, _ := newAPI(t, vm, []string{"foo"})
 		p := osc.NewProviderWith(c, nil)
 		addrs, err := p.NodeAddresses(context.TODO(), vm.NodeName)
 		require.NoError(t, err)
@@ -40,7 +40,7 @@ func TestNodeAddresses(t *testing.T) {
 			PublicDnsName:  ptr.To("ip-198-51-100-10.eu-west-2.compute.internal"),
 			PublicIp:       ptr.To("198.51.100.10"),
 		})
-		c, _, _ := newAPI(t, vm, "foo")
+		c, _, _ := newAPI(t, vm, []string{"foo"})
 		p := osc.NewProviderWith(c, nil)
 		addrs, err := p.NodeAddresses(context.TODO(), vm.NodeName)
 		require.NoError(t, err)
@@ -69,7 +69,7 @@ func TestNodeAddresses(t *testing.T) {
 			PrivateIp:      ptr.To("10.0.0.11"),
 		}
 		self := cloud.FromOscVm(sdkself)
-		c, mock, _ := newAPI(t, self, "foo")
+		c, mock, _ := newAPI(t, self, []string{"foo"})
 		expectVMs(mock, *sdkself, *sdkvm)
 		p := osc.NewProviderWith(c, nil)
 		addrs, err := p.NodeAddresses(context.TODO(), types.NodeName(name))
@@ -90,7 +90,7 @@ func TestNodeAddressesByProviderID(t *testing.T) {
 	}
 	vm := cloud.FromOscVm(sdkvm)
 	providerID := "aws:///eu-west-2a/i-foo"
-	c, mock, _ := newAPI(t, vm, "foo")
+	c, mock, _ := newAPI(t, vm, []string{"foo"})
 	mock.EXPECT().
 		ReadVms(gomock.Any(), gomock.Eq(sdk.ReadVmsRequest{
 			Filters: &sdk.FiltersVm{
@@ -115,7 +115,7 @@ func TestInstanceTypeByProviderID(t *testing.T) {
 	}
 	vm := cloud.FromOscVm(sdkvm)
 	providerID := "aws:///eu-west-2a/i-foo"
-	c, mock, _ := newAPI(t, vm, "foo")
+	c, mock, _ := newAPI(t, vm, []string{"foo"})
 	mock.EXPECT().
 		ReadVms(gomock.Any(), gomock.Eq(sdk.ReadVmsRequest{
 			Filters: &sdk.FiltersVm{
@@ -135,7 +135,7 @@ func TestInstanceID(t *testing.T) {
 			VmId:      ptr.To("i-foo"),
 			Placement: &sdk.Placement{SubregionName: ptr.To("eu-west-2a")},
 		})
-		c, _, _ := newAPI(t, vm, "foo")
+		c, _, _ := newAPI(t, vm, []string{"foo"})
 		p := osc.NewProviderWith(c, nil)
 		id, err := p.InstanceID(context.TODO(), vm.NodeName)
 		require.NoError(t, err)
@@ -157,7 +157,7 @@ func TestInstanceID(t *testing.T) {
 			PrivateIp:      ptr.To("10.0.0.11"),
 		}
 		self := cloud.FromOscVm(sdkself)
-		c, mock, _ := newAPI(t, self, "foo")
+		c, mock, _ := newAPI(t, self, []string{"foo"})
 		expectVMs(mock, *sdkself, *sdkvm)
 		p := osc.NewProviderWith(c, nil)
 		id, err := p.InstanceID(context.TODO(), types.NodeName(name))
