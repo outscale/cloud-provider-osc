@@ -1,5 +1,81 @@
 # Changelog
 
+## [v1.34.2] - 2025-12-10
+
+> Warning: EIM policy change, api:ReadRouteTables is now required for subnet discovery.
+
+### ✨ Added
+* 📈 api: use dev user-agent for CI calls by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/557
+* 🥅 auth: catch error code 4000 by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/558
+* ✨ lb: ipmode defaults to proxy by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/566
+* ✨ feat(lb): discover non tagged subnets by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/569
+### 📝 Documentation
+* doc(upgrade): improve upgrade doc by @pierreozoux in https://github.com/outscale/cloud-provider-osc/pull/563
+### 🐛 Fixed
+* 🐛 fix(lb): when lb creation fails, reuse created sg next time by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/560
+* 🐛 fix(lb): fix public ip by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/564
+* 🐛 fix: work on clusters with mismatched CAPOSC v0/v1 tags by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/567
+
+## New Contributors
+* @pierreozoux made their first contribution in https://github.com/outscale/cloud-provider-osc/pull/563
+
+## [v1.33.2] - 2025-12-10
+
+> Warning: EIM policy change, api:ReadRouteTables is now required for subnet discovery.
+
+### ✨ Added
+* 📈 api: use dev user-agent for CI calls by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/557
+* 🥅 auth: catch error code 4000 by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/558
+* ✨ lb: ipmode defaults to proxy by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/566
+* ✨ feat(lb): discover non tagged subnets by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/569
+### 📝 Documentation
+* doc(upgrade): improve upgrade doc by @pierreozoux in https://github.com/outscale/cloud-provider-osc/pull/563
+### 🐛 Fixed
+* 🐛 fix(lb): when lb creation fails, reuse created sg next time by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/560
+* 🐛 fix(lb): fix public ip by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/564
+* 🐛 fix: work on clusters with mismatched CAPOSC v0/v1 tags by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/567
+
+## New Contributors
+* @pierreozoux made their first contribution in https://github.com/outscale/cloud-provider-osc/pull/563
+
+## [v1.32.2] - 2025-12-10
+
+> Warning: EIM policy change, api:ReadRouteTables is now required for subnet discovery.
+
+### ✨ Added
+* 📈 api: use dev user-agent for CI calls by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/557
+* 🥅 auth: catch error code 4000 by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/558
+* ✨ lb: ipmode defaults to proxy by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/566
+* ✨ feat(lb): discover non tagged subnets by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/569
+### 📝 Documentation
+* doc(upgrade): improve upgrade doc by @pierreozoux in https://github.com/outscale/cloud-provider-osc/pull/563
+### 🐛 Fixed
+* 🐛 fix(lb): when lb creation fails, reuse created sg next time by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/560
+* 🐛 fix(lb): fix public ip by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/564
+* 🐛 fix: work on clusters with mismatched CAPOSC v0/v1 tags by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/567
+
+## New Contributors
+* @pierreozoux made their first contribution in https://github.com/outscale/cloud-provider-osc/pull/563
+
+## [v1.31.2] - 2025-12-10
+
+> Warning: EIM policy change, api:ReadRouteTables is now required for subnet discovery.
+
+### ✨ Added
+* 📈 api: use dev user-agent for CI calls by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/557
+* 🥅 auth: catch error code 4000 by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/558
+* ✨ lb: ipmode defaults to proxy by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/566
+* ✨ feat(lb): discover non tagged subnets by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/569
+### 📝 Documentation
+* doc(upgrade): improve upgrade doc by @pierreozoux in https://github.com/outscale/cloud-provider-osc/pull/563
+### 🐛 Fixed
+* 🐛 fix(lb): when lb creation fails, reuse created sg next time by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/560
+* 🐛 fix(lb): fix public ip by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/564
+* 🐛 fix: work on clusters with mismatched CAPOSC v0/v1 tags by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/567
+
+## New Contributors
+* @pierreozoux made their first contribution in https://github.com/outscale/cloud-provider-osc/pull/563
+
 ## [v1.34.1] - 2025-11-26
 
 New release for Kubernetes 1.34.

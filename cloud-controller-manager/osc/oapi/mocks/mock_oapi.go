@@ -201,6 +201,21 @@ func (mr *MockOAPIMockRecorder) DeregisterVmsInLoadBalancer(ctx, req any) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeregisterVmsInLoadBalancer", reflect.TypeOf((*MockOAPI)(nil).DeregisterVmsInLoadBalancer), ctx, req)
 }
 
+// GetPublicIp mocks base method.
+func (m *MockOAPI) GetPublicIp(ctx context.Context, id string) (*osc.PublicIp, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPublicIp", ctx, id)
+	ret0, _ := ret[0].(*osc.PublicIp)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPublicIp indicates an expected call of GetPublicIp.
+func (mr *MockOAPIMockRecorder) GetPublicIp(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPublicIp", reflect.TypeOf((*MockOAPI)(nil).GetPublicIp), ctx, id)
+}
+
 // ListPublicIpsFromPool mocks base method.
 func (m *MockOAPI) ListPublicIpsFromPool(ctx context.Context, pool string) ([]osc.PublicIp, error) {
 	m.ctrl.T.Helper()
@@ -229,6 +244,21 @@ func (m *MockOAPI) ReadLoadBalancers(ctx context.Context, req osc.ReadLoadBalanc
 func (mr *MockOAPIMockRecorder) ReadLoadBalancers(ctx, req any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadLoadBalancers", reflect.TypeOf((*MockOAPI)(nil).ReadLoadBalancers), ctx, req)
+}
+
+// ReadRouteTables mocks base method.
+func (m *MockOAPI) ReadRouteTables(ctx context.Context, req osc.ReadRouteTablesRequest) ([]osc.RouteTable, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReadRouteTables", ctx, req)
+	ret0, _ := ret[0].([]osc.RouteTable)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ReadRouteTables indicates an expected call of ReadRouteTables.
+func (mr *MockOAPIMockRecorder) ReadRouteTables(ctx, req any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadRouteTables", reflect.TypeOf((*MockOAPI)(nil).ReadRouteTables), ctx, req)
 }
 
 // ReadSecurityGroups mocks base method.

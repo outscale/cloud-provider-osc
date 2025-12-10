@@ -27,7 +27,7 @@ func getAnnotations() map[string]string {
 	}
 }
 
-// CreateSvc create an svc
+// CreateSvc creates a svc
 func CreateSvc(ctx context.Context, client clientset.Interface, namespace *v1.Namespace, additional map[string]string, servicePort []v1.ServicePort, sourceRangesCidr []string) *v1.Service {
 	name := "echoserver"
 	ginkgo.By(fmt.Sprintf("Creating service %q", name))
@@ -58,7 +58,7 @@ func CreateSvc(ctx context.Context, client clientset.Interface, namespace *v1.Na
 	return result
 }
 
-// DeleteSvc delete an svc
+// DeleteSvc deletes a svc
 func DeleteSvc(ctx context.Context, client clientset.Interface, svc *v1.Service) {
 	ginkgo.By(fmt.Sprintf("Deleting service %q", svc.Name))
 	svcClient := client.CoreV1().Services(svc.Namespace)
@@ -66,43 +66,43 @@ func DeleteSvc(ctx context.Context, client clientset.Interface, svc *v1.Service)
 	framework.ExpectNoError(err)
 }
 
-// ListSvc list and svc
+// ListSvc lists existing svcs
 func ListSvc(ctx context.Context, client clientset.Interface, namespace *v1.Namespace) {
 	svcClient := client.CoreV1().Services(namespace.Name)
 	list, err := svcClient.List(ctx, metav1.ListOptions{})
 	framework.ExpectNoError(err)
-	fmt.Printf("svc:  %v\n", list.Items)
+	fmt.Printf("svc: %v", list.Items)
 }
 
-// GetSvc return an svc
+// GetSvc returns a svc
 func GetSvc(ctx context.Context, client clientset.Interface, namespace *v1.Namespace, name string) (result *v1.Service) {
 	svcClient := client.CoreV1().Services(namespace.Name)
 	result, err := svcClient.Get(ctx, name, metav1.GetOptions{})
 	framework.ExpectNoError(err)
-	framework.Logf("Get Svc:  %+v\n", result)
+	framework.Logf("Get Svc: %+v", result)
 	return result
 }
 
-// WaitForSvc wait for an svc to be ready
+// WaitForSvc waits for a svc to be ready
 func WaitForSvc(ctx context.Context, client clientset.Interface, svc *v1.Service) *v1.Service {
 	name := svc.Name
 	e2esvc.WaitForServiceUpdatedWithFinalizer(ctx, client, svc.Namespace, name, true)
 	ginkgo.By("Wait for ingress")
 	svcClient := client.CoreV1().Services(svc.Namespace)
-	err := wait.PollUntilContextTimeout(ctx, 30*time.Second, e2esvc.GetServiceLoadBalancerCreationTimeout(ctx, client), true, func(ctx context.Context) (bool, error) {
+	err := wait.PollUntilContextTimeout(ctx, 10*time.Second, e2esvc.GetServiceLoadBalancerCreationTimeout(ctx, client), true, func(ctx context.Context) (bool, error) {
 		var err error
 		svc, err = svcClient.Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
-		framework.Logf("ingress: %+v\n", svc.Status.LoadBalancer.Ingress)
 		return len(svc.Status.LoadBalancer.Ingress) > 0, nil
 	})
 	framework.ExpectNoError(err)
+	framework.Logf("ingress: %+v", svc.Status.LoadBalancer.Ingress)
 	return svc
 }
 
-// WaitForDeletedSvc waits for an svc to be deleted
+// WaitForDeletedSvc waits for a svc to be deleted
 func WaitForDeletedSvc(ctx context.Context, client clientset.Interface, svc *v1.Service) {
 	e2esvc.WaitForServiceDeletedWithFinalizer(ctx, client, svc.Namespace, svc.Name)
 }

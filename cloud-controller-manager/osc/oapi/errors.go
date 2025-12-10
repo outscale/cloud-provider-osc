@@ -2,6 +2,7 @@ package oapi
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/outscale/osc-sdk-go/v2"
@@ -10,6 +11,10 @@ import (
 // OAPIError is a wrapper for OAPI errors, with better error messages.
 type OAPIError struct {
 	errors []osc.Errors
+}
+
+func NewOAPIError(errors ...osc.Errors) OAPIError {
+	return OAPIError{errors: errors}
 }
 
 func (err OAPIError) Error() string {
@@ -32,4 +37,14 @@ func extractOAPIError(err error, body []byte) error {
 		return OAPIError{errors: *oerr.Errors}
 	}
 	return fmt.Errorf("http error: %w", err)
+}
+
+func ErrorCode(err error) string {
+	var oerr OAPIError
+	if errors.As(err, &oerr) {
+		for _, oerr := range oerr.errors {
+			return oerr.GetCode()
+		}
+	}
+	return ""
 }

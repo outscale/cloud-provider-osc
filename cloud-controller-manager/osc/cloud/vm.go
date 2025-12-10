@@ -11,6 +11,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	cloudprovider "k8s.io/cloud-provider"
+	"k8s.io/utils/ptr"
 )
 
 // TagVmNodeName is the name of the Vm tag containing the node name.
@@ -106,12 +107,7 @@ func (vm *VM) InstanceID() string {
 }
 
 func (vm *VM) ClusterID() string {
-	for _, t := range vm.cloudVm.GetTags() {
-		if strings.HasPrefix(t.Key, ClusterIDTagKeyPrefix) {
-			return strings.TrimPrefix(t.Key, ClusterIDTagKeyPrefix)
-		}
-	}
-	return ""
+	return getClusterIDFromTags(vm.cloudVm.GetTags())
 }
 
 // ProviderID returns the provider ID of an instance which is ultimately set in the node.Spec.ProviderID field.
@@ -139,7 +135,7 @@ func (c *Cloud) GetVMByNodeName(ctx context.Context, nodeName string) (*VM, erro
 func (c *Cloud) GetVMsByNodeName(ctx context.Context, nodeNames ...string) ([]VM, error) {
 	sdkVMs, err := c.api.OAPI().ReadVms(ctx, osc.ReadVmsRequest{
 		Filters: &osc.FiltersVm{
-			TagKeys: &[]string{clusterIDTagKey(c.clusterID)},
+			TagKeys: ptr.To(c.clusterIDTagKeys()),
 			VmStateNames: &[]string{
 				"pending",
 				"running",
