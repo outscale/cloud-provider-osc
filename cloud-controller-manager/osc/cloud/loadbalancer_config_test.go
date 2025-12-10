@@ -6,9 +6,10 @@ import (
 	"github.com/outscale/cloud-provider-osc/cloud-controller-manager/osc/cloud"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilnet "k8s.io/utils/net"
+	"k8s.io/utils/ptr"
 )
 
 func ipNetSet(nets ...string) utilnet.IPNetSet {
@@ -19,20 +20,20 @@ func ipNetSet(nets ...string) utilnet.IPNetSet {
 func TestNewLoadBalancer(t *testing.T) {
 	tcs := []struct {
 		name string
-		svc  *v1.Service
+		svc  *corev1.Service
 		tags map[string]string
 		lb   *cloud.LoadBalancer
 		err  bool
 	}{{
 		name: "a simple LBU with default values",
-		svc: &v1.Service{
+		svc: &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "foo",
 				UID:  "012-3456-789",
 			},
-			Spec: v1.ServiceSpec{
-				SessionAffinity: v1.ServiceAffinityNone,
-				Ports:           []v1.ServicePort{{Protocol: v1.ProtocolTCP, Port: 42, NodePort: 43}},
+			Spec: corev1.ServiceSpec{
+				SessionAffinity: corev1.ServiceAffinityNone,
+				Ports:           []corev1.ServicePort{{Protocol: corev1.ProtocolTCP, Port: 42, NodePort: 43}},
 			},
 		},
 		lb: &cloud.LoadBalancer{
@@ -60,7 +61,7 @@ func TestNewLoadBalancer(t *testing.T) {
 		},
 	}, {
 		name: "Annotations are loaded",
-		svc: &v1.Service{
+		svc: &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "foo",
 				UID:  "012-3456-789",
@@ -96,9 +97,9 @@ func TestNewLoadBalancer(t *testing.T) {
 					"service.beta.kubernetes.io/load-balancer-source-ranges":                       "192.0.2.0/24,198.51.100.0/24",
 				},
 			},
-			Spec: v1.ServiceSpec{
-				SessionAffinity: v1.ServiceAffinityNone,
-				Ports:           []v1.ServicePort{{Protocol: v1.ProtocolTCP, Port: 42, NodePort: 43}},
+			Spec: corev1.ServiceSpec{
+				SessionAffinity: corev1.ServiceAffinityNone,
+				Ports:           []corev1.ServicePort{{Protocol: corev1.ProtocolTCP, Port: 42, NodePort: 43}},
 			},
 		},
 		lb: &cloud.LoadBalancer{
@@ -147,6 +148,7 @@ func TestNewLoadBalancer(t *testing.T) {
 			},
 			AllowFrom:      ipNetSet("192.0.2.0/24", "198.51.100.0/24"),
 			IngressAddress: cloud.Both,
+			IPMode:         ptr.To(corev1.LoadBalancerIPModeProxy),
 		},
 	}, {
 		name: "Tags are merged with the global config",
@@ -154,7 +156,7 @@ func TestNewLoadBalancer(t *testing.T) {
 			"foobar": "bazbar",
 			"foobaz": "bazbaz",
 		},
-		svc: &v1.Service{
+		svc: &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "foo",
 				UID:  "012-3456-789",
@@ -162,9 +164,9 @@ func TestNewLoadBalancer(t *testing.T) {
 					"service.beta.kubernetes.io/osc-load-balancer-additional-resource-tags": "foo=bar,foobar=barbar",
 				},
 			},
-			Spec: v1.ServiceSpec{
-				SessionAffinity: v1.ServiceAffinityNone,
-				Ports:           []v1.ServicePort{{Protocol: v1.ProtocolTCP, Port: 42, NodePort: 43}},
+			Spec: corev1.ServiceSpec{
+				SessionAffinity: corev1.ServiceAffinityNone,
+				Ports:           []corev1.ServicePort{{Protocol: corev1.ProtocolTCP, Port: 42, NodePort: 43}},
 			},
 		},
 		lb: &cloud.LoadBalancer{
@@ -197,7 +199,7 @@ func TestNewLoadBalancer(t *testing.T) {
 		},
 	}, {
 		name: "AWS annotations are loaded",
-		svc: &v1.Service{
+		svc: &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "foo",
 				UID:  "012-3456-789",
@@ -230,9 +232,9 @@ func TestNewLoadBalancer(t *testing.T) {
 					"service.beta.kubernetes.io/load-balancer-source-ranges":                       "192.0.2.0/24,198.51.100.0/24",
 				},
 			},
-			Spec: v1.ServiceSpec{
-				SessionAffinity: v1.ServiceAffinityNone,
-				Ports:           []v1.ServicePort{{Protocol: v1.ProtocolTCP, Port: 42, NodePort: 43}},
+			Spec: corev1.ServiceSpec{
+				SessionAffinity: corev1.ServiceAffinityNone,
+				Ports:           []corev1.ServicePort{{Protocol: corev1.ProtocolTCP, Port: 42, NodePort: 43}},
 			},
 		},
 		lb: &cloud.LoadBalancer{
@@ -282,14 +284,14 @@ func TestNewLoadBalancer(t *testing.T) {
 		},
 	}, {
 		name: "Source ranges can be set in the spec",
-		svc: &v1.Service{
+		svc: &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "foo",
 				UID:  "012-3456-789",
 			},
-			Spec: v1.ServiceSpec{
-				SessionAffinity:          v1.ServiceAffinityNone,
-				Ports:                    []v1.ServicePort{{Protocol: v1.ProtocolTCP, Port: 42, NodePort: 43}},
+			Spec: corev1.ServiceSpec{
+				SessionAffinity:          corev1.ServiceAffinityNone,
+				Ports:                    []corev1.ServicePort{{Protocol: corev1.ProtocolTCP, Port: 42, NodePort: 43}},
 				LoadBalancerSourceRanges: []string{"192.0.2.0/24", "198.51.100.0/24"},
 			},
 		},

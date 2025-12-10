@@ -19,7 +19,6 @@ package oapi
 import (
 	"context"
 
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/elb"
 	osc "github.com/outscale/osc-sdk-go/v2"
@@ -40,6 +39,7 @@ type OAPI interface {
 	RegisterVmsInLoadBalancer(ctx context.Context, req osc.RegisterVmsInLoadBalancerRequest) error
 	DeregisterVmsInLoadBalancer(ctx context.Context, req osc.DeregisterVmsInLoadBalancerRequest) error
 
+	GetPublicIp(ctx context.Context, id string) (*osc.PublicIp, error)
 	ListPublicIpsFromPool(ctx context.Context, pool string) ([]osc.PublicIp, error)
 
 	ReadSecurityGroups(ctx context.Context, req osc.ReadSecurityGroupsRequest) ([]osc.SecurityGroup, error)
@@ -50,19 +50,20 @@ type OAPI interface {
 	DeleteSecurityGroupRule(ctx context.Context, req osc.DeleteSecurityGroupRuleRequest) (*osc.SecurityGroup, error)
 
 	ReadSubnets(ctx context.Context, req osc.ReadSubnetsRequest) ([]osc.Subnet, error)
+	ReadRouteTables(ctx context.Context, req osc.ReadRouteTablesRequest) ([]osc.RouteTable, error)
 
 	CreateTags(ctx context.Context, req osc.CreateTagsRequest) error
 }
 
 // LBU is the interface for API calls using the AWS LBU gateway.
 type LBU interface {
-	DescribeLoadBalancersWithContext(ctx aws.Context, req *elb.DescribeLoadBalancersInput, opts ...request.Option) (*elb.DescribeLoadBalancersOutput, error)
+	DescribeLoadBalancersWithContext(ctx context.Context, req *elb.DescribeLoadBalancersInput, opts ...request.Option) (*elb.DescribeLoadBalancersOutput, error)
 
-	CreateLoadBalancerPolicyWithContext(ctx aws.Context, req *elb.CreateLoadBalancerPolicyInput, opts ...request.Option) (*elb.CreateLoadBalancerPolicyOutput, error)
-	SetLoadBalancerPoliciesForBackendServerWithContext(ctx aws.Context, req *elb.SetLoadBalancerPoliciesForBackendServerInput, opts ...request.Option) (*elb.SetLoadBalancerPoliciesForBackendServerOutput, error)
+	CreateLoadBalancerPolicyWithContext(ctx context.Context, req *elb.CreateLoadBalancerPolicyInput, opts ...request.Option) (*elb.CreateLoadBalancerPolicyOutput, error)
+	SetLoadBalancerPoliciesForBackendServerWithContext(ctx context.Context, req *elb.SetLoadBalancerPoliciesForBackendServerInput, opts ...request.Option) (*elb.SetLoadBalancerPoliciesForBackendServerOutput, error)
 
-	DescribeLoadBalancerAttributesWithContext(ctx aws.Context, req *elb.DescribeLoadBalancerAttributesInput, opts ...request.Option) (*elb.DescribeLoadBalancerAttributesOutput, error)
-	ModifyLoadBalancerAttributesWithContext(ctx aws.Context, req *elb.ModifyLoadBalancerAttributesInput, opts ...request.Option) (*elb.ModifyLoadBalancerAttributesOutput, error)
+	DescribeLoadBalancerAttributesWithContext(ctx context.Context, req *elb.DescribeLoadBalancerAttributesInput, opts ...request.Option) (*elb.DescribeLoadBalancerAttributesOutput, error)
+	ModifyLoadBalancerAttributesWithContext(ctx context.Context, req *elb.ModifyLoadBalancerAttributesInput, opts ...request.Option) (*elb.ModifyLoadBalancerAttributesOutput, error)
 }
 
 // EC2Metadata is an abstraction over the AWS metadata service.

@@ -18,7 +18,7 @@ import (
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/outscale/cloud-provider-osc/cloud-controller-manager/osc/oapi"
 	"github.com/outscale/osc-sdk-go/v2"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	controllerapi "k8s.io/cloud-provider/api"
 	servicehelpers "k8s.io/cloud-provider/service/helpers"
@@ -153,8 +153,8 @@ type LoadBalancer struct {
 	SessionAffinity          string
 	AccessLog                AccessLog `annotation:",squash"`
 	AllowFrom                utilnet.IPNetSet
-	IngressAddress           IngressAddress         `annotation:"osc-load-balancer-ingress-address"`
-	IPMode                   *v1.LoadBalancerIPMode `annotation:"osc-load-balancer-ingress-ipmode"`
+	IngressAddress           IngressAddress             `annotation:"osc-load-balancer-ingress-address"`
+	IPMode                   *corev1.LoadBalancerIPMode `annotation:"osc-load-balancer-ingress-ipmode"`
 
 	lbSecurityGroup     *osc.SecurityGroup
 	targetSecurityGroup *osc.SecurityGroup
@@ -163,8 +163,8 @@ type LoadBalancer struct {
 var reName = regexp.MustCompile("^[a-zA-Z0-9-]+$")
 
 // NewLoadBalancer creates a new LoadBalancer instance from a Kubernetes Service.
-func NewLoadBalancer(svc *v1.Service, addTags map[string]string) (*LoadBalancer, error) {
-	if svc.Spec.SessionAffinity != v1.ServiceAffinityNone {
+func NewLoadBalancer(svc *corev1.Service, addTags map[string]string) (*LoadBalancer, error) {
+	if svc.Spec.SessionAffinity != corev1.ServiceAffinityNone {
 		return nil, fmt.Errorf("unsupported SessionAffinity %q", svc.Spec.SessionAffinity)
 	}
 	if len(svc.Spec.Ports) == 0 {
@@ -198,7 +198,7 @@ func NewLoadBalancer(svc *v1.Service, addTags map[string]string) (*LoadBalancer,
 	}
 
 	for _, port := range svc.Spec.Ports {
-		if port.Protocol != v1.ProtocolTCP {
+		if port.Protocol != corev1.ProtocolTCP {
 			return nil, errors.New("only TCP load balancers are supported")
 		}
 		if port.NodePort == 0 {
@@ -233,10 +233,15 @@ func NewLoadBalancer(svc *v1.Service, addTags map[string]string) (*LoadBalancer,
 		lb.HealthCheck.Port = lb.Listeners[0].BackendPort
 		lb.HealthCheck.Protocol = "tcp"
 	}
+	// set defaults
 	err = mergo.Merge(lb, DefaultLoadBalancerConfiguration)
 	if err != nil {
 		return nil, fmt.Errorf("unable to set defaults: %w", err)
 	}
+	if lb.IngressAddress.NeedIP() && lb.IPMode == nil {
+		lb.IPMode = ptr.To(corev1.LoadBalancerIPModeProxy)
+	}
+
 	return lb, nil
 }
 
@@ -366,10 +371,10 @@ func (c *Cloud) LoadBalancerExists(ctx context.Context, l *LoadBalancer) (bool, 
 	case lb == nil:
 		return false, nil
 	}
-	if getLBUClusterID(lb.GetTags()) != c.clusterID {
+	if !c.sameCluster(lb.GetTags()) {
 		return false, fmt.Errorf("%w another cluster", ErrBelongsToSomeoneElse)
 	}
-	svcName := getLBUServiceName(lb.GetTags())
+	svcName := getServiceNameFromTags(lb.GetTags())
 	if svcName != "" && svcName != l.ServiceName {
 		return false, fmt.Errorf("%w another service", ErrBelongsToSomeoneElse)
 	}
@@ -421,13 +426,21 @@ func (c *Cloud) CreateLoadBalancer(ctx context.Context, l *LoadBalancer, backend
 	}
 	switch {
 	case l.PublicIPID != "":
-		createRequest.PublicIp = ptr.To(l.PublicIPID)
+		ip := l.PublicIPID
+		if strings.HasPrefix(ip, "ipalloc-") {
+			pip, err := c.api.OAPI().GetPublicIp(ctx, l.PublicIPID)
+			if err != nil {
+				return "", "", fmt.Errorf("get ip: %w", err)
+			}
+			ip = *pip.PublicIp
+		}
+		createRequest.PublicIp = &ip
 	case l.PublicIPPool != "":
 		ip, err := c.allocateFromPool(ctx, l.PublicIPPool)
 		if err != nil {
 			return "", "", fmt.Errorf("allocate ip: %w", err)
 		}
-		createRequest.PublicIp = ip.PublicIpId
+		createRequest.PublicIp = ip.PublicIp
 	}
 
 	// TODO: drop public cloud code ?
@@ -454,7 +467,7 @@ func (c *Cloud) CreateLoadBalancer(ctx context.Context, l *LoadBalancer, backend
 		tags = map[string]string{}
 	}
 	tags[ServiceNameTagKey] = l.ServiceName
-	tags[clusterIDTagKey(c.clusterID)] = ResourceLifecycleOwned
+	tags[c.clusterIDTagKey()] = ResourceLifecycleOwned
 
 	ltags := make([]osc.ResourceTag, 0, len(tags))
 	for k, v := range tags {
@@ -550,7 +563,7 @@ func (c *Cloud) ensureSubnet(ctx context.Context, l *LoadBalancer) error {
 	}
 	subnets, err := c.api.OAPI().ReadSubnets(ctx, osc.ReadSubnetsRequest{
 		Filters: &osc.FiltersSubnet{
-			TagKeys: &[]string{clusterIDTagKey(c.clusterID)},
+			TagKeys: ptr.To(c.clusterIDTagKeys()),
 		},
 	})
 	if err != nil {
@@ -574,8 +587,37 @@ func (c *Cloud) ensureSubnet(ctx context.Context, l *LoadBalancer) error {
 	case ensureByTag("OscK8sRole/service"):
 	case ensureByTag("OscK8sRole/loadbalancer"):
 	default:
-		return errors.New("no subnet found with the correct tag")
+		return c.discoverSubnet(ctx, l, subnets)
 	}
+	return nil
+}
+
+// discoverSubnet tries to find a public or private subnet for the LB.
+func (c *Cloud) discoverSubnet(ctx context.Context, l *LoadBalancer, subnets []osc.Subnet) error {
+	rtbls, err := c.api.OAPI().ReadRouteTables(ctx, osc.ReadRouteTablesRequest{
+		Filters: &osc.FiltersRouteTable{
+			NetIds: &[]string{subnets[0].GetNetId()},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("discover subnet: %w", err)
+	}
+
+	// find a public or private subnet, depending on LB type
+	var discovered *osc.Subnet
+	for _, subnet := range subnets {
+		if oapi.IsSubnetPublic(subnet.GetSubnetId(), rtbls) == !l.Internal {
+			// take the first, in lexical order
+			if discovered == nil || getName(subnet.GetTags()) < getName(discovered.GetTags()) {
+				discovered = &subnet
+			}
+		}
+	}
+	if discovered == nil {
+		return errors.New("discover subnet: none found")
+	}
+	l.SubnetID = discovered.GetSubnetId()
+	l.NetID = discovered.GetNetId()
 	return nil
 }
 
@@ -584,24 +626,47 @@ func (c *Cloud) ensureSecurityGroup(ctx context.Context, l *LoadBalancer) error 
 		return nil
 	}
 	sgName := "k8s-elb-" + l.Name
-	sgDescription := fmt.Sprintf("Security group for Kubernetes ELB %s (%v)", l.Name, l.ServiceName)
-	resp, err := c.api.OAPI().CreateSecurityGroup(ctx, osc.CreateSecurityGroupRequest{
+	sgDescription := fmt.Sprintf("Security group for Kubernetes LB %s (%s)", l.Name, l.ServiceName)
+	sg, err := c.api.OAPI().CreateSecurityGroup(ctx, osc.CreateSecurityGroupRequest{
 		SecurityGroupName: sgName,
 		Description:       sgDescription,
 		NetId:             &l.NetID,
 	})
-	if err != nil {
+	switch {
+	case oapi.ErrorCode(err) == "9008": // ErrorDuplicateGroup: the SecurityGroupName '{group_name}' already exists.
+		// the SG might have been created by a previous request, try to load it
+		sgs, err := c.api.OAPI().ReadSecurityGroups(ctx, osc.ReadSecurityGroupsRequest{
+			Filters: &osc.FiltersSecurityGroup{
+				SecurityGroupNames: &[]string{sgName},
+			},
+		})
+		switch {
+		case err != nil:
+			return fmt.Errorf("read security groups: %w", err)
+		case len(sgs) == 0: // this has a tiny chance of occurring, but we would not want the CCM to panic
+			return errors.New("duplicate SG but none found")
+		default:
+			sg = &sgs[0]
+		}
+	case err != nil:
 		return fmt.Errorf("create SG: %w", err)
 	}
-	l.SecurityGroups = []string{resp.GetSecurityGroupId()}
-	l.lbSecurityGroup = resp
-	err = c.api.OAPI().CreateTags(ctx, osc.CreateTagsRequest{
-		ResourceIds: l.SecurityGroups,
-		Tags:        []osc.ResourceTag{{Key: clusterIDTagKey(c.clusterID), Value: ResourceLifecycleOwned}},
-	})
-	if err != nil {
-		return fmt.Errorf("create SG: %w", err)
+	// check clusterID tag
+	switch {
+	case c.sameCluster(sg.GetTags()): // existing SG with valid tag => noop
+	case getClusterIDFromTags(sg.GetTags()) == "": // new SG or existing SG without tag => create
+		err = c.api.OAPI().CreateTags(ctx, osc.CreateTagsRequest{
+			ResourceIds: []string{sg.GetSecurityGroupId()},
+			Tags:        []osc.ResourceTag{{Key: c.clusterIDTagKey(), Value: ResourceLifecycleOwned}},
+		})
+		if err != nil {
+			return fmt.Errorf("create SG: %w", err)
+		}
+	default: // existing SG with invalid tag/belonging to another cluster
+		return errors.New("a segurity group of the same name already exists")
 	}
+	l.SecurityGroups = []string{sg.GetSecurityGroupId()}
+	l.lbSecurityGroup = sg
 	return nil
 }
 
@@ -1029,7 +1094,7 @@ func (c *Cloud) getSecurityGroups(ctx context.Context, l *LoadBalancer, vms []VM
 		}
 		roleTagCount := math.MaxInt
 		for _, sg := range sgs {
-			if hasTag(sg.GetTags(), mainSGTagKey(c.clusterID)) {
+			if hasTag(sg.GetTags(), c.mainSGTagKey()) {
 				klog.FromContext(ctx).V(4).Info("Found security group having main tag", "securityGroupId", sg.GetSecurityGroupId())
 				l.targetSecurityGroup = &sg
 			}
@@ -1236,7 +1301,7 @@ func (c *Cloud) RunGarbageCollector(ctx context.Context) error {
 	// This is the list of SG we will scan to find rules linking to the SG to be deleted.
 	sgs, err := c.api.OAPI().ReadSecurityGroups(ctx, osc.ReadSecurityGroupsRequest{
 		Filters: &osc.FiltersSecurityGroup{
-			TagKeys: &[]string{clusterIDTagKey(c.clusterID)},
+			TagKeys: ptr.To(c.clusterIDTagKeys()),
 		},
 	})
 	if err != nil {

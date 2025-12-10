@@ -69,7 +69,7 @@ func ExpectLoadBalancer(ctx context.Context, api *oapi.Client, name string, matc
 	err := framework.Gomega().Eventually(ctx, func(ctx context.Context) (*elb.LoadBalancerDescription, error) {
 		return GetLoadBalancer(ctx, api, name)
 	}).
-		WithTimeout(10 * time.Minute).WithPolling(30 * time.Second).
+		WithTimeout(10 * time.Minute).WithPolling(10 * time.Second).
 		Should(matcher)
 	framework.ExpectNoError(err)
 }
@@ -78,7 +78,7 @@ func ExpectLoadBalancerTags(ctx context.Context, api *oapi.Client, name string, 
 	err := framework.Gomega().Eventually(ctx, func(ctx context.Context) ([]osc.ResourceTag, error) {
 		return GetLoadBalancerTags(ctx, api, name)
 	}).
-		WithTimeout(10 * time.Minute).WithPolling(30 * time.Second).
+		WithTimeout(10 * time.Minute).WithPolling(10 * time.Second).
 		Should(matcher)
 	framework.ExpectNoError(err)
 }
@@ -87,7 +87,7 @@ func ExpectNoLoadBalancer(ctx context.Context, api *oapi.Client, name string) {
 	_ = framework.Gomega().Eventually(ctx, func(ctx context.Context) (*elb.LoadBalancerDescription, error) {
 		return GetLoadBalancer(ctx, api, name)
 	}).
-		WithTimeout(10 * time.Minute).WithPolling(30 * time.Second).
+		WithTimeout(10 * time.Minute).WithPolling(10 * time.Second).
 		Should(gomega.BeNil())
 }
 
@@ -103,7 +103,7 @@ func ExpectSecurityGroups(ctx context.Context, api *oapi.Client, lb *elb.LoadBal
 	err := framework.Gomega().Eventually(ctx, func(ctx context.Context) ([]osc.SecurityGroup, error) {
 		return GetSecurityGroups(ctx, api, lb)
 	}).
-		WithTimeout(10 * time.Minute).WithPolling(30 * time.Second).
+		WithTimeout(10 * time.Minute).WithPolling(10 * time.Second).
 		Should(matcher)
 	framework.ExpectNoError(err)
 }
