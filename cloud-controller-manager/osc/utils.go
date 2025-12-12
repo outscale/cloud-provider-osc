@@ -1,3 +1,8 @@
+/*
+SPDX-FileCopyrightText: 2025 Outscale SAS <opensource@outscale.com>
+
+SPDX-License-Identifier: BSD-3-Clause
+*/
 package osc
 
 func Map[E, F any](in []E, fn func(item E) F) []F {
