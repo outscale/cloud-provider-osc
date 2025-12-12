@@ -30,10 +30,10 @@ CCM versions are available for Kubernetes 1.31, 1.32, and 1.33. As Kubernetes 1.
 | Kubernetes version | Recommended CCM version |
 |--------------------|-------------------------|
 | v1.30.x            | v0.2.8                  |
-| v1.31.x            | v1.31.1                 |
-| v1.32.x            | v1.32.1                 |
-| v1.33.x            | v1.33.1                 |
-| v1.34.x            | v1.34.1                 |
+| v1.31.x            | v1.31.2                 |
+| v1.32.x            | v1.32.2                 |
+| v1.33.x            | v1.33.2                 |
+| v1.34.x            | v1.34.2                 |
 
 ## Deployment on a new cluster
 
