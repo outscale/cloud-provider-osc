@@ -139,9 +139,7 @@ Z is the version of the CCM, is increased at each release, and is the same for e
 3. Create PR and merge it to main
 4. Merge main into each release branch
 ```shell
-git co kubernetes-X.Y
-git merge main
-git push origin kubernetes-X.Y
+VERSION=1.3X && git co kubernetes-$VERSION && git merge --no-edit main && git push origin kubernetes-$VERSION
 ```
 5. Check that CI is OK on every release branch
 6. Tag release for each release branch
