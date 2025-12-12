@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Check the repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Docker login
         run: docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
         env:
