@@ -1,5 +1,21 @@
 # Changelog
 
+## [v1.34.3] - 2025-12-17
+### 🐛 Fixed
+* 🐛 fix: CCM crashes when unable to talk to OAPI by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/577
+
+## [v1.33.3] - 2025-12-17
+### 🐛 Fixed
+* 🐛 fix: CCM crashes when unable to talk to OAPI by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/577
+
+## [v1.32.3] - 2025-12-17
+### 🐛 Fixed
+* 🐛 fix: CCM crashes when unable to talk to OAPI by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/577
+
+## [v1.31.3] - 2025-12-17
+### 🐛 Fixed
+* 🐛 fix: CCM crashes when unable to talk to OAPI by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/577
+
 ## [v1.34.2] - 2025-12-10
 
 > Warning: EIM policy change, api:ReadRouteTables is now required for subnet discovery.
