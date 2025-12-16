@@ -14,6 +14,7 @@ import (
 
 	osc "github.com/outscale/osc-sdk-go/v2"
 	"k8s.io/klog/v2"
+	"k8s.io/utils/ptr"
 )
 
 const (
@@ -33,11 +34,11 @@ var (
 
 func (c *OscClient) CheckCredentials(ctx context.Context) error {
 	logger := klog.FromContext(ctx)
-	req := osc.ReadVmsRequest{}
+	req := osc.ReadVmsRequest{DryRun: ptr.To(true)}
 	logger.V(4).Info("Check credentials", "OAPI", "ReadVms")
 	_, httpRes, err := c.api.VmApi.ReadVms(c.WithAuth(ctx)).ReadVmsRequest(req).Execute()
 	switch {
-	case err == nil || httpRes.StatusCode == http.StatusTooManyRequests:
+	case err == nil || (httpRes != nil && httpRes.StatusCode == http.StatusTooManyRequests):
 		return nil
 	case httpRes == nil:
 		logger.V(3).Error(err, "OAPI error", "OAPI", "ReadVms")
