@@ -115,16 +115,17 @@ make build-image image-tag image-push helm_deploy test-e2e
 2. Update chart version (if needed) in [Chart.yaml](../deploy/k8s-osc-ccm/Chart.yaml)
 3. Update cloud-provider-osc version in [values.yaml](../deploy/k8s-osc-ccm/values.yaml) (listing all active container versions)
 4. Generate helm doc `make helm-docs`
-5. Update manifests `make helm-manifest`
-6. Commit version with `git commit -am "cloud-controller-manager vX.Y.Z"`
-7. Create PR and merge it to main
-8. Tag & push the release
+5. In [Makefile](Makefile), update the recommended version in the `helm-manifest` target
+6. Update manifests `make helm-manifest`
+7. Commit version with `git commit -am "cloud-controller-manager vX.Y.Z"`
+8. Create PR and merge it to main
+9. Tag & push the release
 ```shell
 export HELM_VERSION=vX.Y.Z-helm
 git tag -a $HELM_VERSION -m "🔖 Helm $HELM_VERSION"
 git push origin $HELM_VERSION
 ```
-11. Publish the release on Github
+10. Publish the release on Github
 
 ## Container release
 
@@ -136,13 +137,18 @@ Z is the version of the CCM, is increased at each release, and is the same for e
 
 1. In [CHANGELOG.md](CHANGELOG.md), add a new version for every release branch
 2. In [README.md](README.md), update the recommended version for each Kubernetes release
-3. Create PR and merge it to main
-4. Merge main into each release branch
+3. In [Makefile](Makefile), update the recommended version in the `helm-manifest` target
+4. Update the manifests
+```shell
+make helm-manifest
+```
+5. Create PR and merge it to main
+6. Merge main into each release branch
 ```shell
 VERSION=1.3X && git co kubernetes-$VERSION && git merge --no-edit main && git push origin kubernetes-$VERSION
 ```
-5. Check that CI is OK on every release branch
-6. Tag release for each release branch
+7. Check that CI is OK on every release branch
+8. Tag release for each release branch
 ```shell
 git co kubernetes-X.Y
 git pull --rebase
@@ -150,4 +156,4 @@ export VERSION=vX.Y.Z
 git tag -a $VERSION -m "🔖 CCM $VERSION"
 git push origin $VERSION
 ```
-7. Publish the releases on Github
+9. Publish the releases on Github

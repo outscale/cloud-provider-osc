@@ -167,10 +167,10 @@ check-helm-docs:
 	./hack/verify-helm-docs
 
 helm-manifest:
-	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.31.1 > deploy/osc-ccm-manifest-v1.31.yml
-	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.32.1 > deploy/osc-ccm-manifest-v1.32.yml
-	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.33.1 > deploy/osc-ccm-manifest-v1.33.yml
-	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.34.1 > deploy/osc-ccm-manifest-v1.34.yml
+	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.31.3 > deploy/osc-ccm-manifest-v1.31.yml
+	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.32.3 > deploy/osc-ccm-manifest-v1.32.yml
+	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.33.3 > deploy/osc-ccm-manifest-v1.33.yml
+	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.34.3 > deploy/osc-ccm-manifest-v1.34.yml
 
 check-helm-manifest:
 	./hack/verify-helm-manifest.sh
