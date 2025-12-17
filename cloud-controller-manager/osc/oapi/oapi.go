@@ -1,19 +1,8 @@
 /*
-Copyright 2014 The Kubernetes Authors.
+SPDX-FileCopyrightText: 2025 Outscale SAS <opensource@outscale.com>
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: BSD-3-Clause
 */
-
 package oapi
 
 import (
@@ -25,6 +14,7 @@ import (
 
 	osc "github.com/outscale/osc-sdk-go/v2"
 	"k8s.io/klog/v2"
+	"k8s.io/utils/ptr"
 )
 
 const (
@@ -44,11 +34,11 @@ var (
 
 func (c *OscClient) CheckCredentials(ctx context.Context) error {
 	logger := klog.FromContext(ctx)
-	req := osc.ReadVmsRequest{}
+	req := osc.ReadVmsRequest{DryRun: ptr.To(true)}
 	logger.V(4).Info("Check credentials", "OAPI", "ReadVms")
 	_, httpRes, err := c.api.VmApi.ReadVms(c.WithAuth(ctx)).ReadVmsRequest(req).Execute()
 	switch {
-	case err == nil || httpRes.StatusCode == http.StatusTooManyRequests:
+	case err == nil || (httpRes != nil && httpRes.StatusCode == http.StatusTooManyRequests):
 		return nil
 	case httpRes == nil:
 		logger.V(3).Error(err, "OAPI error", "OAPI", "ReadVms")

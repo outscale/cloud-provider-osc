@@ -1,2 +1,5 @@
 OSC Cloud Controller Manager
-Copyright 2020 The 3DS Outscale Authors.
+Copyright 2025 Outscale SAS.
+
+This project is derived from or includes code by The Kubernetes Authors.
+Copyright 2019 The Kubernetes Authors.
