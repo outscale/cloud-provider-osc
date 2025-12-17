@@ -1,3 +1,8 @@
+/*
+SPDX-FileCopyrightText: 2025 Outscale SAS <opensource@outscale.com>
+
+SPDX-License-Identifier: BSD-3-Clause
+*/
 package oapi_test
 
 import (
@@ -15,5 +20,13 @@ func TestCheckCredentials(t *testing.T) {
 		require.NoError(t, err)
 		err = api.OAPI().CheckCredentials(t.Context())
 		require.ErrorIs(t, err, oapi.ErrInvalidCredentials)
+	})
+	t.Run("CheckCredentials returns an error in case of a network problem", func(t *testing.T) {
+		t.Setenv("OSC_ACCESS_KEY", "foo")
+		t.Setenv("OSC_SECRET_KEY", "bar")
+		api, err := oapi.NewClient("foo")
+		require.NoError(t, err)
+		err = api.OAPI().CheckCredentials(t.Context())
+		require.Error(t, err)
 	})
 }

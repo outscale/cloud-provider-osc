@@ -98,6 +98,10 @@ dockerlint:
 	@echo "Lint images =>  $(DOCKERFILES)"
 	$(foreach image,$(DOCKERFILES), echo "Lint  ${image} " ; docker run --rm -i hadolint/hadolint:${LINTER_VERSION} hadolint --ignore DL3006 - < ${image} || exit 1 ; )
 
+.PHONY: lint-reuse
+lint-reuse:
+	docker run --rm --volume $(PWD):/data fsfe/reuse:5.1 lint
+
 .PHONY: test-e2e
 test-e2e:
 	@echo "e2e-test"
