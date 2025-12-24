@@ -9,12 +9,12 @@ import (
 	"testing"
 
 	"github.com/outscale/cloud-provider-osc/ccm/cloud"
+	"github.com/outscale/goutils/sdk/ptr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilnet "k8s.io/utils/net"
-	"k8s.io/utils/ptr"
 )
 
 func ipNetSet(nets ...string) utilnet.IPNetSet {

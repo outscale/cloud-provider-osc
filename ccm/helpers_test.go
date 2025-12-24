@@ -15,11 +15,11 @@ import (
 	"github.com/outscale/goutils/k8s/role"
 	"github.com/outscale/goutils/k8s/tags"
 	"github.com/outscale/goutils/sdk/mocks_osc"
+	"github.com/outscale/goutils/sdk/ptr"
 	"github.com/outscale/osc-sdk-go/v3/pkg/osc"
 	"go.uber.org/mock/gomock"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 )
 
 type MockOAPIClient struct {

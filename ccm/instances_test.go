@@ -12,13 +12,13 @@ import (
 	"github.com/outscale/cloud-provider-osc/ccm"
 	"github.com/outscale/cloud-provider-osc/ccm/cloud"
 	"github.com/outscale/goutils/k8s/tags"
+	"github.com/outscale/goutils/sdk/ptr"
 	"github.com/outscale/osc-sdk-go/v3/pkg/osc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/ptr"
 )
 
 func TestNodeAddresses(t *testing.T) {

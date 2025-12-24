@@ -10,9 +10,9 @@ import (
 	"github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
 	"github.com/outscale/cloud-provider-osc/ccm/oapi"
+	"github.com/outscale/goutils/sdk/ptr"
 	"github.com/outscale/osc-sdk-go/v3/pkg/osc"
 	"k8s.io/kubernetes/test/e2e/framework"
-	"k8s.io/utils/ptr"
 )
 
 // GetLoadBalancer describe an LB

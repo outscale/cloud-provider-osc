@@ -24,6 +24,7 @@ import (
 	e2eutils "github.com/outscale/cloud-provider-osc/tests/e2e/utils"
 	"github.com/outscale/goutils/k8s/sdk"
 	"github.com/outscale/goutils/k8s/tags"
+	"github.com/outscale/goutils/sdk/ptr"
 	"github.com/outscale/osc-sdk-go/v3/pkg/osc"
 	"github.com/rs/xid"
 	appsv1 "k8s.io/api/apps/v1"
@@ -33,7 +34,6 @@ import (
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2esvc "k8s.io/kubernetes/test/e2e/framework/service"
 	admissionapi "k8s.io/pod-security-admission/api"
-	"k8s.io/utils/ptr"
 )
 
 const (

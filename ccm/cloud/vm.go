@@ -12,11 +12,11 @@ import (
 	"strings"
 
 	"github.com/outscale/goutils/k8s/tags"
+	"github.com/outscale/goutils/sdk/ptr"
 	"github.com/outscale/osc-sdk-go/v3/pkg/osc"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	cloudprovider "k8s.io/cloud-provider"
-	"k8s.io/utils/ptr"
 )
 
 // VM provide Virtual Machine representation

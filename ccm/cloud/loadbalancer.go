@@ -24,6 +24,7 @@ import (
 	"github.com/outscale/goutils/k8s/role"
 	"github.com/outscale/goutils/k8s/sdk"
 	"github.com/outscale/goutils/k8s/tags"
+	"github.com/outscale/goutils/sdk/ptr"
 	"github.com/outscale/osc-sdk-go/v3/pkg/osc"
 	"github.com/samber/lo"
 	corev1 "k8s.io/api/core/v1"
@@ -32,7 +33,6 @@ import (
 	servicehelpers "k8s.io/cloud-provider/service/helpers"
 	"k8s.io/klog/v2"
 	utilnet "k8s.io/utils/net"
-	"k8s.io/utils/ptr"
 )
 
 const (

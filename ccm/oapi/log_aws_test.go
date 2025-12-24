@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go/service/elb" //nolint:staticcheck
+	"github.com/outscale/goutils/sdk/ptr"
 	"github.com/stretchr/testify/assert"
-	"k8s.io/utils/ptr"
 )
 
 func TestCleanAWS(t *testing.T) {
