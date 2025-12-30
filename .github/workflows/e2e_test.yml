@@ -28,15 +28,15 @@ jobs:
     - name: ⬇️ Checkout
       uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
     - name: ⬇️ Install kubectl
-      uses: azure/setup-kubectl@v4
+      uses: azure/setup-kubectl@776406bce94f63e41d621b960d78ee25c8b76ede # v4
       with:
         version: v1.34.2
     - name: ⬇️ Install Helm
-      uses: azure/setup-helm@v4
+      uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4
     - name: ⬇️ Install Python
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6
     - name: ⬇️ Install Go
-      uses: actions/setup-go@v6
+      uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6
       with:
         go-version-file: 'go.mod'
     - name: 🔐 Set AK/SK name based on runner region
