@@ -3,25 +3,20 @@ package e2eutils
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/elb"
+	"github.com/aws/aws-sdk-go/aws"         //nolint:staticcheck
+	"github.com/aws/aws-sdk-go/service/elb" //nolint:staticcheck
 	"github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
-	"github.com/outscale/cloud-provider-osc/cloud-controller-manager/osc/oapi"
-	"github.com/outscale/osc-sdk-go/v2"
+	"github.com/outscale/cloud-provider-osc/ccm/oapi"
+	"github.com/outscale/goutils/sdk/ptr"
+	"github.com/outscale/osc-sdk-go/v3/pkg/osc"
 	"k8s.io/kubernetes/test/e2e/framework"
-	"k8s.io/utils/ptr"
 )
 
-func OAPI() (*oapi.Client, error) {
-	return oapi.NewClient(os.Getenv("OSC_REGION"))
-}
-
 // GetLoadBalancer describe an LB
-func GetLoadBalancer(ctx context.Context, api *oapi.Client, name string) (*elb.LoadBalancerDescription, error) {
+func GetLoadBalancer(ctx context.Context, api oapi.Clienter, name string) (*elb.LoadBalancerDescription, error) {
 	if len(name) > 32 {
 		name = name[:32]
 	}
@@ -42,11 +37,11 @@ func GetLoadBalancer(ctx context.Context, api *oapi.Client, name string) (*elb.L
 	}
 }
 
-func GetLoadBalancerTags(ctx context.Context, api *oapi.Client, name string) ([]osc.ResourceTag, error) {
+func GetLoadBalancerTags(ctx context.Context, api oapi.Clienter, name string) ([]osc.ResourceTag, error) {
 	if len(name) > 32 {
 		name = name[:32]
 	}
-	response, err := api.OAPI().ReadLoadBalancers(ctx, osc.ReadLoadBalancersRequest{
+	resp, err := api.OAPI().ReadLoadBalancers(ctx, osc.ReadLoadBalancersRequest{
 		Filters: &osc.FiltersLoadBalancer{
 			LoadBalancerNames: &[]string{name},
 		},
@@ -55,17 +50,17 @@ func GetLoadBalancerTags(ctx context.Context, api *oapi.Client, name string) ([]
 		return nil, err
 	}
 
-	switch len(response) {
+	switch len(*resp.LoadBalancers) {
 	case 0:
 		return nil, nil
 	case 1:
-		return response[0].GetTags(), nil
+		return (*resp.LoadBalancers)[0].Tags, nil
 	default:
 		return nil, fmt.Errorf("found multiple load balancers with name: %s", name)
 	}
 }
 
-func ExpectLoadBalancer(ctx context.Context, api *oapi.Client, name string, matcher types.GomegaMatcher) {
+func ExpectLoadBalancer(ctx context.Context, api oapi.Clienter, name string, matcher types.GomegaMatcher) {
 	err := framework.Gomega().Eventually(ctx, func(ctx context.Context) (*elb.LoadBalancerDescription, error) {
 		return GetLoadBalancer(ctx, api, name)
 	}).
@@ -74,7 +69,7 @@ func ExpectLoadBalancer(ctx context.Context, api *oapi.Client, name string, matc
 	framework.ExpectNoError(err)
 }
 
-func ExpectLoadBalancerTags(ctx context.Context, api *oapi.Client, name string, matcher types.GomegaMatcher) {
+func ExpectLoadBalancerTags(ctx context.Context, api oapi.Clienter, name string, matcher types.GomegaMatcher) {
 	err := framework.Gomega().Eventually(ctx, func(ctx context.Context) ([]osc.ResourceTag, error) {
 		return GetLoadBalancerTags(ctx, api, name)
 	}).
@@ -83,7 +78,7 @@ func ExpectLoadBalancerTags(ctx context.Context, api *oapi.Client, name string, 
 	framework.ExpectNoError(err)
 }
 
-func ExpectNoLoadBalancer(ctx context.Context, api *oapi.Client, name string) {
+func ExpectNoLoadBalancer(ctx context.Context, api oapi.Clienter, name string) {
 	_ = framework.Gomega().Eventually(ctx, func(ctx context.Context) (*elb.LoadBalancerDescription, error) {
 		return GetLoadBalancer(ctx, api, name)
 	}).
@@ -91,29 +86,23 @@ func ExpectNoLoadBalancer(ctx context.Context, api *oapi.Client, name string) {
 		Should(gomega.BeNil())
 }
 
-func GetSecurityGroups(ctx context.Context, api *oapi.Client, lb *elb.LoadBalancerDescription) ([]osc.SecurityGroup, error) {
-	return api.OAPI().ReadSecurityGroups(ctx, osc.ReadSecurityGroupsRequest{
+func GetSecurityGroups(ctx context.Context, api oapi.Clienter, lb *elb.LoadBalancerDescription) ([]osc.SecurityGroup, error) {
+	resp, err := api.OAPI().ReadSecurityGroups(ctx, osc.ReadSecurityGroupsRequest{
 		Filters: &osc.FiltersSecurityGroup{
 			SecurityGroupIds: ptr.To(aws.StringValueSlice(lb.SecurityGroups)),
 		},
 	})
+	if err != nil {
+		return nil, err
+	}
+	return *resp.SecurityGroups, nil
 }
 
-func ExpectSecurityGroups(ctx context.Context, api *oapi.Client, lb *elb.LoadBalancerDescription, matcher types.GomegaMatcher) {
+func ExpectSecurityGroups(ctx context.Context, api oapi.Clienter, lb *elb.LoadBalancerDescription, matcher types.GomegaMatcher) {
 	err := framework.Gomega().Eventually(ctx, func(ctx context.Context) ([]osc.SecurityGroup, error) {
 		return GetSecurityGroups(ctx, api, lb)
 	}).
 		WithTimeout(10 * time.Minute).WithPolling(10 * time.Second).
 		Should(matcher)
 	framework.ExpectNoError(err)
-}
-
-func DeleteBackendVMs(ctx context.Context, api *oapi.Client, lb *elb.LoadBalancerDescription) {
-	c := api.OAPI().(*oapi.OscClient)
-	for _, instance := range lb.Instances {
-		_, _, err := c.APIClient().VmApi.DeleteVms(c.WithAuth(ctx)).DeleteVmsRequest(osc.DeleteVmsRequest{
-			VmIds: []string{*instance.InstanceId},
-		}).Execute()
-		framework.ExpectNoError(err)
-	}
 }
