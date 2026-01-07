@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -27,7 +28,10 @@ import (
 	frameworkconfig "k8s.io/kubernetes/test/e2e/framework/config"
 )
 
-const kubeconfigEnvVar = "KUBECONFIG"
+const (
+	kubeconfigEnvVar = "KUBECONFIG"
+	testTimeout      = 10 * time.Minute
+)
 
 func init() {
 	testing.Init()

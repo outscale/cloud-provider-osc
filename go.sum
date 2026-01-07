@@ -224,12 +224,12 @@ github.com/opencontainers/runtime-spec v1.2.0 h1:z97+pHb3uELt/yiAWD691HNHQIF07bE
 github.com/opencontainers/runtime-spec v1.2.0/go.mod h1:jwyrGlmzljRJv/Fgzds9SsS/C5hL+LL3ko9hs6T5lQ0=
 github.com/opencontainers/selinux v1.11.1 h1:nHFvthhM0qY8/m+vfhJylliSshm8G1jJ2jDMcgULaH8=
 github.com/opencontainers/selinux v1.11.1/go.mod h1:E5dMC3VPuVvVHDYmi78qvhJp8+M586T4DlDRYpFkyec=
-github.com/outscale/goutils/k8s v0.0.0-20251223100125-04172f975b21 h1:LwYCq+4tN6i7q5WWmhY8Y7ShiMXeZOgusjqg+OtKmaE=
-github.com/outscale/goutils/k8s v0.0.0-20251223100125-04172f975b21/go.mod h1:Y6YjTivYwzERmte5pi8okNYZyo8NYnJpR+jxkviKy+w=
+github.com/outscale/goutils/k8s v0.0.0-20260106164041-b1569118747c h1:jVCHHCxERRktnu40d/VwcGhBG+olxPdsIxiX9KB8x24=
+github.com/outscale/goutils/k8s v0.0.0-20260106164041-b1569118747c/go.mod h1:Y6YjTivYwzERmte5pi8okNYZyo8NYnJpR+jxkviKy+w=
 github.com/outscale/goutils/sdk v0.0.0-20251223100125-04172f975b21 h1:8/TotrcxAemYCnWVGDYONRWnJh4X5FOGoQKHvH52KQM=
 github.com/outscale/goutils/sdk v0.0.0-20251223100125-04172f975b21/go.mod h1:3eWsIE3vHag/vlFaADdpTpVheTAnZovQRPyBvjNhJhU=
-github.com/outscale/osc-sdk-go/v3 v3.0.0-beta.2 h1:3UauJs026vpjnFXKQvn1uVrUIstF9GL8E7XDTgA+Sn0=
-github.com/outscale/osc-sdk-go/v3 v3.0.0-beta.2/go.mod h1:+UWiUEbhmj8HUyhoGjmve0WKDezaEirKskWoYk5euTc=
+github.com/outscale/osc-sdk-go/v3 v3.0.0-beta.2.0.20260106163055-aae515098eae h1:fepvZ+osalhxPM/8bAThr4i5aIS1ridtDrVZlAJZFbA=
+github.com/outscale/osc-sdk-go/v3 v3.0.0-beta.2.0.20260106163055-aae515098eae/go.mod h1:+UWiUEbhmj8HUyhoGjmve0WKDezaEirKskWoYk5euTc=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=

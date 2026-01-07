@@ -36,6 +36,7 @@ metadata:
     app: "2048"
   annotations:
     service.beta.kubernetes.io/osc-load-balancer-name: "2048"
+    service.beta.kubernetes.io/osc-load-balancer-type: "VIP"
 spec:
   ports:
     - port: 80

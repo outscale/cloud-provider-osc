@@ -27,6 +27,7 @@ type VM struct {
 	Region           string
 	SubnetID         *string
 	VmType           string
+	State            osc.VmState
 
 	cloudVm *osc.Vm
 }
@@ -39,6 +40,7 @@ func FromOscVm(vm *osc.Vm) *VM {
 		VmType:           vm.VmType,
 		SubnetID:         vm.SubnetId,
 		AvailabilityZone: vm.Placement.SubregionName,
+		State:            vm.State,
 		cloudVm:          vm,
 	}
 	v.Region = v.AvailabilityZone[:len(v.AvailabilityZone)-1]
