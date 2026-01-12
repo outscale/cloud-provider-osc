@@ -125,29 +125,45 @@ The CCM will look for a subnet having one of the following tags:
 
 When using Cluster API Provider for Outscale (CAPOSC), the tags are automatically set, no additional steps are required.
 
+As a fallback, the CCM will search for a public subnet (a subnet having a route table with a route to an internet service).
+
 ### Security Groups
 
 #### Ingress
 
-By default, the service controller will automatically create a Security Group for each Load Balancer Unit (LBU) and will attach it to nodes in a VPC setup.
+By default, the CCM will create an ingress security group for each service, controlling the inbound traffic to the LBU.
 
-If you want to use a pre-created Security Group to be used, you can set the `service.beta.kubernetes.io/osc-load-balancer-security-group` annotation with the id of the security group to use.
+If you want to use an existing security group, you can set the `service.beta.kubernetes.io/osc-load-balancer-security-group` annotation with the id of the security group to use.
 
 You can also add additional security groups using the `service.beta.kubernetes.io/osc-load-balancer-extra-security-groups` annotation.
 
-The CCM will automatically add manage ingress rules to allow traffic to the load-balancer.
-
-You can set `service.Spec.LoadBalancerSourceRanges` to restrict trafic to a list of IP ranges.
+By default, the CCM will add an inbound rule allowing everyone (`0.0.0.0/0`) to connect to the listener port. You can set `spec.loadBalancerSourceRanges` to restrict traffic to a list of IP ranges.
 
 #### Load-balancer to nodes
 
-The CCM will add rules to allow trafic from the load-balancer to nodes.
+The CCM will add rules to allow traffic from the load-balancer to nodes.
 
-Within node security groups, it will search for a security group having one of the following tags:
-* `OscK8sRole/[role]`, with role being set with de `service.beta.kubernetes.io/osc-load-balancer-target-role` annotation (`worker` by default)
+It will search the node security groups for a security group with one of the following tag keys:
+* `OscK8sRole/[role]`, with role being set with the `service.beta.kubernetes.io/osc-load-balancer-target-role` service annotation (`worker` by default)
 * `OscK8sMainSG/[cluster id]`.
 
 The Cluster API Provider for Outscale (CAPOSC) sets a `OscK8sRole/worker` tag on all worker nodes, and allows you to add custom roles if needed.
+
+## Multi-AZ load-balancers
+
+A LBU is located in a single subregion. To improve resiliency, you can deploy multiple LBU instances for a single service. The Service status will report as many load balancer ingresses as there are instances.
+
+* `service.beta.kubernetes.io/osc-load-balancer-instances` defines the number of instances you want to deploy (2 or 3),
+* `service.beta.kubernetes.io/osc-load-balancer-subregions` defines the subregion for each LBU instance (by default, the CCM will use a and b for 2 instances and a, b and c for 3 instances).
+
+`service.beta.kubernetes.io/osc-load-balancer-name`, `service.beta.kubernetes.io/osc-load-balancer-subnet-id` and `service.beta.kubernetes.io/osc-load-balancer-ip-id`
+will need as many values as there are instances.
+
+All LBUs will use the same ingress security group, with the same rules.
+
+The CCM will search for a subnet as before and expects fo find a matching subnet in each LBU subregion. If no subnet is found in the correct subregion, it will pick one from a different subregion.
+
+> Changing `service.beta.kubernetes.io/osc-load-balancer-instances` is not supported.
 
 ## ⬆️ Upgrading CCM v0.x to v1.x
 

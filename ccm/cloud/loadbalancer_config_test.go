@@ -42,7 +42,8 @@ func TestNewLoadBalancer(t *testing.T) {
 			},
 		},
 		lb: &cloud.LoadBalancer{
-			Name:        "0123456789",
+			Name:        []string{"0123456789"},
+			Instances:   1,
 			ServiceName: "foo",
 			Listeners: []cloud.Listener{{
 				Port:        42,
@@ -108,12 +109,13 @@ func TestNewLoadBalancer(t *testing.T) {
 			},
 		},
 		lb: &cloud.LoadBalancer{
-			Name:                     "name-foo",
+			Name:                     []string{"name-foo"},
 			ServiceName:              "foo",
+			Instances:                1,
 			Internal:                 true,
 			PublicIPPool:             "pool-foo",
-			PublicIPID:               "ip-foo",
-			SubnetID:                 "subnet-foo",
+			PublicIPID:               []string{"ip-foo"},
+			SubnetID:                 []string{"subnet-foo"},
 			SecurityGroups:           []string{"sg-foo"},
 			AdditionalSecurityGroups: []string{"sg-bar", "sg-baz"},
 			TargetRole:               "role-foo",
@@ -175,8 +177,9 @@ func TestNewLoadBalancer(t *testing.T) {
 			},
 		},
 		lb: &cloud.LoadBalancer{
-			Name:        "0123456789",
+			Name:        []string{"0123456789"},
 			ServiceName: "foo",
+			Instances:   1,
 			Listeners: []cloud.Listener{{
 				Port:        42,
 				BackendPort: 43,
@@ -243,10 +246,11 @@ func TestNewLoadBalancer(t *testing.T) {
 			},
 		},
 		lb: &cloud.LoadBalancer{
-			Name:                     "name-foo",
+			Name:                     []string{"name-foo"},
 			ServiceName:              "foo",
+			Instances:                1,
 			Internal:                 true,
-			SubnetID:                 "subnet-foo",
+			SubnetID:                 []string{"subnet-foo"},
 			SecurityGroups:           []string{"sg-foo"},
 			AdditionalSecurityGroups: []string{"sg-bar", "sg-baz"},
 			TargetRole:               "role-foo",
@@ -301,8 +305,9 @@ func TestNewLoadBalancer(t *testing.T) {
 			},
 		},
 		lb: &cloud.LoadBalancer{
-			Name:        "0123456789",
+			Name:        []string{"0123456789"},
 			ServiceName: "foo",
+			Instances:   1,
 			Listeners: []cloud.Listener{{
 				Port:        42,
 				BackendPort: 43,
@@ -323,6 +328,197 @@ func TestNewLoadBalancer(t *testing.T) {
 			Connection:     cloud.Connection{IdleTimeout: 60},
 			IngressAddress: cloud.Hostname,
 		},
+	}, {
+		name: "Multi-AZ LBUs can be configured",
+		svc: &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "foo",
+				UID:  "012-3456-789",
+				Annotations: map[string]string{
+					"service.beta.kubernetes.io/osc-load-balancer-name":       "name-foo,name-bar",
+					"service.beta.kubernetes.io/osc-load-balancer-instances":  "2",
+					"service.beta.kubernetes.io/osc-load-balancer-ip-id":      "ipalloc-foo,ipalloc-bar",
+					"service.beta.kubernetes.io/osc-load-balancer-subregions": "eu-west-2a,eu-west-2b",
+					"service.beta.kubernetes.io/osc-load-balancer-subnet-id":  "subnet-foo,subnet-bar",
+				},
+			},
+			Spec: corev1.ServiceSpec{
+				SessionAffinity: corev1.ServiceAffinityNone,
+				Ports:           []corev1.ServicePort{{Protocol: corev1.ProtocolTCP, Port: 42, NodePort: 43}},
+			},
+		},
+		lb: &cloud.LoadBalancer{
+			Name:        []string{"name-foo", "name-bar"},
+			ServiceName: "foo",
+			Instances:   2,
+			PublicIPID:  []string{"ipalloc-foo", "ipalloc-bar"},
+			SubnetID:    []string{"subnet-foo", "subnet-bar"},
+			SubRegions:  []string{"eu-west-2a", "eu-west-2b"},
+			Listeners: []cloud.Listener{{
+				Port:        42,
+				BackendPort: 43,
+			}},
+			ListenerDefaults: cloud.ListenerDefaults{
+				SSLPorts: []string{"*"},
+			},
+			TargetRole: cloud.DefaultLoadBalancerConfiguration.TargetRole,
+			HealthCheck: cloud.HealthCheck{
+				Port:               43,
+				Protocol:           "tcp",
+				Interval:           cloud.DefaultLoadBalancerConfiguration.HealthCheck.Interval,
+				Timeout:            cloud.DefaultLoadBalancerConfiguration.HealthCheck.Timeout,
+				HealthyThreshold:   cloud.DefaultLoadBalancerConfiguration.HealthCheck.HealthyThreshold,
+				UnhealthyThreshold: cloud.DefaultLoadBalancerConfiguration.HealthCheck.UnhealthyThreshold,
+			},
+			Connection:     cloud.Connection{IdleTimeout: 60},
+			IngressAddress: cloud.Hostname,
+			AllowFrom:      ipNetSet("0.0.0.0/0"),
+		},
+	}, {
+		name: "instances cannot be changed on a configured service",
+		svc: &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "foo",
+				UID:  "012-3456-789",
+				Annotations: map[string]string{
+					"service.beta.kubernetes.io/osc-load-balancer-name":       "name-foo,name-bar",
+					"service.beta.kubernetes.io/osc-load-balancer-instances":  "2",
+					"service.beta.kubernetes.io/osc-load-balancer-ip-id":      "ipalloc-foo,ipalloc-bar",
+					"service.beta.kubernetes.io/osc-load-balancer-subregions": "eu-west-2a,eu-west-2b",
+					"service.beta.kubernetes.io/osc-load-balancer-subnet-id":  "subnet-foo,subnet-bar",
+				},
+			},
+			Spec: corev1.ServiceSpec{
+				SessionAffinity: corev1.ServiceAffinityNone,
+				Ports:           []corev1.ServicePort{{Protocol: corev1.ProtocolTCP, Port: 42, NodePort: 43}},
+			},
+			Status: corev1.ServiceStatus{
+				LoadBalancer: corev1.LoadBalancerStatus{
+					Ingress: []corev1.LoadBalancerIngress{{Hostname: "foo.example.com"}},
+				},
+			},
+		},
+		err: true,
+	}, {
+		name: "The right number of names must be configured in a multi-az setup",
+		svc: &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "foo",
+				UID:  "012-3456-789",
+				Annotations: map[string]string{
+					"service.beta.kubernetes.io/osc-load-balancer-name":       "name-foo",
+					"service.beta.kubernetes.io/osc-load-balancer-instances":  "2",
+					"service.beta.kubernetes.io/osc-load-balancer-ip-id":      "ipalloc-foo,ipalloc-bar",
+					"service.beta.kubernetes.io/osc-load-balancer-subregions": "eu-west-2a,eu-west-2b",
+					"service.beta.kubernetes.io/osc-load-balancer-subnet-id":  "subnet-foo,subnet-bar",
+				},
+			},
+			Spec: corev1.ServiceSpec{
+				SessionAffinity: corev1.ServiceAffinityNone,
+				Ports:           []corev1.ServicePort{{Protocol: corev1.ProtocolTCP, Port: 42, NodePort: 43}},
+			},
+		},
+		err: true,
+	}, {
+		name: "Names must be unique",
+		svc: &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "foo",
+				UID:  "012-3456-789",
+				Annotations: map[string]string{
+					"service.beta.kubernetes.io/osc-load-balancer-name":       "name-foo,name-foo",
+					"service.beta.kubernetes.io/osc-load-balancer-instances":  "2",
+					"service.beta.kubernetes.io/osc-load-balancer-ip-id":      "ipalloc-foo,ipalloc-bar",
+					"service.beta.kubernetes.io/osc-load-balancer-subregions": "eu-west-2a,eu-west-2b",
+					"service.beta.kubernetes.io/osc-load-balancer-subnet-id":  "subnet-foo,subnet-bar",
+				},
+			},
+			Spec: corev1.ServiceSpec{
+				SessionAffinity: corev1.ServiceAffinityNone,
+				Ports:           []corev1.ServicePort{{Protocol: corev1.ProtocolTCP, Port: 42, NodePort: 43}},
+			},
+		},
+		err: true,
+	}, {
+		name: "Names must be unique after trucation",
+		svc: &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "foo",
+				UID:  "012-3456-789",
+				Annotations: map[string]string{
+					"service.beta.kubernetes.io/osc-load-balancer-name":       "nametotallyandabsolutelytoolong-foo,nametotallyandabsolutelytoolong-bar",
+					"service.beta.kubernetes.io/osc-load-balancer-instances":  "2",
+					"service.beta.kubernetes.io/osc-load-balancer-ip-id":      "ipalloc-foo,ipalloc-bar",
+					"service.beta.kubernetes.io/osc-load-balancer-subregions": "eu-west-2a,eu-west-2b",
+					"service.beta.kubernetes.io/osc-load-balancer-subnet-id":  "subnet-foo,subnet-bar",
+				},
+			},
+			Spec: corev1.ServiceSpec{
+				SessionAffinity: corev1.ServiceAffinityNone,
+				Ports:           []corev1.ServicePort{{Protocol: corev1.ProtocolTCP, Port: 42, NodePort: 43}},
+			},
+		},
+		err: true,
+	}, {
+		name: "The right number of ips must be configured in a multi-az setup",
+		svc: &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "foo",
+				UID:  "012-3456-789",
+				Annotations: map[string]string{
+					"service.beta.kubernetes.io/osc-load-balancer-name":       "name-foo,name-bar",
+					"service.beta.kubernetes.io/osc-load-balancer-instances":  "2",
+					"service.beta.kubernetes.io/osc-load-balancer-ip-id":      "ipalloc-foo",
+					"service.beta.kubernetes.io/osc-load-balancer-subregions": "eu-west-2a,eu-west-2b",
+					"service.beta.kubernetes.io/osc-load-balancer-subnet-id":  "subnet-foo,subnet-bar",
+				},
+			},
+			Spec: corev1.ServiceSpec{
+				SessionAffinity: corev1.ServiceAffinityNone,
+				Ports:           []corev1.ServicePort{{Protocol: corev1.ProtocolTCP, Port: 42, NodePort: 43}},
+			},
+		},
+		err: true,
+	}, {
+		name: "The right number of subregions must be configured in a multi-az setup",
+		svc: &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "foo",
+				UID:  "012-3456-789",
+				Annotations: map[string]string{
+					"service.beta.kubernetes.io/osc-load-balancer-name":       "name-foo,name-bar",
+					"service.beta.kubernetes.io/osc-load-balancer-instances":  "2",
+					"service.beta.kubernetes.io/osc-load-balancer-ip-id":      "ipalloc-foo,ipalloc-bar",
+					"service.beta.kubernetes.io/osc-load-balancer-subregions": "eu-west-2a",
+					"service.beta.kubernetes.io/osc-load-balancer-subnet-id":  "subnet-foo,subnet-bar",
+				},
+			},
+			Spec: corev1.ServiceSpec{
+				SessionAffinity: corev1.ServiceAffinityNone,
+				Ports:           []corev1.ServicePort{{Protocol: corev1.ProtocolTCP, Port: 42, NodePort: 43}},
+			},
+		},
+		err: true,
+	}, {
+		name: "The right number of subnets must be configured in a multi-az setup",
+		svc: &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "foo",
+				UID:  "012-3456-789",
+				Annotations: map[string]string{
+					"service.beta.kubernetes.io/osc-load-balancer-name":       "name-foo,name-bar",
+					"service.beta.kubernetes.io/osc-load-balancer-instances":  "2",
+					"service.beta.kubernetes.io/osc-load-balancer-ip-id":      "ipalloc-foo,ipalloc-bar",
+					"service.beta.kubernetes.io/osc-load-balancer-subregions": "eu-west-2a,eu-west-2b",
+					"service.beta.kubernetes.io/osc-load-balancer-subnet-id":  "subnet-foo",
+				},
+			},
+			Spec: corev1.ServiceSpec{
+				SessionAffinity: corev1.ServiceAffinityNone,
+				Ports:           []corev1.ServicePort{{Protocol: corev1.ProtocolTCP, Port: 42, NodePort: 43}},
+			},
+		},
+		err: true,
 	}}
 
 	for _, tc := range tcs {
