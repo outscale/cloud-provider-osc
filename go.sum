@@ -101,8 +101,6 @@ github.com/go-openapi/swag v0.23.0 h1:vsEVJDUo2hPJ2tu0/Xc+4noaxyEffXNIs3cOULZ+Gr
 github.com/go-openapi/swag v0.23.0/go.mod h1:esZ8ITTYEsH1V2trKHjAN8Ai7xHb8RV+YSZ577vPjgQ=
 github.com/go-task/slim-sprig/v3 v3.0.0 h1:sUs3vkvUymDpBKi3qH1YSqBQk9+9D/8M2mN1vB6EwHI=
 github.com/go-task/slim-sprig/v3 v3.0.0/go.mod h1:W848ghGpv3Qj3dhTPRyJypKRiqCdHZiAzKg9hl15HA8=
-github.com/go-viper/mapstructure/v2 v2.4.0 h1:EBsztssimR/CONLSZZ04E8qAkxNYq4Qp9LvH92wZUgs=
-github.com/go-viper/mapstructure/v2 v2.4.0/go.mod h1:oJDH3BJKyqBA2TXFhDsKDGDTlndYOZ6rGS0BRZIxGhM=
 github.com/go-viper/mapstructure/v2 v2.5.0 h1:vM5IJoUAy3d7zRSVtIwQgBj7BiWtMPfmPEgAXnvj1Ro=
 github.com/go-viper/mapstructure/v2 v2.5.0/go.mod h1:oJDH3BJKyqBA2TXFhDsKDGDTlndYOZ6rGS0BRZIxGhM=
 github.com/goccy/go-yaml v1.18.0 h1:8W7wMFS12Pcas7KU+VVkaiCng+kG8QiFeFwzFb+rwuw=
@@ -226,16 +224,10 @@ github.com/opencontainers/runtime-spec v1.2.0 h1:z97+pHb3uELt/yiAWD691HNHQIF07bE
 github.com/opencontainers/runtime-spec v1.2.0/go.mod h1:jwyrGlmzljRJv/Fgzds9SsS/C5hL+LL3ko9hs6T5lQ0=
 github.com/opencontainers/selinux v1.11.1 h1:nHFvthhM0qY8/m+vfhJylliSshm8G1jJ2jDMcgULaH8=
 github.com/opencontainers/selinux v1.11.1/go.mod h1:E5dMC3VPuVvVHDYmi78qvhJp8+M586T4DlDRYpFkyec=
-github.com/outscale/goutils/k8s v0.0.0-20251223100125-04172f975b21 h1:LwYCq+4tN6i7q5WWmhY8Y7ShiMXeZOgusjqg+OtKmaE=
-github.com/outscale/goutils/k8s v0.0.0-20251223100125-04172f975b21/go.mod h1:Y6YjTivYwzERmte5pi8okNYZyo8NYnJpR+jxkviKy+w=
 github.com/outscale/goutils/k8s v0.0.0-20260114123807-be82506970c1 h1:wTIyfYEnP4Pm8iz2aTsxxGEpgE6naMj8xF4SMBr9/VU=
 github.com/outscale/goutils/k8s v0.0.0-20260114123807-be82506970c1/go.mod h1:783bw0VGgyBMsyM/ZdhW4ffMeE+JmujG8W0qXxJ1N0Y=
-github.com/outscale/goutils/sdk v0.0.0-20251223100125-04172f975b21 h1:8/TotrcxAemYCnWVGDYONRWnJh4X5FOGoQKHvH52KQM=
-github.com/outscale/goutils/sdk v0.0.0-20251223100125-04172f975b21/go.mod h1:3eWsIE3vHag/vlFaADdpTpVheTAnZovQRPyBvjNhJhU=
-github.com/outscale/goutils/sdk v0.0.0-20260113165558-ff2de7ab6a67 h1:bpkVNbhCWAyrl/e0cOD7zn7bUjgP1F/qz9lvDVjijzg=
-github.com/outscale/goutils/sdk v0.0.0-20260113165558-ff2de7ab6a67/go.mod h1:dVTeuVYvXjyRSKJk0AtY8flbPpEVeR3WMFU1x3VwrCk=
-github.com/outscale/osc-sdk-go/v3 v3.0.0-beta.2 h1:3UauJs026vpjnFXKQvn1uVrUIstF9GL8E7XDTgA+Sn0=
-github.com/outscale/osc-sdk-go/v3 v3.0.0-beta.2/go.mod h1:+UWiUEbhmj8HUyhoGjmve0WKDezaEirKskWoYk5euTc=
+github.com/outscale/goutils/sdk v0.0.0-20260114123807-be82506970c1 h1:y0272QUdTSK33RXJRa8UBf6xdccwsvStOxEEwnZMbKY=
+github.com/outscale/goutils/sdk v0.0.0-20260114123807-be82506970c1/go.mod h1:/svrKoWyNM1dr1yH2GQeefqUM/0YUhcsBwrCzg8nYoo=
 github.com/outscale/osc-sdk-go/v3 v3.0.0-beta.3 h1:Pvt/buq59di5j6acnUAFWBG0LUFa6kBn6GYrx9bt+0Y=
 github.com/outscale/osc-sdk-go/v3 v3.0.0-beta.3/go.mod h1:+UWiUEbhmj8HUyhoGjmve0WKDezaEirKskWoYk5euTc=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=

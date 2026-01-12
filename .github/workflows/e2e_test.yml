@@ -67,14 +67,3 @@ jobs:
         image_name: ${{ vars.OMI_NAME }}
         version: ${{ format('{0}.{1}', github.sha, github.run_attempt) }}
         registry: ${{ vars.REGISTRY }}
-    ## Create Public Cloud Cluster
-    # - name: 🧪 Test on Public cluster
-    #   uses: ./.github/local_action/start_ccm_e2e
-    #   with:
-    #     osc_access_key: ${{ secrets[env.OSC_ACCESS_KEY_NAME] }}
-    #     osc_secret_key: ${{ secrets[env.OSC_SECRET_KEY_NAME] }}
-    #     osc_region: ${{ env.OSC_REGION }}
-    #     public_cloud: "true"
-    #     image_id: ${{ secrets.OMI_ID }}
-    #     version: ${{ format('{0}.{1}', github.sha, github.run_attempt) }}
-    #     registry: ${{ vars.REGISTRY }}

@@ -16,6 +16,7 @@ package e2e
 
 import (
 	"context"
+	"os"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2" //nolint: staticcheck
@@ -124,6 +125,56 @@ var _ = Describe("[e2e][loadbalancer][fast] Creating a load-balancer", func() {
 			framework.ExpectNoError(err)
 			e2esvc.TestReachableHTTP(ctx, svc.Status.LoadBalancer.Ingress[0].Hostname, 8080, testTimeout)
 		})
+	})
+})
+
+var _ = Describe("[e2e][loadbalancer] Configuring a multi-az LBU", func() {
+	f := framework.NewDefaultFramework("ccm")
+	f.NamespacePodSecurityEnforceLevel = admissionapi.LevelPrivileged
+
+	var (
+		cs     clientset.Interface
+		ns     *v1.Namespace
+		ctx    context.Context
+		lbName string
+	)
+
+	BeforeEach(func() {
+		cs = f.ClientSet
+		ns = f.Namespace
+		ctx = context.Background()
+		lbName = "ccm-multiaz-" + xid.New().String()
+	})
+	It("can connect to the service", func() {
+		deployment := e2eutils.CreateDeployment(ctx, cs, ns, 1, []v1.ContainerPort{
+			{
+				Name:          "tcp",
+				Protocol:      v1.ProtocolTCP,
+				ContainerPort: 8080,
+			},
+		})
+		defer e2eutils.DeleteDeployment(ctx, cs, deployment)
+		e2eutils.WaitForDeploymentReady(ctx, cs, deployment)
+
+		region := os.Getenv("OSC_REGION")
+		svc := e2eutils.CreateSvc(ctx, cs, ns, map[string]string{
+			"service.beta.kubernetes.io/osc-load-balancer-name":       "a-" + lbName + ",b-" + lbName,
+			"service.beta.kubernetes.io/osc-load-balancer-instances":  "2",
+			"service.beta.kubernetes.io/osc-load-balancer-subregions": region + "a," + region + "a", // the CI env is single AZ
+		}, []v1.ServicePort{
+			{
+				Name:       "tcp",
+				Protocol:   v1.ProtocolTCP,
+				TargetPort: intstr.FromInt(8080),
+				Port:       80,
+			},
+		}, nil)
+		defer e2eutils.DeleteSvc(ctx, cs, svc)
+		svc = e2eutils.WaitForSvc(ctx, cs, svc)
+		gomega.Expect(svc.Status.LoadBalancer.Ingress).To(gomega.HaveLen(2))
+		gomega.Expect(svc.Status.LoadBalancer.Ingress[0].Hostname).NotTo(gomega.Equal(svc.Status.LoadBalancer.Ingress[1].Hostname))
+		e2esvc.TestReachableHTTP(ctx, svc.Status.LoadBalancer.Ingress[0].Hostname, 80, testTimeout)
+		e2esvc.TestReachableHTTP(ctx, svc.Status.LoadBalancer.Ingress[1].Hostname, 80, testTimeout)
 	})
 })
 
