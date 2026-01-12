@@ -102,7 +102,7 @@ func TestGetLoadBalancer(t *testing.T) {
 		assert.True(t, exists)
 		assert.Equal(t, &corev1.LoadBalancerStatus{Ingress: []corev1.LoadBalancerIngress{{Hostname: "bar.example.com", IP: "198.51.100.42", IPMode: ptr.To(corev1.LoadBalancerIPModeProxy)}}}, status)
 	})
-	t.Run("If no ingress is configured, status is empty", func(t *testing.T) {
+	t.Run("If no ingress is configured, no ingresses are returned", func(t *testing.T) {
 		svc := testSvc()
 		c, mock, _ := newAPI(t, self, []string{"foo"})
 		expectReadLoadBalancer(mock, func(desc *osc.LoadBalancer) { desc.DnsName = "" })
@@ -110,7 +110,7 @@ func TestGetLoadBalancer(t *testing.T) {
 		status, exists, err := p.GetLoadBalancer(context.TODO(), "foo", svc)
 		require.NoError(t, err)
 		assert.True(t, exists)
-		assert.Equal(t, &corev1.LoadBalancerStatus{}, status)
+		assert.Empty(t, status.Ingress)
 	})
 	t.Run("If no load-balancer exists, false is returned", func(t *testing.T) {
 		svc := testSvc()
@@ -353,6 +353,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		c, oapimock, _ := newAPI(t, self, []string{"foo"})
 		expectVMs(oapimock, sdkSelf, sdkVM)
 		expectNoLoadbalancer(oapimock)
+		expectFindLBSubnetWithRole(oapimock)
 		expectPublicIPFromPool(oapimock, nil)
 		p := ccm.NewProviderWith(c, staticDNSResolver{})
 		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
@@ -364,6 +365,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		c, oapimock, _ := newAPI(t, self, []string{"foo"})
 		expectVMs(oapimock, sdkSelf, sdkVM)
 		expectNoLoadbalancer(oapimock)
+		expectFindLBSubnetWithRole(oapimock)
 		expectPublicIPFromPool(oapimock, []osc.PublicIp{
 			{PublicIpId: "ip-foo", LinkPublicIpId: ptr.To("ipassoc-foo"), PublicIp: "1.2.3.4"},
 		})

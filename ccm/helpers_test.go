@@ -137,7 +137,8 @@ func expectLoadbalancerExistsAndOwned(mock *mocks_osc.MockClient, updates ...fun
 			},
 		})).
 		Return(&osc.ReadLoadBalancersResponse{LoadBalancers: &[]osc.LoadBalancer{{
-			Tags: tags,
+			LoadBalancerName: lbName,
+			Tags:             tags,
 		}}}, nil)
 }
 
@@ -222,7 +223,7 @@ func expectCreateLoadBalancer(mock *mocks_osc.MockClient, updates ...func(*osc.C
 	}
 	mock.EXPECT().
 		CreateLoadBalancer(gomock.Any(), gomock.Eq(req)).
-		Return(&osc.CreateLoadBalancerResponse{LoadBalancer: &osc.LoadBalancer{}}, nil)
+		Return(&osc.CreateLoadBalancerResponse{LoadBalancer: &osc.LoadBalancer{LoadBalancerName: lbName, SecurityGroups: *req.SecurityGroups}}, nil)
 }
 
 func expectDeleteLoadBalancer(mock *mocks_osc.MockClient) {
@@ -335,8 +336,8 @@ func expectFindLBSubnetWithRole(mock *mocks_osc.MockClient) {
 			},
 		})).
 		Return(&osc.ReadSubnetsResponse{Subnets: &[]osc.Subnet{
-			{SubnetId: "subnet-service", NetId: "net-foo", Tags: []osc.ResourceTag{{Key: tags.RoleKey(role.Service)}}},
-			{SubnetId: "subnet-service.internal", NetId: "net-foo", Tags: []osc.ResourceTag{{Key: tags.RoleKey(role.InternalService)}}},
+			{SubnetId: "subnet-service", NetId: "net-foo", SubregionName: "eu-west-2a", Tags: []osc.ResourceTag{{Key: tags.RoleKey(role.Service)}}},
+			{SubnetId: "subnet-service.internal", NetId: "net-foo", SubregionName: "eu-west-2a", Tags: []osc.ResourceTag{{Key: tags.RoleKey(role.InternalService)}}},
 		}}, nil)
 }
 
@@ -348,8 +349,8 @@ func expectFindNoLBSubnetWithRole(mock *mocks_osc.MockClient) {
 			},
 		})).
 		Return(&osc.ReadSubnetsResponse{Subnets: &[]osc.Subnet{
-			{SubnetId: "subnet-public", NetId: "net-foo", Tags: []osc.ResourceTag{}},
-			{SubnetId: "subnet-private", NetId: "net-foo", Tags: []osc.ResourceTag{}},
+			{SubnetId: "subnet-public", NetId: "net-foo", SubregionName: "eu-west-2a", Tags: []osc.ResourceTag{}},
+			{SubnetId: "subnet-private", NetId: "net-foo", SubregionName: "eu-west-2a", Tags: []osc.ResourceTag{}},
 		}}, nil)
 }
 
@@ -383,7 +384,7 @@ func expectSGAlreadyExists(mock *mocks_osc.MockClient) {
 	mock.EXPECT().
 		CreateSecurityGroup(gomock.Any(), gomock.Eq(osc.CreateSecurityGroupRequest{
 			SecurityGroupName: "k8s-elb-lb-foo",
-			Description:       "Security group for Kubernetes LB lb-foo (svc-foo)",
+			Description:       "Security group for Kubernetes service svc-foo",
 			NetId:             ptr.To("net-foo"),
 		})).
 		Return(nil, &osc.ErrorResponse{Errors: []osc.Errors{{Code: "9008"}}})
@@ -403,7 +404,7 @@ func expectCreateSecurityGroup(mock *mocks_osc.MockClient) {
 	mock.EXPECT().
 		CreateSecurityGroup(gomock.Any(), gomock.Eq(osc.CreateSecurityGroupRequest{
 			SecurityGroupName: "k8s-elb-lb-foo",
-			Description:       "Security group for Kubernetes LB lb-foo (svc-foo)",
+			Description:       "Security group for Kubernetes service svc-foo",
 			NetId:             ptr.To("net-foo"),
 		})).
 		Return(&osc.CreateSecurityGroupResponse{SecurityGroup: &osc.SecurityGroup{SecurityGroupId: "sg-foo"}}, nil)

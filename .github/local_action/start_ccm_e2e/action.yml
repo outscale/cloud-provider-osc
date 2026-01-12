@@ -19,10 +19,6 @@ inputs:
   oks_region:
     description: 'Region'
     required: true
-  public_cloud:
-    description: 'Create cluster in public cloud'
-    required: false
-    default: "false"
   image_name:
     description: 'OMI name'
     required: true
