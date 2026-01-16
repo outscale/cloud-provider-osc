@@ -22,28 +22,24 @@ func (c *Provider) GetLoadBalancer(ctx context.Context, clusterName string, svc 
 	if err != nil {
 		return nil, false, fmt.Errorf("unable to build LB: %w", err)
 	}
-	dns, ip, found, err := c.cloud.GetLoadBalancer(ctx, lb)
-	switch {
-	case err != nil || !found:
-		return nil, found, err
-	case dns != "" || ip != nil:
-		i, err := c.ingressStatus(ctx, lb, dns, ip)
-		if err != nil {
-			return nil, true, err
-		}
-		return &v1.LoadBalancerStatus{Ingress: []v1.LoadBalancerIngress{i}}, true, nil
-	default:
-		return &v1.LoadBalancerStatus{}, true, nil
+	ingresses, err := c.cloud.GetLoadBalancer(ctx, lb)
+	if err != nil || len(ingresses) == 0 {
+		return nil, false, err
 	}
+	res, err := c.loadBalancerStatus(ctx, lb, ingresses)
+	if err != nil {
+		return nil, false, err
+	}
+	return res, true, nil
 }
 
 // GetLoadBalancerName implements cloudprovider.LoadBalancer
 func (c *Provider) GetLoadBalancerName(ctx context.Context, clusterName string, svc *v1.Service) string {
 	lb, err := cloud.NewLoadBalancer(svc, c.opts.ExtraTags)
-	if err != nil {
+	if err != nil || len(lb.Name) == 0 {
 		return ""
 	}
-	return lb.Name
+	return lb.Name[0]
 }
 
 func (c *Provider) resolveLBUHostname(ctx context.Context, hostname string) (string, error) {
@@ -81,27 +77,16 @@ func (c *Provider) EnsureLoadBalancer(ctx context.Context, clusterName string, s
 		return nil, err
 	}
 
-	var (
-		dns string
-		ip  *string
-	)
+	var ingresses []cloud.Ingress
 	if exists {
-		dns, ip, err = c.cloud.UpdateLoadBalancer(ctx, lb, vms)
+		ingresses, err = c.cloud.UpdateLoadBalancer(ctx, lb, vms)
 	} else {
-		dns, ip, err = c.cloud.CreateLoadBalancer(ctx, lb, vms) // Note: no DNS is expected to be returned after creation
+		ingresses, err = c.cloud.CreateLoadBalancer(ctx, lb, vms)
 	}
-	switch {
-	case err != nil:
+	if err != nil {
 		return nil, err
-	case dns != "" || ip != nil:
-		i, err := c.ingressStatus(ctx, lb, dns, ip)
-		if err != nil {
-			return nil, err
-		}
-		return &v1.LoadBalancerStatus{Ingress: []v1.LoadBalancerIngress{i}}, nil
-	default:
-		return &v1.LoadBalancerStatus{}, nil
 	}
+	return c.loadBalancerStatus(ctx, lb, ingresses)
 }
 
 func (c *Provider) filterTargetNodes(l *cloud.LoadBalancer, nodes []*v1.Node) []*v1.Node {
@@ -141,7 +126,7 @@ func (c *Provider) UpdateLoadBalancer(ctx context.Context, clusterName string, s
 		return err
 	}
 
-	_, _, err = c.cloud.UpdateLoadBalancer(ctx, lb, vms)
+	_, err = c.cloud.UpdateLoadBalancer(ctx, lb, vms)
 	return err
 }
 
@@ -164,25 +149,39 @@ func (c *Provider) EnsureLoadBalancerDeleted(ctx context.Context, clusterName st
 	}
 }
 
-func (c *Provider) ingressStatus(ctx context.Context, lb *cloud.LoadBalancer, dns string, ip *string) (v1.LoadBalancerIngress, error) {
-	var (
-		res v1.LoadBalancerIngress
-	)
-	if lb.IngressAddress.NeedIP() {
-		if ip == nil && dns != "" {
-			rip, err := c.resolveLBUHostname(ctx, dns)
-			if err != nil {
-				return res, fmt.Errorf("resolve hostname: %w", err)
-			}
-			ip = &rip
-		}
-		if ip != nil {
-			res.IP = *ip
-		}
-		res.IPMode = lb.IPMode
+func (c *Provider) loadBalancerStatus(ctx context.Context, lb *cloud.LoadBalancer, ingresses []cloud.Ingress) (*v1.LoadBalancerStatus, error) {
+	res := &v1.LoadBalancerStatus{
+		Ingress: make([]v1.LoadBalancerIngress, 0, len(ingresses)),
 	}
-	if lb.IngressAddress.NeedHostname() && dns != "" {
-		res.Hostname = dns
+
+	for _, ingress := range ingresses {
+		ires := v1.LoadBalancerIngress{}
+		if lb.IngressAddress.NeedIP() {
+			ires.IPMode = lb.IPMode
+			switch {
+			case lb.Internal && ingress.Hostname != "":
+				// internal LBU only have a hostname, no IP
+				rip, err := c.resolveLBUHostname(ctx, ingress.Hostname)
+				if err != nil {
+					return res, fmt.Errorf("resolve hostname: %w", err)
+				}
+				ires.IP = rip
+			case ingress.PublicIP != nil:
+				// internet facing LBU have a public IP once the LBU has started
+				ires.IP = *ingress.PublicIP
+			default:
+				continue
+			}
+		}
+		switch {
+		case !lb.IngressAddress.NeedHostname():
+		case ingress.Hostname != "":
+			// LBUs should always have a hostname, but we still ensure that's the case
+			ires.Hostname = ingress.Hostname
+		default:
+			continue
+		}
+		res.Ingress = append(res.Ingress, ires)
 	}
 	return res, nil
 }
