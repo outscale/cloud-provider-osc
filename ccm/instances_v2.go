@@ -8,9 +8,11 @@ package ccm
 import (
 	"context"
 	"errors"
+	"strings"
 
 	v1 "k8s.io/api/core/v1"
 	cloudprovider "k8s.io/cloud-provider"
+	"k8s.io/klog/v2"
 )
 
 // InstanceExists indicates whether a given node exists according to the cloud provider
@@ -45,12 +47,23 @@ func (c *Provider) InstanceMetadata(ctx context.Context, node *v1.Node) (*cloudp
 	if err != nil {
 		return nil, err
 	}
+	labels := make(map[string]string, len(c.opts.NodeLabels))
+	for k, v := range c.opts.nodeLabelTemplates {
+		str := strings.Builder{}
+		err := v.Execute(&str, vm)
+		if err != nil {
+			klog.FromContext(ctx).V(2).Error(err, "unable to compute label %q: %w", k, err)
+			continue
+		}
+		labels[k] = str.String()
+	}
 	return &cloudprovider.InstanceMetadata{
-		ProviderID:    vm.ProviderID(),
-		InstanceType:  vm.VmType,
-		NodeAddresses: vm.NodeAddresses(),
-		Zone:          vm.AvailabilityZone,
-		Region:        vm.Region,
+		ProviderID:       vm.ProviderID(),
+		InstanceType:     vm.VmType,
+		NodeAddresses:    vm.NodeAddresses(),
+		Zone:             vm.SubRegion,
+		Region:           vm.Region,
+		AdditionalLabels: labels,
 	}, nil
 }
 

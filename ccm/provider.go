@@ -59,6 +59,9 @@ func NewProvider(ctx context.Context, opts Options) (*Provider, error) {
 		return nil, fmt.Errorf("init: %w", err)
 	}
 
+	if err := opts.Compile(); err != nil {
+		return nil, fmt.Errorf("init: %w", err)
+	}
 	self := c.Self
 	klog.V(3).Infof("Instance: %s", self.ID)
 	return &Provider{
@@ -69,8 +72,12 @@ func NewProvider(ctx context.Context, opts Options) (*Provider, error) {
 	}, nil
 }
 
-func NewProviderWith(c *cloud.Cloud, r Resolver) *Provider {
+func NewProviderWith(c *cloud.Cloud, r Resolver, opts Options) *Provider {
+	if err := opts.Compile(); err != nil {
+		panic(err)
+	}
 	return &Provider{
+		opts:     opts,
 		cloud:    c,
 		resolver: r,
 		self:     c.Self,

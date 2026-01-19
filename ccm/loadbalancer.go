@@ -18,7 +18,7 @@ import (
 
 // GetLoadBalancer implements cloudprovider.LoadBalancer
 func (c *Provider) GetLoadBalancer(ctx context.Context, clusterName string, svc *v1.Service) (*v1.LoadBalancerStatus, bool, error) {
-	lb, err := cloud.NewLoadBalancer(svc, c.opts.ExtraTags)
+	lb, err := cloud.NewLoadBalancer(svc, c.opts.LBTags)
 	if err != nil {
 		return nil, false, fmt.Errorf("unable to build LB: %w", err)
 	}
@@ -35,7 +35,7 @@ func (c *Provider) GetLoadBalancer(ctx context.Context, clusterName string, svc 
 
 // GetLoadBalancerName implements cloudprovider.LoadBalancer
 func (c *Provider) GetLoadBalancerName(ctx context.Context, clusterName string, svc *v1.Service) string {
-	lb, err := cloud.NewLoadBalancer(svc, c.opts.ExtraTags)
+	lb, err := cloud.NewLoadBalancer(svc, c.opts.LBTags)
 	if err != nil || len(lb.Name) == 0 {
 		return ""
 	}
@@ -61,7 +61,7 @@ func (c *Provider) resolveLBUHostname(ctx context.Context, hostname string) (str
 // EnsureLoadBalancer implements cloudprovider.LoadBalancer
 func (c *Provider) EnsureLoadBalancer(ctx context.Context, clusterName string, svc *v1.Service,
 	nodes []*v1.Node) (*v1.LoadBalancerStatus, error) {
-	lb, err := cloud.NewLoadBalancer(svc, c.opts.ExtraTags)
+	lb, err := cloud.NewLoadBalancer(svc, c.opts.LBTags)
 	if err != nil {
 		return nil, fmt.Errorf("unable to build LB: %w", err)
 	}
@@ -109,7 +109,7 @@ LOOPNODES:
 
 // UpdateLoadBalancer implements cloudprovider.LoadBalancer
 func (c *Provider) UpdateLoadBalancer(ctx context.Context, clusterName string, svc *v1.Service, nodes []*v1.Node) error {
-	lb, err := cloud.NewLoadBalancer(svc, c.opts.ExtraTags)
+	lb, err := cloud.NewLoadBalancer(svc, c.opts.LBTags)
 	if err != nil {
 		return fmt.Errorf("unable to build LB: %w", err)
 	}
@@ -132,7 +132,7 @@ func (c *Provider) UpdateLoadBalancer(ctx context.Context, clusterName string, s
 
 // EnsureLoadBalancerDeleted implements cloudprovider.LoadBalancer.
 func (c *Provider) EnsureLoadBalancerDeleted(ctx context.Context, clusterName string, svc *v1.Service) error {
-	lb, err := cloud.NewLoadBalancer(svc, c.opts.ExtraTags)
+	lb, err := cloud.NewLoadBalancer(svc, c.opts.LBTags)
 	if err != nil {
 		return fmt.Errorf("unable to build LB: %w", err)
 	}
