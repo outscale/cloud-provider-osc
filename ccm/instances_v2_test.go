@@ -22,7 +22,7 @@ func TestInstanceExists(t *testing.T) {
 	t.Run("If the instance exists, return true", func(t *testing.T) {
 		c, mock, _ := newAPI(t, self, []string{"foo"})
 		expectVMs(mock, sdkSelf, sdkVM)
-		p := ccm.NewProviderWith(c, nil)
+		p := ccm.NewProviderWith(c, nil, ccm.Options{})
 		exists, err := p.InstanceExists(context.TODO(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
 		require.NoError(t, err)
 		assert.True(t, exists)
@@ -30,7 +30,7 @@ func TestInstanceExists(t *testing.T) {
 	t.Run("If the instance does not exists, return false", func(t *testing.T) {
 		c, mock, _ := newAPI(t, self, []string{"foo"})
 		expectVMs(mock, sdkSelf)
-		p := ccm.NewProviderWith(c, nil)
+		p := ccm.NewProviderWith(c, nil, ccm.Options{})
 		exists, err := p.InstanceExists(context.TODO(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
 		require.NoError(t, err)
 		assert.False(t, exists)
@@ -40,7 +40,7 @@ func TestInstanceExists(t *testing.T) {
 		sdkTerminated.State = osc.VmStateTerminated
 		c, mock, _ := newAPI(t, self, []string{"foo"})
 		expectVMs(mock, sdkSelf, sdkTerminated)
-		p := ccm.NewProviderWith(c, nil)
+		p := ccm.NewProviderWith(c, nil, ccm.Options{})
 		exists, err := p.InstanceExists(context.TODO(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
 		require.NoError(t, err)
 		assert.False(t, exists)
@@ -51,7 +51,7 @@ func TestInstanceShutdown(t *testing.T) {
 	t.Run("If the instance is running, return false", func(t *testing.T) {
 		c, mock, _ := newAPI(t, self, []string{"foo"})
 		expectVMs(mock, sdkSelf, sdkVM)
-		p := ccm.NewProviderWith(c, nil)
+		p := ccm.NewProviderWith(c, nil, ccm.Options{})
 		shut, err := p.InstanceShutdown(context.TODO(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
 		require.NoError(t, err)
 		assert.False(t, shut)
@@ -61,7 +61,7 @@ func TestInstanceShutdown(t *testing.T) {
 		sdkVM.State = osc.VmStateStopped
 		c, mock, _ := newAPI(t, self, []string{"foo"})
 		expectVMs(mock, sdkSelf, sdkVM)
-		p := ccm.NewProviderWith(c, nil)
+		p := ccm.NewProviderWith(c, nil, ccm.Options{})
 		shut, err := p.InstanceShutdown(context.TODO(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
 		require.NoError(t, err)
 		assert.True(t, shut)
@@ -69,20 +69,43 @@ func TestInstanceShutdown(t *testing.T) {
 }
 
 func TestInstanceMetadata(t *testing.T) {
-	c, mock, _ := newAPI(t, self, []string{"foo"})
-	expectVMs(mock, sdkSelf, sdkVM)
-	p := ccm.NewProviderWith(c, nil)
-	meta, err := p.InstanceMetadata(context.TODO(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
-	require.NoError(t, err)
-	assert.Equal(t, &cloudprovider.InstanceMetadata{
-		ProviderID:   "aws:///eu-west-2a/i-foo",
-		InstanceType: "tinav3.c1r1p1",
-		Zone:         "eu-west-2a",
-		Region:       "eu-west-2",
-		NodeAddresses: []v1.NodeAddress{
-			{Type: v1.NodeInternalIP, Address: "10.0.0.10"},
-			{Type: v1.NodeInternalDNS, Address: "10.0.0.10.eu-west-2.compute.internal"},
-			{Type: v1.NodeHostName, Address: "10.0.0.10.eu-west-2.compute.internal"},
-		},
-	}, meta)
+	t.Run("Metadata is returned", func(t *testing.T) {
+		c, mock, _ := newAPI(t, self, []string{"foo"})
+		expectVMs(mock, sdkSelf, sdkVM)
+		p := ccm.NewProviderWith(c, nil, ccm.Options{})
+		meta, err := p.InstanceMetadata(context.TODO(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
+		require.NoError(t, err)
+		assert.Equal(t, &cloudprovider.InstanceMetadata{
+			ProviderID:   "aws:///eu-west-2a/i-foo",
+			InstanceType: "tinav3.c1r1p1",
+			Zone:         "eu-west-2a",
+			Region:       "eu-west-2",
+			NodeAddresses: []v1.NodeAddress{
+				{Type: v1.NodeInternalIP, Address: "10.0.0.10"},
+				{Type: v1.NodeInternalDNS, Address: "10.0.0.10.eu-west-2.compute.internal"},
+				{Type: v1.NodeHostName, Address: "10.0.0.10.eu-west-2.compute.internal"},
+			},
+			AdditionalLabels: map[string]string{},
+		}, meta)
+	})
+	t.Run("Additional labels can be set", func(t *testing.T) {
+		c, mock, _ := newAPI(t, self, []string{"foo"})
+		sdkLabel := sdkVM
+		sdkLabel.Tags = []osc.ResourceTag{{Key: "foo", Value: "foobar"}, {Key: "bar", Value: "barbar"}}
+		expectVMs(mock, sdkSelf, sdkLabel)
+		p := ccm.NewProviderWith(c, nil, ccm.Options{
+			NodeLabels: map[string]string{
+				"label.foo":       "foo",
+				"label.bar":       "{{ .Tags.bar }}",
+				"label.SubRegion": "{{ .SubRegion }}",
+			},
+		})
+		meta, err := p.InstanceMetadata(context.TODO(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
+		require.NoError(t, err)
+		assert.Equal(t, map[string]string{
+			"label.foo":       "foo",
+			"label.bar":       "barbar",
+			"label.SubRegion": "eu-west-2a",
+		}, meta.AdditionalLabels)
+	})
 }

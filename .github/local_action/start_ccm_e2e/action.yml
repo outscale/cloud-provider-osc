@@ -57,7 +57,7 @@ runs:
           -n kube-system
         echo "installing CCM"
         helm install --wait k8s-osc-ccm deploy/k8s-osc-ccm --set oscSecretName=osc-secret --set image.repository=${{ inputs.registry }}/outscale/cloud-provider-osc --set oscSecretFormat=v1 --set image.tag=${{ inputs.version }} \
-          --set extraLoadBalancerTags.clikey=clivalue
+          --set extraLoadBalancerTags.clikey=clivalue --set "extraNodeLabels.clilabel=\{\{ .SubRegion \}\}"
         echo "waiting for worker nodes"
         kubectl wait --for=condition=Ready nodes --all --timeout=900s
         kubectl get nodes -o wide
@@ -93,7 +93,7 @@ runs:
         kubectl create secret generic osc-secret-file --from-literal=config.json=$profile -n kube-system
         echo "updating CCM config"
         helm upgrade --wait k8s-osc-ccm deploy/k8s-osc-ccm --set oscSecretName=osc-secret-file --set oscCredentialsFromFile=true --set image.repository=${{ inputs.registry }}/outscale/cloud-provider-osc --set image.tag=${{ inputs.version }}\
-          --set extraLoadBalancerTags.clikey=clivalue
+          --set extraLoadBalancerTags.clikey=clivalue --set "extraNodeLabels.clilabel=\{\{ .SubRegion \}\}"
         sleep 5
         kubectl get pod -n kube-system -l "app=osc-cloud-controller-manager"
       shell: bash

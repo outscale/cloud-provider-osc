@@ -150,6 +150,9 @@ spec:
             {{- if .Values.extraLoadBalancerTags }}
               {{- include "osc-cloud-controller-manager.extra-loadbalancer-tags" . | nindent 12 }}
             {{- end }}
+            {{- if .Values.extraNodeLabels }}
+              {{- include "osc-cloud-controller-manager.extra-node-labels" . | nindent 12 }}
+            {{- end }}
           resources:
           {{- toYaml .Values.resources | nindent 12 }}
           {{- if or .Values.caBundle.name (and .Values.oscCredentialsFromFile .Values.oscSecretName) }}

@@ -14,6 +14,7 @@ import (
 	"github.com/outscale/goutils/k8s/tags"
 	"github.com/outscale/goutils/sdk/ptr"
 	"github.com/outscale/osc-sdk-go/v3/pkg/osc"
+	"github.com/samber/lo"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	cloudprovider "k8s.io/cloud-provider"
@@ -21,12 +22,12 @@ import (
 
 // VM provide Virtual Machine representation
 type VM struct {
-	ID               string
-	NodeName         types.NodeName
-	AvailabilityZone string
-	Region           string
-	SubnetID         *string
-	VmType           string
+	ID        string
+	NodeName  types.NodeName
+	SubRegion string
+	Region    string
+	SubnetID  *string
+	VmType    string
 
 	cloudVm *osc.Vm
 }
@@ -34,14 +35,14 @@ type VM struct {
 // FromOscVm creates a new awsInstance object
 func FromOscVm(vm *osc.Vm) *VM {
 	v := &VM{
-		ID:               vm.VmId,
-		NodeName:         mapInstanceToNodeName(vm),
-		VmType:           vm.VmType,
-		SubnetID:         vm.SubnetId,
-		AvailabilityZone: vm.Placement.SubregionName,
-		cloudVm:          vm,
+		ID:        vm.VmId,
+		NodeName:  mapInstanceToNodeName(vm),
+		VmType:    vm.VmType,
+		SubnetID:  vm.SubnetId,
+		SubRegion: vm.Placement.SubregionName,
+		cloudVm:   vm,
 	}
-	v.Region = v.AvailabilityZone[:len(v.AvailabilityZone)-1]
+	v.Region = v.SubRegion[:len(v.SubRegion)-1]
 	return v
 }
 
@@ -107,6 +108,12 @@ func (vm *VM) ClusterID() string {
 //   - aws:///<availability-zone>/<instance-id>
 func (vm *VM) ProviderID() string {
 	return "aws://" + vm.InstanceID()
+}
+
+func (vm *VM) Tags() map[string]string {
+	return lo.Associate(vm.cloudVm.Tags, func(t osc.ResourceTag) (k, v string) {
+		return t.Key, t.Value
+	})
 }
 
 // GetVMByNodeName returns the instance with the specified node name

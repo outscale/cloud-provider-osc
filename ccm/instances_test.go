@@ -33,7 +33,7 @@ func TestNodeAddresses(t *testing.T) {
 			Placement:      osc.Placement{SubregionName: "eu-west-2a"},
 		})
 		c, _, _ := newAPI(t, vm, []string{"foo"})
-		p := ccm.NewProviderWith(c, nil)
+		p := ccm.NewProviderWith(c, nil, ccm.Options{})
 		addrs, err := p.NodeAddresses(context.TODO(), vm.NodeName)
 		require.NoError(t, err)
 		assert.Equal(t, []v1.NodeAddress{
@@ -55,7 +55,7 @@ func TestNodeAddresses(t *testing.T) {
 			Placement:      osc.Placement{SubregionName: "eu-west-2a"},
 		})
 		c, _, _ := newAPI(t, vm, []string{"foo"})
-		p := ccm.NewProviderWith(c, nil)
+		p := ccm.NewProviderWith(c, nil, ccm.Options{})
 		addrs, err := p.NodeAddresses(context.TODO(), vm.NodeName)
 		require.NoError(t, err)
 		assert.Equal(t, []v1.NodeAddress{
@@ -93,7 +93,7 @@ func TestNodeAddresses(t *testing.T) {
 		self := cloud.FromOscVm(sdkself)
 		c, mock, _ := newAPI(t, self, []string{"foo"})
 		expectVMs(mock, *sdkself, *sdkvm)
-		p := ccm.NewProviderWith(c, nil)
+		p := ccm.NewProviderWith(c, nil, ccm.Options{})
 		addrs, err := p.NodeAddresses(context.TODO(), types.NodeName(name))
 		require.NoError(t, err)
 		assert.Equal(t, []v1.NodeAddress{
@@ -124,7 +124,7 @@ func TestNodeAddressesByProviderID(t *testing.T) {
 			},
 		})).
 		Return(&osc.ReadVmsResponse{Vms: &[]osc.Vm{*sdkvm}}, nil)
-	p := ccm.NewProviderWith(c, nil)
+	p := ccm.NewProviderWith(c, nil, ccm.Options{})
 	addrs, err := p.NodeAddressesByProviderID(context.TODO(), providerID)
 	require.NoError(t, err)
 	assert.Equal(t, []v1.NodeAddress{
@@ -153,7 +153,7 @@ func TestInstanceTypeByProviderID(t *testing.T) {
 			},
 		})).
 		Return(&osc.ReadVmsResponse{Vms: &[]osc.Vm{*sdkvm}}, nil)
-	p := ccm.NewProviderWith(c, nil)
+	p := ccm.NewProviderWith(c, nil, ccm.Options{})
 	typ, err := p.InstanceTypeByProviderID(context.TODO(), providerID)
 	require.NoError(t, err)
 	assert.Equal(t, sdkvm.VmType, typ)
@@ -170,7 +170,7 @@ func TestInstanceID(t *testing.T) {
 			PrivateDnsName: ptr.To("10.0.0.10.eu-west-2.compute.internal"),
 		})
 		c, _, _ := newAPI(t, vm, []string{"foo"})
-		p := ccm.NewProviderWith(c, nil)
+		p := ccm.NewProviderWith(c, nil, ccm.Options{})
 		id, err := p.InstanceID(context.TODO(), vm.NodeName)
 		require.NoError(t, err)
 		assert.Equal(t, "/eu-west-2a/i-foo", id)
@@ -201,7 +201,7 @@ func TestInstanceID(t *testing.T) {
 		self := cloud.FromOscVm(sdkself)
 		c, mock, _ := newAPI(t, self, []string{"foo"})
 		expectVMs(mock, *sdkself, *sdkvm)
-		p := ccm.NewProviderWith(c, nil)
+		p := ccm.NewProviderWith(c, nil, ccm.Options{})
 		id, err := p.InstanceID(context.TODO(), types.NodeName(name))
 		require.NoError(t, err)
 		assert.Equal(t, "/eu-west-2a/i-foo", id)
