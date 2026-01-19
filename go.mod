@@ -7,7 +7,7 @@ require (
 	dario.cat/mergo v1.0.2
 	github.com/aws/aws-sdk-go v1.55.8
 	github.com/go-viper/mapstructure/v2 v2.5.0
-	github.com/onsi/ginkgo/v2 v2.27.3
+	github.com/onsi/ginkgo/v2 v2.27.5
 	github.com/onsi/gomega v1.38.3
 	github.com/outscale/goutils/k8s v0.0.0-20260114123807-be82506970c1
 	github.com/outscale/goutils/sdk v0.0.0-20260113165558-ff2de7ab6a67
