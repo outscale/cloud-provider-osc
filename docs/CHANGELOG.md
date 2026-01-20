@@ -1,5 +1,77 @@
 # Changelog
 
+## [v1.34.4-alpha.1] - 2026-01-21
+
+The CCM has switched to a new Outscale SDK. It now handles backoff on retryable API errors.
+
+### ✨ Added
+* ✨ feat(loadbalancer): add multi-az LBUs by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/598
+* ✨ feat(nodes): additional node labels, based on VM attributes/tags by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/608
+### 🛠️ Changed / Refactoring
+* ♻️ refacto: switch to SDKv3 by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/515
+### 📝 Documentation
+* 📝 doc: updated setup documentation by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/576
+### 📦 Dependency updates
+* ⬆️ deps(gomod): update module github.com/onsi/ginkgo/v2 to v2.27.3 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/589
+* ⬆️ deps(gomod): update module github.com/spf13/pflag to v1.0.10 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/587
+* ⬆️ deps(gomod): update module github.com/stretchr/testify to v1.11.1 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/588
+* ⬆️ deps(gomod): update module github.com/onsi/gomega to v1.38.3 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/585
+* ⬆️ deps(dockerfile): update gcr.io/distroless/static docker digest to 4b2a093 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/584
+* ⬆️ deps(dockerfile): update golang:1.25.5 docker digest to 6cc2338 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/591
+* ⬆️ deps(dockerfile): update golang docker tag to v1.25.6 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/607
+* ⬆️ deps(dockerfile): update gcr.io/distroless/static docker digest to cd64bec by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/596
+* ⬆️ deps(gomod): update module github.com/go-viper/mapstructure/v2 to v2.5.0 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/605
+* ⬆️ deps(gomod): update github.com/outscale/goutils/k8s digest to be82506 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/592
+* ⬆️ deps(gomod): update module github.com/onsi/ginkgo/v2 to v2.27.5 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/594
+
+## [v1.33.4-alpha.1] - 2026-01-21
+
+The CCM has switched to a new Outscale SDK. It now handles backoff on retryable API errors.
+
+### ✨ Added
+* ✨ feat(loadbalancer): add multi-az LBUs by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/598
+* ✨ feat(nodes): additional node labels, based on VM attributes/tags by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/608
+### 🛠️ Changed / Refactoring
+* ♻️ refacto: switch to SDKv3 by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/515
+### 📝 Documentation
+* 📝 doc: updated setup documentation by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/576
+### 📦 Dependency updates
+* ⬆️ deps(gomod): update module github.com/onsi/ginkgo/v2 to v2.27.3 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/589
+* ⬆️ deps(gomod): update module github.com/spf13/pflag to v1.0.10 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/587
+* ⬆️ deps(gomod): update module github.com/stretchr/testify to v1.11.1 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/588
+* ⬆️ deps(gomod): update module github.com/onsi/gomega to v1.38.3 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/585
+* ⬆️ deps(dockerfile): update gcr.io/distroless/static docker digest to 4b2a093 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/584
+* ⬆️ deps(dockerfile): update golang:1.25.5 docker digest to 6cc2338 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/591
+* ⬆️ deps(dockerfile): update golang docker tag to v1.25.6 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/607
+* ⬆️ deps(dockerfile): update gcr.io/distroless/static docker digest to cd64bec by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/596
+* ⬆️ deps(gomod): update module github.com/go-viper/mapstructure/v2 to v2.5.0 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/605
+* ⬆️ deps(gomod): update github.com/outscale/goutils/k8s digest to be82506 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/592
+* ⬆️ deps(gomod): update module github.com/onsi/ginkgo/v2 to v2.27.5 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/594
+
+## [v1.32.4-alpha.1] - 2026-01-21
+
+The CCM has switched to a new Outscale SDK. It now handles backoff on retryable API errors.
+
+### ✨ Added
+* ✨ feat(loadbalancer): add multi-az LBUs by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/598
+* ✨ feat(nodes): additional node labels, based on VM attributes/tags by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/608
+### 🛠️ Changed / Refactoring
+* ♻️ refacto: switch to SDKv3 by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/515
+### 📝 Documentation
+* 📝 doc: updated setup documentation by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/576
+### 📦 Dependency updates
+* ⬆️ deps(gomod): update module github.com/onsi/ginkgo/v2 to v2.27.3 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/589
+* ⬆️ deps(gomod): update module github.com/spf13/pflag to v1.0.10 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/587
+* ⬆️ deps(gomod): update module github.com/stretchr/testify to v1.11.1 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/588
+* ⬆️ deps(gomod): update module github.com/onsi/gomega to v1.38.3 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/585
+* ⬆️ deps(dockerfile): update gcr.io/distroless/static docker digest to 4b2a093 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/584
+* ⬆️ deps(dockerfile): update golang:1.25.5 docker digest to 6cc2338 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/591
+* ⬆️ deps(dockerfile): update golang docker tag to v1.25.6 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/607
+* ⬆️ deps(dockerfile): update gcr.io/distroless/static docker digest to cd64bec by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/596
+* ⬆️ deps(gomod): update module github.com/go-viper/mapstructure/v2 to v2.5.0 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/605
+* ⬆️ deps(gomod): update github.com/outscale/goutils/k8s digest to be82506 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/592
+* ⬆️ deps(gomod): update module github.com/onsi/ginkgo/v2 to v2.27.5 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/594
+
 ## [v1.34.3] - 2025-12-17
 ### 🐛 Fixed
 * 🐛 fix: CCM crashes when unable to talk to OAPI by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/577
