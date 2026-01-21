@@ -1,6 +1,6 @@
 # Load-Balancer with access logs
  
-This example creates a deployment named echoheaders on your cluster, listening on port 8080 and exposed to the internet.
+This example creates a deployment named "echoheaders" on your cluster, listening on port 8080 and exposed to the internet.
 Requests to the service are logged in an OOS bucket.
 
 - Create bucket for logs 

@@ -21,7 +21,7 @@ BUILD_ENV := "buildenv/cloud-provider-osc:0.0"
 BUILD_ENV_RUN := "build-cloud-provider-osc"
 DEPLOY_NAME := "k8s-osc-ccm"
 
-SOURCES := $(shell find ./cloud-controller-manager -name '*.go')
+SOURCES := $(shell find ./ccm -name '*.go')
 GOOS ?= $(shell go env GOOS)
 VERSION ?= $(shell git describe --tags --always --dirty)
 LDFLAGS   := "-w -s -X 'github.com/outscale/cloud-provider-osc/cloud-controller-manager/utils.version=$(VERSION)'"
@@ -63,7 +63,7 @@ build: $(SOURCES)
 	CGO_ENABLED=0 GOOS=$(GOOS) go build $(GO_ADD_OPTIONS) \
 		-ldflags $(LDFLAGS) \
 		-o osc-cloud-controller-manager \
-		cloud-controller-manager/cmd/osc-cloud-controller-manager/main.go
+		ccm/cmd/osc-cloud-controller-manager/main.go
 
 .PHONY: verify
 verify: verify-fmt vet
@@ -82,7 +82,7 @@ mock-generate:
 
 .PHONY: test
 test:
-	CGO_ENABLED=0 OSC_ACCESS_KEY=test OSC_SECRET_KEY=test go test -count=1  -v ./cloud-controller-manager/... ./deploy/...
+	CGO_ENABLED=0 OSC_ACCESS_KEY=test OSC_SECRET_KEY=test go test -count=1  -v ./ccm/... ./deploy/...
 
 
 .PHONY: build-image
@@ -167,10 +167,10 @@ check-helm-docs:
 	./hack/verify-helm-docs
 
 helm-manifest:
-	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.31.1 > deploy/osc-ccm-manifest-v1.31.yml
-	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.32.1 > deploy/osc-ccm-manifest-v1.32.yml
-	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.33.1 > deploy/osc-ccm-manifest-v1.33.yml
-	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.34.1 > deploy/osc-ccm-manifest-v1.34.yml
+	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.31.3 > deploy/osc-ccm-manifest-v1.31.yml
+	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.32.3 > deploy/osc-ccm-manifest-v1.32.yml
+	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.33.3 > deploy/osc-ccm-manifest-v1.33.yml
+	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.34.3 > deploy/osc-ccm-manifest-v1.34.yml
 
 check-helm-manifest:
 	./hack/verify-helm-manifest.sh

@@ -69,12 +69,11 @@ noProxy: ''
 # resources -- Pod resource requests and limits.
 resources: {}
 
-# Extra tags to set on every created load-balancer.
-# extraLoadBalancerTags:
-#   key1: value1
-#   key2: value2
 # -- Add extra tags on load-balancers
 extraLoadBalancerTags: {}
+
+# -- Add extra labels on nodes. [Go templates](https://pkg.go.dev/text/template) can be used in values to set dynamic labels (available attributes: `ID` (VM ID), `SubRegion`, `Region`, `VmType` and `Tags`). Example: `--set "extraNodeLabels.labelName=\{\{ .Tags.key \}\}"`
+extraNodeLabels: {}
 
 # -- Set this if you want to use a specific cluster ID instead of the automatically computed one. Use with caution.
 customClusterID: ''

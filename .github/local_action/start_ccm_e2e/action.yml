@@ -19,10 +19,6 @@ inputs:
   oks_region:
     description: 'Region'
     required: true
-  public_cloud:
-    description: 'Create cluster in public cloud'
-    required: false
-    default: "false"
   image_name:
     description: 'OMI name'
     required: true
@@ -36,7 +32,7 @@ runs:
   using: "composite"
   steps:
     - name: ⬇️ Checkout CAPOSC
-      uses: actions/checkout@v5
+      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
       with:
         repository: 'outscale/cluster-api-provider-outscale'
         path: "cluster-api-provider-outscale"
@@ -61,7 +57,7 @@ runs:
           -n kube-system
         echo "installing CCM"
         helm install --wait k8s-osc-ccm deploy/k8s-osc-ccm --set oscSecretName=osc-secret --set image.repository=${{ inputs.registry }}/outscale/cloud-provider-osc --set oscSecretFormat=v1 --set image.tag=${{ inputs.version }} \
-          --set extraLoadBalancerTags.clikey=clivalue
+          --set extraLoadBalancerTags.clikey=clivalue --set "extraNodeLabels.clilabel=\{\{ .SubRegion \}\}"
         echo "waiting for worker nodes"
         kubectl wait --for=condition=Ready nodes --all --timeout=900s
         kubectl get nodes -o wide
@@ -97,7 +93,7 @@ runs:
         kubectl create secret generic osc-secret-file --from-literal=config.json=$profile -n kube-system
         echo "updating CCM config"
         helm upgrade --wait k8s-osc-ccm deploy/k8s-osc-ccm --set oscSecretName=osc-secret-file --set oscCredentialsFromFile=true --set image.repository=${{ inputs.registry }}/outscale/cloud-provider-osc --set image.tag=${{ inputs.version }}\
-          --set extraLoadBalancerTags.clikey=clivalue
+          --set extraLoadBalancerTags.clikey=clivalue --set "extraNodeLabels.clilabel=\{\{ .SubRegion \}\}"
         sleep 5
         kubectl get pod -n kube-system -l "app=osc-cloud-controller-manager"
       shell: bash
