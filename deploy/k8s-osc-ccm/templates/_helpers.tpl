@@ -68,3 +68,17 @@ Convert the `--extra-loadbalancer-tags` command line arg from a map.
 {{- end -}}
 {{- end -}}
 
+
+{{/*
+Convert the `--extra-node-labels` command line arg from a map.
+*/}}
+{{- define "osc-cloud-controller-manager.extra-node-labels" -}}
+{{- $result := dict "pairs" (list) -}}
+{{- range $key, $value := .Values.extraNodeLabels -}}
+{{- $noop := printf "%s=%s" $key $value | append $result.pairs | set $result "pairs" -}}
+{{- end -}}
+{{- if gt (len $result.pairs) 0 -}}
+{{- printf "%s=%s" "- --extra-node-labels" (join "," $result.pairs) -}}
+{{- end -}}
+{{- end -}}
+

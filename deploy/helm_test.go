@@ -330,6 +330,14 @@ func TestHelmTemplate(t *testing.T) {
 		require.Len(t, ds.Spec.Template.Spec.Containers[0].Command, 5)
 		assert.Equal(t, "--extra-loadbalancer-tags=key1=value1,key2=value2", ds.Spec.Template.Spec.Containers[0].Command[4])
 	})
+	t.Run("Extra labels can be set using templates", func(t *testing.T) {
+		specs := getHelmSpecs(t, []string{"extraNodeLabels.key=\\{\\{ .value \\}\\}"})
+		require.IsType(t, &appsv1.DaemonSet{}, specs[4])
+		ds := specs[4].(*appsv1.DaemonSet)
+		require.Len(t, ds.Spec.Template.Spec.Containers, 1)
+		require.Len(t, ds.Spec.Template.Spec.Containers[0].Command, 5)
+		assert.Equal(t, "--extra-node-labels=key={{ .value }}", ds.Spec.Template.Spec.Containers[0].Command[4])
+	})
 	t.Run("The secret containing access keys may be changed", func(t *testing.T) {
 		{
 			specs := getHelmSpecs(t, []string{"oscSecretName=foo"})

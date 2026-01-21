@@ -16,14 +16,17 @@ package e2e
 
 import (
 	"context"
+	"os"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2" //nolint: staticcheck
 	"github.com/onsi/gomega"
-	"github.com/outscale/cloud-provider-osc/cloud-controller-manager/osc/cloud"
-	"github.com/outscale/cloud-provider-osc/cloud-controller-manager/osc/oapi"
+	"github.com/outscale/cloud-provider-osc/ccm/oapi"
 	e2eutils "github.com/outscale/cloud-provider-osc/tests/e2e/utils"
-	"github.com/outscale/osc-sdk-go/v2"
+	"github.com/outscale/goutils/k8s/sdk"
+	"github.com/outscale/goutils/k8s/tags"
+	"github.com/outscale/goutils/sdk/ptr"
+	"github.com/outscale/osc-sdk-go/v3/pkg/osc"
 	"github.com/rs/xid"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -32,7 +35,6 @@ import (
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2esvc "k8s.io/kubernetes/test/e2e/framework/service"
 	admissionapi "k8s.io/pod-security-admission/api"
-	"k8s.io/utils/ptr"
 )
 
 const (
@@ -44,10 +46,10 @@ var _ = Describe("[e2e][loadbalancer][fast] Creating a load-balancer", func() {
 	f.NamespacePodSecurityEnforceLevel = admissionapi.LevelPrivileged
 
 	var (
-		cs   clientset.Interface
-		ns   *v1.Namespace
-		ctx  context.Context
-		oapi *oapi.Client
+		cs  clientset.Interface
+		ns  *v1.Namespace
+		ctx context.Context
+		api *oapi.Client
 	)
 
 	BeforeEach(func() {
@@ -55,7 +57,7 @@ var _ = Describe("[e2e][loadbalancer][fast] Creating a load-balancer", func() {
 		ns = f.Namespace
 		ctx = context.Background()
 		var err error
-		oapi, err = e2eutils.OAPI()
+		api, err = oapi.NewClient(ctx)
 		framework.ExpectNoError(err)
 	})
 
@@ -107,11 +109,11 @@ var _ = Describe("[e2e][loadbalancer][fast] Creating a load-balancer", func() {
 			e2esvc.TestReachableHTTP(ctx, svc.Status.LoadBalancer.Ingress[0].Hostname, 80, testTimeout)
 
 			By("Checking tags from cli args and annotations in addition to the standard ones")
-			e2eutils.ExpectLoadBalancerTags(ctx, oapi, lbName, gomega.And(
+			e2eutils.ExpectLoadBalancerTags(ctx, api, lbName, gomega.And(
 				gomega.ContainElement(osc.ResourceTag{Key: "annotationkey", Value: "annotationvalue"}),
 				gomega.ContainElement(osc.ResourceTag{Key: "clikey", Value: "clivalue"}),
-				gomega.ContainElement(osc.ResourceTag{Key: cloud.ServiceNameTagKey, Value: svc.Name}),
-				gomega.ContainElement(gomega.HaveField("Key", gomega.HavePrefix(cloud.ClusterIDTagKeyPrefix))),
+				gomega.ContainElement(osc.ResourceTag{Key: tags.ServiceName, Value: svc.Name}),
+				gomega.ContainElement(gomega.HaveField("Key", gomega.HavePrefix(tags.ClusterIDPrefix))),
 			))
 		})
 
@@ -123,6 +125,56 @@ var _ = Describe("[e2e][loadbalancer][fast] Creating a load-balancer", func() {
 			framework.ExpectNoError(err)
 			e2esvc.TestReachableHTTP(ctx, svc.Status.LoadBalancer.Ingress[0].Hostname, 8080, testTimeout)
 		})
+	})
+})
+
+var _ = Describe("[e2e][loadbalancer] Configuring a multi-az LBU", func() {
+	f := framework.NewDefaultFramework("ccm")
+	f.NamespacePodSecurityEnforceLevel = admissionapi.LevelPrivileged
+
+	var (
+		cs     clientset.Interface
+		ns     *v1.Namespace
+		ctx    context.Context
+		lbName string
+	)
+
+	BeforeEach(func() {
+		cs = f.ClientSet
+		ns = f.Namespace
+		ctx = context.Background()
+		lbName = "ccm-multiaz-" + xid.New().String()
+	})
+	It("can connect to the service", func() {
+		deployment := e2eutils.CreateDeployment(ctx, cs, ns, 1, []v1.ContainerPort{
+			{
+				Name:          "tcp",
+				Protocol:      v1.ProtocolTCP,
+				ContainerPort: 8080,
+			},
+		})
+		defer e2eutils.DeleteDeployment(ctx, cs, deployment)
+		e2eutils.WaitForDeploymentReady(ctx, cs, deployment)
+
+		region := os.Getenv("OSC_REGION")
+		svc := e2eutils.CreateSvc(ctx, cs, ns, map[string]string{
+			"service.beta.kubernetes.io/osc-load-balancer-name":       "a-" + lbName + ",b-" + lbName,
+			"service.beta.kubernetes.io/osc-load-balancer-instances":  "2",
+			"service.beta.kubernetes.io/osc-load-balancer-subregions": region + "a," + region + "a", // the CI env is single AZ
+		}, []v1.ServicePort{
+			{
+				Name:       "tcp",
+				Protocol:   v1.ProtocolTCP,
+				TargetPort: intstr.FromInt(8080),
+				Port:       80,
+			},
+		}, nil)
+		defer e2eutils.DeleteSvc(ctx, cs, svc)
+		svc = e2eutils.WaitForSvc(ctx, cs, svc)
+		gomega.Expect(svc.Status.LoadBalancer.Ingress).To(gomega.HaveLen(2))
+		gomega.Expect(svc.Status.LoadBalancer.Ingress[0].Hostname).NotTo(gomega.Equal(svc.Status.LoadBalancer.Ingress[1].Hostname))
+		e2esvc.TestReachableHTTP(ctx, svc.Status.LoadBalancer.Ingress[0].Hostname, 80, testTimeout)
+		e2esvc.TestReachableHTTP(ctx, svc.Status.LoadBalancer.Ingress[1].Hostname, 80, testTimeout)
 	})
 })
 
@@ -191,17 +243,16 @@ var _ = Describe("[e2e][loadbalancer] Setting a public IP", func() {
 
 	Context("When creating service with a preconfigured public ip", func() {
 		var (
-			oapi       *oapi.Client
+			api        *oapi.Client
 			deployment *appsv1.Deployment
 			pip        *osc.PublicIp
 		)
 		BeforeEach(func() {
 			var err error
-			oapi, err = e2eutils.OAPI()
+			api, err = oapi.NewClient(ctx)
 			framework.ExpectNoError(err)
-			pips, err := oapi.OAPI().ListPublicIpsFromPool(ctx, "ccm")
+			pip, err = sdk.AllocateIPFromPool(ctx, "ccm", api.OAPI())
 			framework.ExpectNoError(err)
-			pip = &pips[0]
 			deployment = e2eutils.CreateDeployment(ctx, cs, ns, 1, []v1.ContainerPort{
 				{
 					Name:          "tcp",
@@ -222,7 +273,7 @@ var _ = Describe("[e2e][loadbalancer] Setting a public IP", func() {
 		It("setting public ip by id with 'both' ingress address works", func() {
 			svc := e2eutils.CreateSvc(ctx, cs, ns, map[string]string{
 				"service.beta.kubernetes.io/osc-load-balancer-name":            lbName,
-				"service.beta.kubernetes.io/osc-load-balancer-public-ip-id":    pip.GetPublicIpId(),
+				"service.beta.kubernetes.io/osc-load-balancer-public-ip-id":    pip.PublicIpId,
 				"service.beta.kubernetes.io/osc-load-balancer-ingress-address": "both",
 			}, []v1.ServicePort{
 				{
@@ -243,7 +294,7 @@ var _ = Describe("[e2e][loadbalancer] Setting a public IP", func() {
 		It("setting public ip by IP with 'IP' ingress address works", func() {
 			svc := e2eutils.CreateSvc(ctx, cs, ns, map[string]string{
 				"service.beta.kubernetes.io/osc-load-balancer-name":            lbName,
-				"service.beta.kubernetes.io/osc-load-balancer-public-ip-id":    pip.GetPublicIp(),
+				"service.beta.kubernetes.io/osc-load-balancer-public-ip-id":    pip.PublicIp,
 				"service.beta.kubernetes.io/osc-load-balancer-ingress-address": "ip",
 			}, []v1.ServicePort{
 				{
@@ -408,10 +459,10 @@ var _ = Describe("[e2e][loadbalancer] Checking proxy-protocol", func() {
 	f.NamespacePodSecurityEnforceLevel = admissionapi.LevelPrivileged
 
 	var (
-		cs   clientset.Interface
-		ns   *v1.Namespace
-		ctx  context.Context
-		oapi *oapi.Client
+		cs  clientset.Interface
+		ns  *v1.Namespace
+		ctx context.Context
+		api *oapi.Client
 	)
 
 	BeforeEach(func() {
@@ -419,7 +470,7 @@ var _ = Describe("[e2e][loadbalancer] Checking proxy-protocol", func() {
 		ns = f.Namespace
 		ctx = context.Background()
 		var err error
-		oapi, err = e2eutils.OAPI()
+		api, err = oapi.NewClient(ctx)
 		framework.ExpectNoError(err)
 	})
 
@@ -449,7 +500,7 @@ var _ = Describe("[e2e][loadbalancer] Checking proxy-protocol", func() {
 		}, nil)
 		defer e2eutils.DeleteSvc(ctx, cs, svc)
 		svc = e2eutils.WaitForSvc(ctx, cs, svc)
-		e2eutils.ExpectLoadBalancer(ctx, oapi, lbName, gomega.HaveField("BackendServerDescriptions",
+		e2eutils.ExpectLoadBalancer(ctx, api, lbName, gomega.HaveField("BackendServerDescriptions",
 			gomega.ContainElement(gomega.HaveField("PolicyNames", gomega.ContainElement(ptr.To("k8s-proxyprotocol-enabled")))),
 		))
 		e2esvc.TestReachableHTTP(ctx, svc.Status.LoadBalancer.Ingress[0].Hostname, 80, testTimeout)
@@ -461,10 +512,10 @@ var _ = Describe("[e2e][loadbalancer] Checking cleanup of resources", func() {
 	f.NamespacePodSecurityEnforceLevel = admissionapi.LevelPrivileged
 
 	var (
-		cs   clientset.Interface
-		ns   *v1.Namespace
-		ctx  context.Context
-		oapi *oapi.Client
+		cs  clientset.Interface
+		ns  *v1.Namespace
+		ctx context.Context
+		api *oapi.Client
 	)
 
 	BeforeEach(func() {
@@ -472,7 +523,7 @@ var _ = Describe("[e2e][loadbalancer] Checking cleanup of resources", func() {
 		ns = f.Namespace
 		ctx = context.Background()
 		var err error
-		oapi, err = e2eutils.OAPI()
+		api, err = oapi.NewClient(ctx)
 		framework.ExpectNoError(err)
 	})
 
@@ -500,13 +551,13 @@ var _ = Describe("[e2e][loadbalancer] Checking cleanup of resources", func() {
 
 		svc = e2eutils.WaitForSvc(ctx, cs, svc)
 		e2esvc.TestReachableHTTP(ctx, svc.Status.LoadBalancer.Ingress[0].Hostname, 80, testTimeout)
-		lb, err := e2eutils.GetLoadBalancer(ctx, oapi, lbName)
+		lb, err := e2eutils.GetLoadBalancer(ctx, api, lbName)
 		framework.ExpectNoError(err)
 		e2eutils.DeleteDeployment(ctx, cs, deployment)
 		e2eutils.DeleteSvc(ctx, cs, svc)
 		By("Checking that load-balancer & security groups have been deleted")
-		e2eutils.ExpectNoLoadBalancer(ctx, oapi, lbName)
-		e2eutils.ExpectSecurityGroups(ctx, oapi, lb, gomega.BeEmpty())
+		e2eutils.ExpectNoLoadBalancer(ctx, api, lbName)
+		e2eutils.ExpectSecurityGroups(ctx, api, lb, gomega.BeEmpty())
 	})
 })
 
@@ -515,10 +566,10 @@ var _ = Describe("[e2e][loadbalancer] Updating backends", func() {
 	f.NamespacePodSecurityEnforceLevel = admissionapi.LevelPrivileged
 
 	var (
-		cs   clientset.Interface
-		ns   *v1.Namespace
-		ctx  context.Context
-		oapi *oapi.Client
+		cs  clientset.Interface
+		ns  *v1.Namespace
+		ctx context.Context
+		api *oapi.Client
 	)
 
 	BeforeEach(func() {
@@ -526,7 +577,7 @@ var _ = Describe("[e2e][loadbalancer] Updating backends", func() {
 		ns = f.Namespace
 		ctx = context.Background()
 		var err error
-		oapi, err = e2eutils.OAPI()
+		api, err = oapi.NewClient(ctx)
 		framework.ExpectNoError(err)
 	})
 
@@ -556,11 +607,11 @@ var _ = Describe("[e2e][loadbalancer] Updating backends", func() {
 		defer e2eutils.DeleteSvc(ctx, cs, svc)
 		svc = e2eutils.WaitForSvc(ctx, cs, svc)
 		e2esvc.TestReachableHTTP(ctx, svc.Status.LoadBalancer.Ingress[0].Hostname, 80, testTimeout)
-		lb, err := e2eutils.GetLoadBalancer(ctx, oapi, lbName)
+		lb, err := e2eutils.GetLoadBalancer(ctx, api, lbName)
 		framework.ExpectNoError(err)
 		e2eutils.DeleteWorkerNode(ctx, cs)
 		By("Waiting until LB backends have changed")
-		e2eutils.ExpectLoadBalancer(ctx, oapi, lbName, gomega.Not(gomega.HaveField("Instances", lb.Instances)))
+		e2eutils.ExpectLoadBalancer(ctx, api, lbName, gomega.Not(gomega.HaveField("Instances", lb.Instances)))
 		e2esvc.TestReachableHTTP(ctx, svc.Status.LoadBalancer.Ingress[0].Hostname, 80, testTimeout)
 	})
 })
