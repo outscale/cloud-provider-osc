@@ -230,6 +230,8 @@ github.com/outscale/goutils/k8s v0.0.0-20260114123807-be82506970c1 h1:wTIyfYEnP4
 github.com/outscale/goutils/k8s v0.0.0-20260114123807-be82506970c1/go.mod h1:783bw0VGgyBMsyM/ZdhW4ffMeE+JmujG8W0qXxJ1N0Y=
 github.com/outscale/goutils/sdk v0.0.0-20260114123807-be82506970c1 h1:y0272QUdTSK33RXJRa8UBf6xdccwsvStOxEEwnZMbKY=
 github.com/outscale/goutils/sdk v0.0.0-20260114123807-be82506970c1/go.mod h1:/svrKoWyNM1dr1yH2GQeefqUM/0YUhcsBwrCzg8nYoo=
+github.com/outscale/goutils/sdk v0.0.0-20260119093230-5473652289d1 h1:wdWspDeuhRLXBv9V/vX+mfYIPmWP2b+j7xzJ+nSiK3s=
+github.com/outscale/goutils/sdk v0.0.0-20260119093230-5473652289d1/go.mod h1:/svrKoWyNM1dr1yH2GQeefqUM/0YUhcsBwrCzg8nYoo=
 github.com/outscale/osc-sdk-go/v3 v3.0.0-beta.3 h1:Pvt/buq59di5j6acnUAFWBG0LUFa6kBn6GYrx9bt+0Y=
 github.com/outscale/osc-sdk-go/v3 v3.0.0-beta.3/go.mod h1:+UWiUEbhmj8HUyhoGjmve0WKDezaEirKskWoYk5euTc=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
