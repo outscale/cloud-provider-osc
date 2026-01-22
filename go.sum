@@ -228,6 +228,8 @@ github.com/opencontainers/selinux v1.11.1 h1:nHFvthhM0qY8/m+vfhJylliSshm8G1jJ2jD
 github.com/opencontainers/selinux v1.11.1/go.mod h1:E5dMC3VPuVvVHDYmi78qvhJp8+M586T4DlDRYpFkyec=
 github.com/outscale/goutils/k8s v0.0.0-20260114123807-be82506970c1 h1:wTIyfYEnP4Pm8iz2aTsxxGEpgE6naMj8xF4SMBr9/VU=
 github.com/outscale/goutils/k8s v0.0.0-20260114123807-be82506970c1/go.mod h1:783bw0VGgyBMsyM/ZdhW4ffMeE+JmujG8W0qXxJ1N0Y=
+github.com/outscale/goutils/k8s v0.0.0-20260119093230-5473652289d1 h1:m4mDGF+dWJU0XTeSYEb58uEFVSyryhcWwdqghTo3WnU=
+github.com/outscale/goutils/k8s v0.0.0-20260119093230-5473652289d1/go.mod h1:783bw0VGgyBMsyM/ZdhW4ffMeE+JmujG8W0qXxJ1N0Y=
 github.com/outscale/goutils/sdk v0.0.0-20260114123807-be82506970c1 h1:y0272QUdTSK33RXJRa8UBf6xdccwsvStOxEEwnZMbKY=
 github.com/outscale/goutils/sdk v0.0.0-20260114123807-be82506970c1/go.mod h1:/svrKoWyNM1dr1yH2GQeefqUM/0YUhcsBwrCzg8nYoo=
 github.com/outscale/osc-sdk-go/v3 v3.0.0-beta.3 h1:Pvt/buq59di5j6acnUAFWBG0LUFa6kBn6GYrx9bt+0Y=
