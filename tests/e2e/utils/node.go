@@ -10,13 +10,15 @@ import (
 	"k8s.io/kubernetes/test/e2e/framework"
 )
 
+const ControlPlaneLabel = "node-role.kubernetes.io/control-plane"
+
 // DeleteWorkerNode deletes a worker node
 func DeleteWorkerNode(ctx context.Context, client clientset.Interface) {
 	cl := client.CoreV1().Nodes()
 	lst, err := cl.List(ctx, metav1.ListOptions{})
 	framework.ExpectNoError(err)
 	for _, node := range lst.Items {
-		if _, found := node.Labels["node-role.kubernetes.io/control-plane"]; found {
+		if _, found := node.Labels[ControlPlaneLabel]; found {
 			continue
 		}
 		ginkgo.By(fmt.Sprintf("Deleting worker node %q", node.Name))

@@ -71,7 +71,7 @@ func ListSvc(ctx context.Context, client clientset.Interface, namespace *v1.Name
 	svcClient := client.CoreV1().Services(namespace.Name)
 	list, err := svcClient.List(ctx, metav1.ListOptions{})
 	framework.ExpectNoError(err)
-	fmt.Printf("svc: %v", list.Items)
+	framework.Logf("svc: %v", list.Items)
 }
 
 // GetSvc returns a svc
