@@ -24,7 +24,7 @@ DEPLOY_NAME := "k8s-osc-ccm"
 SOURCES := $(shell find ./ccm -name '*.go')
 GOOS ?= $(shell go env GOOS)
 VERSION ?= $(shell git describe --tags --always --dirty)
-LDFLAGS   := "-w -s -X 'github.com/outscale/cloud-provider-osc/cloud-controller-manager/utils.version=$(VERSION)'"
+LDFLAGS   := "-w -s -X 'github.com/outscale/cloud-provider-osc/ccm/utils.version=$(VERSION)'"
 
 ARTIFACTS ?= ./single_az_test_e2e_report
 GINGKO_VERSION ?= v2.23.4
