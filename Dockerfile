@@ -53,4 +53,5 @@ RUN make build
 # Copy the manager into the distroless image.
 FROM ${DISTROLESS_IMAGE}
 COPY --from=builder /build/osc-cloud-controller-manager /bin/osc-cloud-controller-manager
+COPY --from=builder /build/osc-labeler /bin/osc-labeler
 ENTRYPOINT [ "/bin/osc-cloud-controller-manager" ]

@@ -59,11 +59,21 @@ help:
 	@echo "  - trivy-scan         : run CVE check on Docker images"
 	@echo "  - helm-docs          : generate helm doc"
 .PHONY: build
-build: $(SOURCES)
+build: build-ccm build-labeler
+
+.PHONY: build-ccm
+build-ccm: $(SOURCES)
 	CGO_ENABLED=0 GOOS=$(GOOS) go build $(GO_ADD_OPTIONS) \
 		-ldflags $(LDFLAGS) \
 		-o osc-cloud-controller-manager \
-		ccm/cmd/osc-cloud-controller-manager/main.go
+		cmd/osc-cloud-controller-manager/*.go
+
+.PHONY: build-labeler
+build-labeler: $(SOURCES)
+	CGO_ENABLED=0 GOOS=$(GOOS) go build $(GO_ADD_OPTIONS) \
+		-ldflags $(LDFLAGS) \
+		-o osc-labeler \
+		cmd/osc-labeler/*.go
 
 .PHONY: verify
 verify: verify-fmt vet

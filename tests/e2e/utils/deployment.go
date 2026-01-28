@@ -16,7 +16,7 @@ import (
 	imageutils "k8s.io/kubernetes/test/utils/image"
 )
 
-// ListDeployment list deployement
+// ListDeployment list deployment
 func ListDeployment(ctx context.Context, client clientset.Interface, namespace *v1.Namespace) {
 	deploymentsClient := client.AppsV1().Deployments(namespace.Name)
 	fmt.Printf("Listing deployments in namespace %q:\n", namespace.Name)
@@ -29,7 +29,7 @@ func ListDeployment(ctx context.Context, client clientset.Interface, namespace *
 	}
 }
 
-// CreateDeployment create a deployement
+// CreateDeployment create a deployment
 func CreateDeployment(ctx context.Context, client clientset.Interface, namespace *v1.Namespace, replicas int32, ports []v1.ContainerPort) *appsv1.Deployment {
 	imageName := imageutils.GetE2EImage(imageutils.Agnhost)
 	name := "echoserver"
@@ -56,6 +56,7 @@ func CreateDeployment(ctx context.Context, client clientset.Interface, namespace
 					Containers: []v1.Container{
 						{
 							Name:            name,
+							Args:            []string{"netexec", "--http-port=8080"},
 							ImagePullPolicy: v1.PullIfNotPresent,
 							Image:           imageName,
 							Ports:           ports,
@@ -65,15 +66,13 @@ func CreateDeployment(ctx context.Context, client clientset.Interface, namespace
 			},
 		},
 	}
-	deployment.Spec.Template.Spec.Containers[0].Args = []string{"netexec", "--http-port=8080"}
-
 	// Create Deployment
 	result, err := deploymentsClient.Create(ctx, deployment, metav1.CreateOptions{})
 	framework.ExpectNoError(err)
 	return result
 }
 
-// CreateProxyProtocolDeployment create a deployement
+// CreateProxyProtocolDeployment create a deployment
 func CreateProxyProtocolDeployment(ctx context.Context, client clientset.Interface, namespace *v1.Namespace, replicas int32, ports []v1.ContainerPort) *appsv1.Deployment {
 	imageName := "gcr.io/google_containers/echoserver:1.10"
 	name := "echoserver"
