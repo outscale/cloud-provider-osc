@@ -24,7 +24,7 @@ DEPLOY_NAME := "k8s-osc-ccm"
 SOURCES := $(shell find ./ccm -name '*.go')
 GOOS ?= $(shell go env GOOS)
 VERSION ?= $(shell git describe --tags --always --dirty)
-LDFLAGS   := "-w -s -X 'github.com/outscale/cloud-provider-osc/cloud-controller-manager/utils.version=$(VERSION)'"
+LDFLAGS   := "-w -s -X 'github.com/outscale/cloud-provider-osc/ccm/utils.version=$(VERSION)'"
 
 ARTIFACTS ?= ./single_az_test_e2e_report
 GINGKO_VERSION ?= v2.23.4
@@ -59,11 +59,21 @@ help:
 	@echo "  - trivy-scan         : run CVE check on Docker images"
 	@echo "  - helm-docs          : generate helm doc"
 .PHONY: build
-build: $(SOURCES)
+build: build-ccm build-labeler
+
+.PHONY: build-ccm
+build-ccm: $(SOURCES)
 	CGO_ENABLED=0 GOOS=$(GOOS) go build $(GO_ADD_OPTIONS) \
 		-ldflags $(LDFLAGS) \
 		-o osc-cloud-controller-manager \
-		ccm/cmd/osc-cloud-controller-manager/main.go
+		cmd/osc-cloud-controller-manager/*.go
+
+.PHONY: build-labeler
+build-labeler: $(SOURCES)
+	CGO_ENABLED=0 GOOS=$(GOOS) go build $(GO_ADD_OPTIONS) \
+		-ldflags $(LDFLAGS) \
+		-o osc-labeler \
+		cmd/osc-labeler/*.go
 
 .PHONY: verify
 verify: verify-fmt vet

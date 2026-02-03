@@ -39,7 +39,8 @@ More details on the [cloud-controller role](https://kubernetes.io/docs/concepts/
 
 ### Features
 - Node controller: manages nodes and node metadata,
-- Service controller: allows creation of LoadBalancer services, based on [Load Balancer Units (LBU)](https://docs.outscale.com/en/userguide/About-Load-Balancers.html). 
+- Service controller: allows creation of LoadBalancer services, based on [Load Balancer Units (LBU)](https://docs.outscale.com/en/userguide/About-Load-Balancers.html),
+- Node labeler: a separate binary that can be executed on nodes to add cluster/physical host server labels on nodes ([see example](../examples/node-labels/README.md))
 
 ---
 
@@ -47,7 +48,7 @@ More details on the [cloud-controller role](https://kubernetes.io/docs/concepts/
 
 ### Kubernetes version support
 
-Each Kubernetes version requires a specific CCM version.
+Each CCM version targets a specific Kubernetes version. It is recommended to run the CCM version matching your Kubernetes version, but higher versions are expected to work.
 
 CCM versions use the same major and minor version numbers as their corresponding Kubernetes releases. Patch version numbering is specific to the Outscale CCM and does not match Kubernetes patch releases.
 
@@ -55,7 +56,7 @@ E.g. Kubernetes v1.32.x will need CCM v1.32.y.
 
 CCM v0.2.8 can be safely used with Kubernetes 1.30.x, and CCM v1.0.x can be safely used with Kubernetes 1.32.x.
 
-CCM versions are available for Kubernetes 1.31, 1.32, and 1.33. As Kubernetes 1.31 has reached end of life (EOL), CCM v1.31 releases will be discontinued in the near future. Support for Kubernetes 1.34 will be added soon.
+CCM versions will be released for Kubernetes 1.32, 1.32, 1.33 and 1.34. As Kubernetes 1.31 has reached its end of life (EOL), no CCM releases are planned. In case of a critical issue with CCM v1.31.3, the latest CCM version for 1.32 may be used instead.
 
 ### Support matrix
 
