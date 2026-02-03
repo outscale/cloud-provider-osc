@@ -80,6 +80,7 @@ runs:
         OSC_ACCESS_KEY: ${{ inputs.osc_access_key }}
         OSC_SECRET_KEY: ${{ inputs.osc_secret_key }}
         OSC_REGION: ${{ inputs.osc_region }}
+        CCM_IMAGE: "${{ inputs.registry }}/outscale/cloud-provider-osc:${{ inputs.version }}"
     - name: 📝 Get CCM logs
       run: |
         kubectl logs -l app=osc-cloud-controller-manager -n kube-system --tail=-1

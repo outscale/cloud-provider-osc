@@ -1,5 +1,17 @@
 # Changelog
 
+## [v1.34.4-beta.1] - 2026-02-03
+
+No change since v1.34.4-alpha.1
+
+## [v1.33.4-beta.1] - 2026-02-03
+
+No change since v1.33.4-alpha.1
+
+## [v1.32.4-beta.1] - 2026-02-03
+
+No change since v1.32.4-alpha.1
+
 ## [v1.34.4-alpha.1] - 2026-01-21
 
 The CCM has switched to a new Outscale SDK. It now handles backoff on retryable API errors.
