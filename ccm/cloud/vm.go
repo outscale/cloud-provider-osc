@@ -26,6 +26,7 @@ type VM struct {
 	NodeName  types.NodeName
 	SubRegion string
 	Region    string
+	NetID     *string
 	SubnetID  *string
 	VmType    string
 
@@ -38,6 +39,7 @@ func FromOscVm(vm *osc.Vm) *VM {
 		ID:        vm.VmId,
 		NodeName:  mapInstanceToNodeName(vm),
 		VmType:    vm.VmType,
+		NetID:     vm.NetId,
 		SubnetID:  vm.SubnetId,
 		SubRegion: vm.Placement.SubregionName,
 		cloudVm:   vm,

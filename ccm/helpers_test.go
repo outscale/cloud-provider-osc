@@ -341,6 +341,26 @@ func expectFindLBSubnetWithRole(mock *mocks_osc.MockClient) {
 		}}, nil)
 }
 
+func expectFindLBSubnetWithRoleWithNetFallback(mock *mocks_osc.MockClient) {
+	mock.EXPECT().
+		ReadSubnets(gomock.Any(), gomock.Eq(osc.ReadSubnetsRequest{
+			Filters: &osc.FiltersSubnet{
+				TagKeys: &[]string{"OscK8sClusterID/foo"},
+			},
+		})).
+		Return(&osc.ReadSubnetsResponse{Subnets: &[]osc.Subnet{}}, nil)
+	mock.EXPECT().
+		ReadSubnets(gomock.Any(), gomock.Eq(osc.ReadSubnetsRequest{
+			Filters: &osc.FiltersSubnet{
+				NetIds: &[]string{"net-bar"},
+			},
+		})).
+		Return(&osc.ReadSubnetsResponse{Subnets: &[]osc.Subnet{
+			{SubnetId: "subnet-service", NetId: "net-foo", SubregionName: "eu-west-2a", Tags: []osc.ResourceTag{{Key: tags.RoleKey(role.Service)}}},
+			{SubnetId: "subnet-service.internal", NetId: "net-foo", SubregionName: "eu-west-2a", Tags: []osc.ResourceTag{{Key: tags.RoleKey(role.InternalService)}}},
+		}}, nil)
+}
+
 func expectFindNoLBSubnetWithRole(mock *mocks_osc.MockClient) {
 	mock.EXPECT().
 		ReadSubnets(gomock.Any(), gomock.Eq(osc.ReadSubnetsRequest{
