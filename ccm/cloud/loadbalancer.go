@@ -599,8 +599,18 @@ func (c *Cloud) ensureSubnet(ctx context.Context, l *LoadBalancer) error {
 			TagKeys: ptr.To(c.clusterIDTagKeys()),
 		},
 	})
+	if err == nil && len(*resp.Subnets) == 0 {
+		resp, err = c.api.OAPI().ReadSubnets(ctx, osc.ReadSubnetsRequest{
+			Filters: &osc.FiltersSubnet{
+				NetIds: &[]string{*c.Self.NetID},
+			},
+		})
+	}
 	if err != nil {
 		return fmt.Errorf("find subnet: %w", err)
+	}
+	if len(*resp.Subnets) == 0 {
+		return errors.New("no subnet found")
 	}
 	azs := l.SubRegions
 	if len(azs) == 0 {
