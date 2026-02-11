@@ -1,5 +1,20 @@
 # Changelog
 
+## [v1.34.4-rc.1] - 2026-02-11
+
+### 🐛 Fixed
+* 🐛 fix(loadbalancer): do not crash when subnets have no owner by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/621
+
+## [v1.33.4-rc.1] - 2026-02-11
+
+### 🐛 Fixed
+* 🐛 fix(loadbalancer): do not crash when subnets have no owner by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/621
+
+## [v1.32.4-rc.1] - 2026-02-11
+
+### 🐛 Fixed
+* 🐛 fix(loadbalancer): do not crash when subnets have no owner by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/621
+
 ## [v1.34.4-beta.1] - 2026-02-03
 
 No change since v1.34.4-alpha.1
