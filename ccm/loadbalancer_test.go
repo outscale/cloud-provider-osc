@@ -55,7 +55,7 @@ func TestGetLoadBalancer(t *testing.T) {
 			desc.PublicIp = ptr.To("198.51.100.42")
 		})
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		status, exists, err := p.GetLoadBalancer(context.TODO(), "foo", svc)
+		status, exists, err := p.GetLoadBalancer(t.Context(), "foo", svc)
 		require.NoError(t, err)
 		assert.True(t, exists)
 		assert.Equal(t, &corev1.LoadBalancerStatus{Ingress: []corev1.LoadBalancerIngress{{Hostname: "bar.example.com"}}}, status)
@@ -69,7 +69,7 @@ func TestGetLoadBalancer(t *testing.T) {
 			desc.PublicIp = ptr.To("198.51.100.42")
 		})
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		status, exists, err := p.GetLoadBalancer(context.TODO(), "foo", svc)
+		status, exists, err := p.GetLoadBalancer(t.Context(), "foo", svc)
 		require.NoError(t, err)
 		assert.True(t, exists)
 		assert.Equal(t, &corev1.LoadBalancerStatus{Ingress: []corev1.LoadBalancerIngress{{IP: "198.51.100.42", IPMode: ptr.To(corev1.LoadBalancerIPModeProxy)}}}, status)
@@ -83,7 +83,7 @@ func TestGetLoadBalancer(t *testing.T) {
 			desc.PublicIp = ptr.To("198.51.100.42")
 		})
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		status, exists, err := p.GetLoadBalancer(context.TODO(), "foo", svc)
+		status, exists, err := p.GetLoadBalancer(t.Context(), "foo", svc)
 		require.NoError(t, err)
 		assert.True(t, exists)
 		assert.Equal(t, &corev1.LoadBalancerStatus{Ingress: []corev1.LoadBalancerIngress{{Hostname: "bar.example.com"}}}, status)
@@ -97,7 +97,7 @@ func TestGetLoadBalancer(t *testing.T) {
 			desc.PublicIp = ptr.To("198.51.100.42")
 		})
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		status, exists, err := p.GetLoadBalancer(context.TODO(), "foo", svc)
+		status, exists, err := p.GetLoadBalancer(t.Context(), "foo", svc)
 		require.NoError(t, err)
 		assert.True(t, exists)
 		assert.Equal(t, &corev1.LoadBalancerStatus{Ingress: []corev1.LoadBalancerIngress{{Hostname: "bar.example.com", IP: "198.51.100.42", IPMode: ptr.To(corev1.LoadBalancerIPModeProxy)}}}, status)
@@ -107,7 +107,7 @@ func TestGetLoadBalancer(t *testing.T) {
 		c, mock, _ := newAPI(t, self, []string{"foo"})
 		expectReadLoadBalancer(mock, func(desc *osc.LoadBalancer) { desc.DnsName = "" })
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		status, exists, err := p.GetLoadBalancer(context.TODO(), "foo", svc)
+		status, exists, err := p.GetLoadBalancer(t.Context(), "foo", svc)
 		require.NoError(t, err)
 		assert.True(t, exists)
 		assert.Empty(t, status.Ingress)
@@ -117,7 +117,7 @@ func TestGetLoadBalancer(t *testing.T) {
 		c, mock, _ := newAPI(t, self, []string{"foo"})
 		expectReadLoadBalancerNoneFound(mock)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		_, exists, err := p.GetLoadBalancer(context.TODO(), "foo", svc)
+		_, exists, err := p.GetLoadBalancer(t.Context(), "foo", svc)
 		require.NoError(t, err)
 		assert.False(t, exists)
 	})
@@ -131,7 +131,7 @@ func TestGetLoadBalancer(t *testing.T) {
 			desc.PublicIp = ptr.To("198.51.100.42")
 		})
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		status, exists, err := p.GetLoadBalancer(context.TODO(), "foo", svc)
+		status, exists, err := p.GetLoadBalancer(t.Context(), "foo", svc)
 		require.NoError(t, err)
 		assert.True(t, exists)
 		assert.Equal(t, &corev1.LoadBalancerStatus{Ingress: []corev1.LoadBalancerIngress{{Hostname: "bar.example.com"}}}, status)
@@ -146,7 +146,7 @@ func TestGetLoadBalancer(t *testing.T) {
 			desc.PublicIp = ptr.To("198.51.100.42")
 		})
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		status, exists, err := p.GetLoadBalancer(context.TODO(), "foo", svc)
+		status, exists, err := p.GetLoadBalancer(t.Context(), "foo", svc)
 		require.NoError(t, err)
 		assert.True(t, exists)
 		assert.Equal(t, &corev1.LoadBalancerStatus{Ingress: []corev1.LoadBalancerIngress{{Hostname: "bar.example.com", IP: "198.51.100.42", IPMode: ptr.To(corev1.LoadBalancerIPModeVIP)}}}, status)
@@ -157,7 +157,7 @@ func TestGetLoadBalancerName(t *testing.T) {
 	svc := testSvc()
 	c, _, _ := newAPI(t, self, []string{"foo"})
 	p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-	name := p.GetLoadBalancerName(context.TODO(), "foo", svc)
+	name := p.GetLoadBalancerName(t.Context(), "foo", svc)
 	assert.Equal(t, lbName, name)
 }
 
@@ -167,7 +167,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		c, oapimock, _ := newAPI(t, self, []string{"foo"})
 		expectLoadbalancerExistsAndNotOwned(oapimock)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		_, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.Error(t, err)
 	})
 	t.Run("Cannot create a load-balancer if a LBU with the same name already exists but from another service", func(t *testing.T) {
@@ -179,7 +179,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 			}
 		})
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		_, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.Error(t, err)
 	})
 	t.Run("Cannot create a load-balancer if no subnet is found", func(t *testing.T) {
@@ -190,7 +190,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectFindNoLBSubnetWithRole(oapimock)
 		expectFindNoPublicRouteTables(oapimock)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		_, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.Error(t, err)
 	})
 	t.Run("A public LB is created, and a retryable error is returned if it is not ready", func(t *testing.T) {
@@ -209,7 +209,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectDescribeLoadBalancerAttributes(lbmock)
 		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		_, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
 	})
 	t.Run("A public LB is created, and a security group is reused if already created", func(t *testing.T) {
@@ -228,8 +228,29 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectDescribeLoadBalancerAttributes(lbmock)
 		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		_, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
+	})
+	t.Run("A subnet is found, event if subnets are not tagged by owner", func(t *testing.T) {
+		svc := testSvc()
+		c, oapimock, lbmock := newAPI(t, self, []string{"foo"})
+		expectVMs(oapimock, sdkSelf, sdkVM)
+		expectNoLoadbalancer(oapimock)
+		expectFindLBSubnetWithRoleWithNetFallback(oapimock)
+		expectSGAlreadyExists(oapimock)
+		expectFindWorkerSGByRole(oapimock)
+		expectAddIngressSGRule(oapimock, []string{"0.0.0.0/0"}, "sg-foo")
+		expectAddInternalSGRule(oapimock, "sg-foo", "sg-worker")
+		expectCreateLoadBalancer(oapimock, func(clbr *osc.CreateLoadBalancerRequest) {
+			clbr.Subnets = &[]string{"subnet-service"}
+		})
+		expectConfigureHealthCheck(oapimock)
+		expectDescribeProxyProtocol(lbmock, false)
+		expectDescribeLoadBalancerAttributes(lbmock)
+		expectRegisterInstances(oapimock, sdkVM.VmId)
+		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
+		_, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
+		require.Error(t, err)
 	})
 	t.Run("A public LB is created, in a public subnet if subnets have no role", func(t *testing.T) {
 		svc := testSvc()
@@ -250,7 +271,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectDescribeLoadBalancerAttributes(lbmock)
 		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		_, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.Error(t, err)
 	})
 	t.Run("An internal LB is created, in a private subnet if subnets have no role", func(t *testing.T) {
@@ -274,7 +295,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectDescribeLoadBalancerAttributes(lbmock)
 		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		_, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.Error(t, err)
 	})
 	t.Run("A public LB is created with a predefined public IP (by ID)", func(t *testing.T) {
@@ -297,7 +318,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectDescribeLoadBalancerAttributes(lbmock)
 		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		_, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
 	})
 	t.Run("A public LB is created with a predefined public IP (by IP)", func(t *testing.T) {
@@ -319,7 +340,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectDescribeLoadBalancerAttributes(lbmock)
 		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		_, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
 	})
 	t.Run("A public LB is created with a public IP from a pool", func(t *testing.T) {
@@ -344,7 +365,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectDescribeLoadBalancerAttributes(lbmock)
 		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		_, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
 	})
 	t.Run("If pool is empty, no LB is created", func(t *testing.T) {
@@ -356,7 +377,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectFindLBSubnetWithRole(oapimock)
 		expectPublicIPFromPool(oapimock, nil)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		_, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.Error(t, err)
 	})
 	t.Run("If all IPs have been allocated, no LB is created", func(t *testing.T) {
@@ -370,7 +391,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 			{PublicIpId: "ip-foo", LinkPublicIpId: ptr.To("ipassoc-foo"), PublicIp: "1.2.3.4"},
 		})
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		_, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.Error(t, err)
 	})
 	t.Run("An internal LB is created and a retryable error is returned when not ready", func(t *testing.T) {
@@ -393,7 +414,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectDescribeLoadBalancerAttributes(lbmock)
 		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		_, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
 	})
 	t.Run("IP restriction may be configured", func(t *testing.T) {
@@ -413,7 +434,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectDescribeLoadBalancerAttributes(lbmock)
 		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		_, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
 	})
 	t.Run("The LB SG can be set", func(t *testing.T) {
@@ -435,7 +456,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectDescribeLoadBalancerAttributes(lbmock)
 		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		_, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
 	})
 	t.Run("A different role may be targeted", func(t *testing.T) {
@@ -455,7 +476,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectDescribeLoadBalancerAttributes(lbmock)
 		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		_, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
 	})
 	t.Run("The LB subnet can be set", func(t *testing.T) {
@@ -477,7 +498,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectDescribeLoadBalancerAttributes(lbmock)
 		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		_, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
 	})
 	t.Run("HTTP SSL termination can be set on the LB", func(t *testing.T) {
@@ -507,7 +528,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectDescribeLoadBalancerAttributes(lbmock)
 		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		_, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
 	})
 	t.Run("HTTP SSL termination can be set on a single port", func(t *testing.T) {
@@ -549,7 +570,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectDescribeLoadBalancerAttributes(lbmock)
 		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		_, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
 	})
 	t.Run("TCP SSL termination can be set on the LB", func(t *testing.T) {
@@ -578,7 +599,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectDescribeLoadBalancerAttributes(lbmock)
 		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		_, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
 	})
 	t.Run("backend protocol can be set", func(t *testing.T) {
@@ -601,7 +622,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectDescribeLoadBalancerAttributes(lbmock)
 		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		_, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
 	})
 	t.Run("proxy protocol can be set on all ports", func(t *testing.T) {
@@ -642,7 +663,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectDescribeLoadBalancerAttributes(lbmock)
 		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		_, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
 	})
 	t.Run("proxy protocol can be set on a single port", func(t *testing.T) {
@@ -683,7 +704,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectDescribeLoadBalancerAttributes(lbmock)
 		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		_, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
 	})
 	t.Run("logs can be stored", func(t *testing.T) {
@@ -714,7 +735,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		})
 		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		_, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
 	})
 	t.Run("Nodes can be filtered", func(t *testing.T) {
@@ -738,7 +759,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectDescribeLoadBalancerAttributes(lbmock)
 		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode1, &vmNode2})
+		_, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode1, &vmNode2})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
 	})
 	t.Run("HTTP health checks can be configured", func(t *testing.T) {
@@ -772,7 +793,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectDescribeLoadBalancerAttributes(lbmock)
 		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		_, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
 	})
 	t.Run("HTTPs health checks can be configured", func(t *testing.T) {
@@ -806,7 +827,7 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		expectDescribeLoadBalancerAttributes(lbmock)
 		expectRegisterInstances(oapimock, sdkVM.VmId)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		_, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
 	})
 }
@@ -833,7 +854,7 @@ func TestEnsureLoadBalancer_Update(t *testing.T) {
 		expectFindExistingIngressSecurityGroup(oapimock, "sg-foo")
 		expectFindExistingWorkerSG(oapimock)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		status, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		status, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.NoError(t, err)
 		assert.Equal(t, &corev1.LoadBalancerStatus{Ingress: []corev1.LoadBalancerIngress{{Hostname: "foo.example.com"}}}, status)
 	})
@@ -853,7 +874,7 @@ func TestEnsureLoadBalancer_Update(t *testing.T) {
 		expectFindExistingIngressSecurityGroup(oapimock, "sg-foo")
 		expectFindExistingWorkerSG(oapimock)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		status, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		status, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.NoError(t, err)
 		assert.Equal(t, &corev1.LoadBalancerStatus{Ingress: []corev1.LoadBalancerIngress{{IP: "198.51.100.42", IPMode: ptr.To(corev1.LoadBalancerIPModeProxy)}}}, status)
 	})
@@ -873,7 +894,7 @@ func TestEnsureLoadBalancer_Update(t *testing.T) {
 		expectFindExistingIngressSecurityGroup(oapimock, "sg-foo")
 		expectFindExistingWorkerSG(oapimock)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		status, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		status, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.NoError(t, err)
 		assert.Equal(t, &corev1.LoadBalancerStatus{Ingress: []corev1.LoadBalancerIngress{{Hostname: "foo.example.com"}}}, status)
 	})
@@ -893,7 +914,7 @@ func TestEnsureLoadBalancer_Update(t *testing.T) {
 		expectFindExistingIngressSecurityGroup(oapimock, "sg-foo")
 		expectFindExistingWorkerSG(oapimock)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		status, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		status, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.NoError(t, err)
 		assert.Equal(t, &corev1.LoadBalancerStatus{Ingress: []corev1.LoadBalancerIngress{{Hostname: "foo.example.com", IP: "198.51.100.42", IPMode: ptr.To(corev1.LoadBalancerIPModeProxy)}}}, status)
 	})
@@ -914,7 +935,7 @@ func TestEnsureLoadBalancer_Update(t *testing.T) {
 		expectFindExistingIngressSecurityGroup(oapimock, "sg-foo")
 		expectFindExistingWorkerSG(oapimock)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		status, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		status, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.NoError(t, err)
 		assert.Equal(t, &corev1.LoadBalancerStatus{Ingress: []corev1.LoadBalancerIngress{{IP: "10.0.0.1", IPMode: ptr.To(corev1.LoadBalancerIPModeProxy)}}}, status)
 	})
@@ -941,7 +962,7 @@ func TestEnsureLoadBalancer_Update(t *testing.T) {
 			req.Rules[0].ToPortRange = 8080
 		})
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		_, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.NoError(t, err)
 	})
 	t.Run("Proxy protocol can be set", func(t *testing.T) {
@@ -961,7 +982,7 @@ func TestEnsureLoadBalancer_Update(t *testing.T) {
 		expectFindExistingIngressSecurityGroup(oapimock, "sg-foo")
 		expectFindExistingWorkerSG(oapimock)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		_, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.NoError(t, err)
 	})
 	t.Run("Proxy protocol is not changed", func(t *testing.T) {
@@ -980,7 +1001,7 @@ func TestEnsureLoadBalancer_Update(t *testing.T) {
 		expectFindExistingIngressSecurityGroup(oapimock, "sg-foo")
 		expectFindExistingWorkerSG(oapimock)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		_, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.NoError(t, err)
 	})
 	t.Run("Proxy protocol can be disabled", func(t *testing.T) {
@@ -999,7 +1020,7 @@ func TestEnsureLoadBalancer_Update(t *testing.T) {
 		expectFindExistingIngressSecurityGroup(oapimock, "sg-foo")
 		expectFindExistingWorkerSG(oapimock)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		_, err := p.EnsureLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		_, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.NoError(t, err)
 	})
 }
@@ -1028,7 +1049,7 @@ func TestUpdateLoadBalancer(t *testing.T) {
 			req.Rules[0].ToPortRange = 8080
 		})
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		err := p.UpdateLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		err := p.UpdateLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.NoError(t, err)
 	})
 	t.Run("SSL Certificate is updated", func(t *testing.T) {
@@ -1056,7 +1077,7 @@ func TestUpdateLoadBalancer(t *testing.T) {
 				ServerCertificateId: ptr.To("arn:aws:service:region:account:new_resource"),
 			})).Return(&osc.UpdateLoadBalancerResponse{}, nil)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		err := p.UpdateLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		err := p.UpdateLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.NoError(t, err)
 	})
 	t.Run("IP restriction is updated", func(t *testing.T) {
@@ -1077,7 +1098,7 @@ func TestUpdateLoadBalancer(t *testing.T) {
 		expectDeleteIngressSGRule(oapimock, []string{"0.0.0.0/0"}, "sg-foo")
 		expectAddIngressSGRule(oapimock, []string{"198.51.100.0/24", "203.0.113.0/24"}, "sg-foo")
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		err := p.UpdateLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		err := p.UpdateLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.NoError(t, err)
 	})
 	t.Run("Cannot update a load-balancer if a LBU with the same name already exists but from another cluster", func(t *testing.T) {
@@ -1089,7 +1110,7 @@ func TestUpdateLoadBalancer(t *testing.T) {
 			}
 		})
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		err := p.UpdateLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		err := p.UpdateLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.Error(t, err)
 	})
 	t.Run("Can update a load-balancer even if service tag is not set", func(t *testing.T) {
@@ -1111,7 +1132,7 @@ func TestUpdateLoadBalancer(t *testing.T) {
 		expectFindExistingIngressSecurityGroup(oapimock, "sg-foo")
 		expectFindExistingWorkerSG(oapimock)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		err := p.UpdateLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		err := p.UpdateLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.NoError(t, err)
 	})
 	t.Run("Nodes are added", func(t *testing.T) {
@@ -1129,7 +1150,7 @@ func TestUpdateLoadBalancer(t *testing.T) {
 		expectFindExistingWorkerSG(oapimock)
 		expectRegisterInstances(oapimock, "i-foo")
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		err := p.UpdateLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		err := p.UpdateLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.NoError(t, err)
 	})
 	t.Run("Nodes are removed", func(t *testing.T) {
@@ -1148,7 +1169,7 @@ func TestUpdateLoadBalancer(t *testing.T) {
 		expectFindExistingWorkerSG(oapimock)
 		expectDeregisterInstances(oapimock, "i-bar")
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		err := p.UpdateLoadBalancer(context.TODO(), "foo", svc, []*corev1.Node{&vmNode})
+		err := p.UpdateLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.NoError(t, err)
 	})
 }
@@ -1166,7 +1187,7 @@ func TestEnsureLoadBalancerDeleted(t *testing.T) {
 		expectCreateTag(oapimock, "sg-foo", osc.ResourceTag{Key: cloud.SGToDeleteTagKey})
 		expectDeleteLoadBalancer(oapimock)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		err := p.EnsureLoadBalancerDeleted(context.TODO(), "foo", svc)
+		err := p.EnsureLoadBalancerDeleted(t.Context(), "foo", svc)
 		require.NoError(t, err)
 	})
 	t.Run("If the load-balancer has already been deleted, do nothing", func(t *testing.T) {
@@ -1174,7 +1195,7 @@ func TestEnsureLoadBalancerDeleted(t *testing.T) {
 		c, oapimock, _ := newAPI(t, self, []string{"foo"})
 		expectNoLoadbalancer(oapimock)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		err := p.EnsureLoadBalancerDeleted(context.TODO(), "foo", svc)
+		err := p.EnsureLoadBalancerDeleted(t.Context(), "foo", svc)
 		require.NoError(t, err)
 	})
 	t.Run("If the load-balancer belongs to someone else, do nothing", func(t *testing.T) {
@@ -1182,7 +1203,7 @@ func TestEnsureLoadBalancerDeleted(t *testing.T) {
 		c, oapimock, _ := newAPI(t, self, []string{"foo"})
 		expectLoadbalancerExistsAndNotOwned(oapimock)
 		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
-		err := p.EnsureLoadBalancerDeleted(context.TODO(), "foo", svc)
+		err := p.EnsureLoadBalancerDeleted(t.Context(), "foo", svc)
 		require.NoError(t, err)
 	})
 }
