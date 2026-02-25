@@ -8,7 +8,7 @@ require (
 	github.com/aws/aws-sdk-go v1.55.8
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/onsi/ginkgo/v2 v2.28.1
-	github.com/onsi/gomega v1.39.0
+	github.com/onsi/gomega v1.39.1
 	github.com/outscale/goutils/k8s v0.0.0-20260127143749-d95db5597c97
 	github.com/outscale/goutils/sdk v0.0.0-20260127143749-d95db5597c97
 	github.com/outscale/osc-sdk-go/v3 v3.0.0-beta.3
