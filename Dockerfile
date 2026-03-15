@@ -23,7 +23,7 @@ ARG GOLANG_IMAGE=golang:1.26.1@sha256:c7e98cc0fd4dfb71ee7465fee6c9a5f079163307e4
 # the fully-qualified image can be obtained by entering
 # "gcr.io/distroless/static:latest" in a browser and then copying the
 # fully-qualified image from the web page.
-ARG DISTROLESS_IMAGE=gcr.io/distroless/static@sha256:28efbe90d0b2f2a3ee465cc5b44f3f2cf5533514cf4d51447a977a5dc8e526d0
+ARG DISTROLESS_IMAGE=gcr.io/distroless/static@sha256:47b2d72ff90843eb8a768b5c2f89b40741843b639d065b9b937b07cd59b479c6
 
 ################################################################################
 ##                              BUILD STAGE                                   ##
