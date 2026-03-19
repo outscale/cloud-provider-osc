@@ -623,8 +623,17 @@ func (c *Cloud) ensureSubnet(ctx context.Context, l *LoadBalancer) error {
 
 	l.SubnetID = make([]string, l.Instances)
 	ensureByTag := func(key, subregion string, i int) bool {
+		// right tag, right subregion
 		for _, subnet := range *resp.Subnets {
 			if tags.Has(subnet.Tags, key) && subnet.SubregionName == subregion {
+				l.SubnetID[i] = subnet.SubnetId
+				l.NetID = subnet.NetId
+				return true
+			}
+		}
+		// fallback: right tag, other subregion
+		for _, subnet := range *resp.Subnets {
+			if tags.Has(subnet.Tags, key) {
 				l.SubnetID[i] = subnet.SubnetId
 				l.NetID = subnet.NetId
 				return true
