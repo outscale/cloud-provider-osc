@@ -231,7 +231,28 @@ func TestEnsureLoadBalancer_Create(t *testing.T) {
 		_, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
 		require.ErrorIs(t, err, cloud.ErrLoadBalancerIsNotReady)
 	})
-	t.Run("A subnet is found, event if subnets are not tagged by owner", func(t *testing.T) {
+	t.Run("A subnet is found, even if no subnet exists in the right subregion", func(t *testing.T) {
+		svc := testSvc()
+		c, oapimock, lbmock := newAPI(t, self, []string{"foo"})
+		expectVMs(oapimock, sdkSelf, sdkVM)
+		expectNoLoadbalancer(oapimock)
+		expectFindLBSubnetWithRoleButAnotherSubregion(oapimock)
+		expectSGAlreadyExists(oapimock)
+		expectFindWorkerSGByRole(oapimock)
+		expectAddIngressSGRule(oapimock, []string{"0.0.0.0/0"}, "sg-foo")
+		expectAddInternalSGRule(oapimock, "sg-foo", "sg-worker")
+		expectCreateLoadBalancer(oapimock, func(clbr *osc.CreateLoadBalancerRequest) {
+			clbr.Subnets = &[]string{"subnet-service"}
+		})
+		expectConfigureHealthCheck(oapimock)
+		expectDescribeProxyProtocol(lbmock, false)
+		expectDescribeLoadBalancerAttributes(lbmock)
+		expectRegisterInstances(oapimock, sdkVM.VmId)
+		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{})
+		_, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
+		require.Error(t, err)
+	})
+	t.Run("A subnet is found, even if subnets are not tagged by owner", func(t *testing.T) {
 		svc := testSvc()
 		c, oapimock, lbmock := newAPI(t, self, []string{"foo"})
 		expectVMs(oapimock, sdkSelf, sdkVM)
