@@ -1,0 +1,30 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - kubernetes-*
+      - main
+  schedule:
+    - cron: "28 6 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  Trivy:
+    runs-on: ubuntu-latest
+    steps:
+    - name: ⬇️ Checkout repository
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+    - name: Image
+      run: bash -c "make build-image"
+    - name: 🔎 Trivy-Scan
+      id: trivyscan
+      run: make trivy-scan
+    - name: ⬆️ Upload Trivy results
+      if: ${{ github.event_name != 'pull_request' }}
+      uses: github/codeql-action/upload-sarif@v4
+      with:
+        sarif_file: './.trivyscan/report.sarif'

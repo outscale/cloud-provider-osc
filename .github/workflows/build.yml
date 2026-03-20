@@ -42,11 +42,3 @@ jobs:
       run: bash -c "make check-helm-docs"
     - name: 🔎 Check manifest
       run: bash -c "make check-helm-manifest"
-    - name: 🔎 Trivy-Scan
-      id: trivyscan
-      run: make trivy-scan
-    # - name: Upload Trivy results
-    #   if: ${{ github.event_name != 'pull_request' }}
-    #   uses: github/codeql-action/upload-sarif@v4
-    #   with:
-    #     sarif_file: './.trivyscan/report.sarif'
