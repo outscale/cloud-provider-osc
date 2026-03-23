@@ -1,10 +1,15 @@
-name: Build
+name: Trivy
 
 on:
   push:
     branches:
       - kubernetes-*
       - main
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/trivy.yml"
   schedule:
     - cron: "28 6 * * 0"
   workflow_dispatch:
@@ -13,18 +18,27 @@ permissions:
   contents: read
 
 jobs:
-  Trivy:
+  trivy:
     runs-on: ubuntu-latest
     steps:
     - name: ⬇️ Checkout repository
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
     - name: Image
-      run: bash -c "make build-image"
+      run: |
+        make build-image
+      env:
+        VERSION: ${{ github.sha }}
     - name: 🔎 Trivy-Scan
-      id: trivyscan
-      run: make trivy-scan
+      uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 #v0.33.1
+      with:
+        image-ref: outscale/cloud-provider-osc:${{ github.sha }}
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        severity: 'CRITICAL,HIGH'
+        trivyignores: '.trivyignore'
+        version: 'v0.69.3'
     - name: ⬆️ Upload Trivy results
       if: ${{ github.event_name != 'pull_request' }}
       uses: github/codeql-action/upload-sarif@v4
       with:
-        sarif_file: './.trivyscan/report.sarif'
+        sarif_file: 'trivy-results.sarif'
