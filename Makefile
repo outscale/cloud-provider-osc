@@ -45,7 +45,7 @@ E2E_FOCUS ?= e2e
 
 OSC_REGION ?= eu-west-2
 
-TRIVY_IMAGE := aquasec/trivy:0.62.1
+TRIVY_IMAGE := aquasec/trivy:0.69.3
 
 .PHONY: help
 help:
@@ -177,10 +177,9 @@ check-helm-docs:
 	./hack/verify-helm-docs
 
 helm-manifest:
-	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.31.3 > deploy/osc-ccm-manifest-v1.31.yml
-	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.32.4 > deploy/osc-ccm-manifest-v1.32.yml
-	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.33.4 > deploy/osc-ccm-manifest-v1.33.yml
-	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.34.4 > deploy/osc-ccm-manifest-v1.34.yml
+	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.32.5 > deploy/osc-ccm-manifest-v1.32.yml
+	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.33.5 > deploy/osc-ccm-manifest-v1.33.yml
+	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.34.5 > deploy/osc-ccm-manifest-v1.34.yml
 
 check-helm-manifest:
 	./hack/verify-helm-manifest.sh
@@ -189,7 +188,7 @@ helm-package:
 # Copy docs into the archive for ArtfactHub, symlink does not work with helm-git
 	cp docs/CHANGELOG.md docs/README.md LICENSE deploy/k8s-osc-ccm/
 	helm package deploy/k8s-osc-ccm -d out-helm
-	rm deploy/k8s-osc-ccm/CHANGELOG.md deploy/k8s-osc-ccm/README.md deploy/k8s-osc-ccm/LICENSE 
+	rm deploy/k8s-osc-ccm/CHANGELOG.md deploy/k8s-osc-ccm/README.md deploy/k8s-osc-ccm/LICENSE
 
 helm-push: helm-package
 	helm push out-helm/*.tgz oci://registry-1.docker.io/${DOCKER_USER}
