@@ -341,6 +341,19 @@ func expectFindLBSubnetWithRole(mock *mocks_osc.MockClient) {
 		}}, nil)
 }
 
+func expectFindLBSubnetWithRoleButAnotherSubregion(mock *mocks_osc.MockClient) {
+	mock.EXPECT().
+		ReadSubnets(gomock.Any(), gomock.Eq(osc.ReadSubnetsRequest{
+			Filters: &osc.FiltersSubnet{
+				TagKeys: &[]string{"OscK8sClusterID/foo"},
+			},
+		})).
+		Return(&osc.ReadSubnetsResponse{Subnets: &[]osc.Subnet{
+			{SubnetId: "subnet-service", NetId: "net-foo", SubregionName: "eu-west-2b", Tags: []osc.ResourceTag{{Key: tags.RoleKey(role.Service)}}},
+			{SubnetId: "subnet-service.internal", NetId: "net-foo", SubregionName: "eu-west-2b", Tags: []osc.ResourceTag{{Key: tags.RoleKey(role.InternalService)}}},
+		}}, nil)
+}
+
 func expectFindLBSubnetWithRoleWithNetFallback(mock *mocks_osc.MockClient) {
 	mock.EXPECT().
 		ReadSubnets(gomock.Any(), gomock.Eq(osc.ReadSubnetsRequest{
@@ -491,12 +504,14 @@ func expectFindExistingWorkerSG(mock *mocks_osc.MockClient) {
 			},
 		})).
 		Return(&osc.ReadSecurityGroupsResponse{SecurityGroups: &[]osc.SecurityGroup{
-			{SecurityGroupId: "sg-worker", Tags: []osc.ResourceTag{{Key: tags.RoleKey(role.Worker)}},
+			{
+				SecurityGroupId: "sg-worker", Tags: []osc.ResourceTag{{Key: tags.RoleKey(role.Worker)}},
 				InboundRules: []osc.SecurityGroupRule{
 					{IpProtocol: "tcp", FromPortRange: 8080, ToPortRange: 8080, SecurityGroupsMembers: []osc.SecurityGroupsMember{{
 						SecurityGroupId: "sg-foo",
 					}}},
-				}},
+				},
+			},
 			{SecurityGroupId: "sg-controlplane", Tags: []osc.ResourceTag{{Key: tags.RoleKey(role.ControlPlane)}}},
 			{SecurityGroupId: "sg-node", Tags: []osc.ResourceTag{{Key: tags.RoleKey(role.Worker)}, {Key: tags.RoleKey(role.ControlPlane)}}},
 		}}, nil)
