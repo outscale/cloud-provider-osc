@@ -29,6 +29,7 @@ type VM struct {
 	NetID     *string
 	SubnetID  *string
 	VmType    string
+	Roles     []string
 
 	cloudVm *osc.Vm
 }
@@ -43,6 +44,11 @@ func FromOscVm(vm *osc.Vm) *VM {
 		SubnetID:  vm.SubnetId,
 		SubRegion: vm.Placement.SubregionName,
 		cloudVm:   vm,
+	}
+	for _, t := range vm.Tags {
+		if after, ok := strings.CutPrefix(t.Key, tags.RolePrefix); ok {
+			v.Roles = append(v.Roles, after)
+		}
 	}
 	v.Region = v.SubRegion[:len(v.SubRegion)-1]
 	return v
