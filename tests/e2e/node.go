@@ -6,6 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2" //nolint: staticcheck
 	"github.com/onsi/gomega"
+	"github.com/outscale/cloud-provider-osc/ccm"
 	"github.com/outscale/cloud-provider-osc/labeler"
 	e2eutils "github.com/outscale/cloud-provider-osc/tests/e2e/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,6 +24,16 @@ var _ = Describe("[e2e][node] Adding labels to nodes", func() {
 		framework.ExpectNoError(err)
 		for _, node := range lst.Items {
 			gomega.Expect(node.Labels).To(gomega.HaveKey("clilabel"))
+		}
+	})
+
+	It("sets the net label", func() {
+		cl := f.ClientSet.CoreV1().Nodes()
+		lst, err := cl.List(context.Background(), metav1.ListOptions{})
+		framework.ExpectNoError(err)
+		for _, node := range lst.Items {
+			// The CI does not set roles on nodes
+			gomega.Expect(node.Labels).To(gomega.HaveKey(ccm.NetLabel))
 		}
 	})
 })

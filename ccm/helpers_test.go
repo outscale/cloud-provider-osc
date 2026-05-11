@@ -56,6 +56,8 @@ var (
 		Tags: []osc.ResourceTag{{
 			Key:   tags.VmNodeName,
 			Value: vmNodeName,
+		}, {
+			Key: tags.RoleKey("worker"),
 		}},
 		SubnetId:       ptr.To("subnet-bar"),
 		NetId:          ptr.To("net-bar"),
