@@ -1,4 +1,4 @@
-name: e2e_test
+name: E2E
 
 on:
   push:
@@ -22,7 +22,7 @@ permissions:
   contents: read
 
 jobs:
-  create_cluster:
+  e2e:
     runs-on: [self-hosted, linux]
     steps:
     - name: ⬇️ Checkout
@@ -57,7 +57,7 @@ jobs:
         VERSION: ${{ format('{0}.{1}', github.sha, github.run_attempt) }}
     ## Create VPC Cluster
     - name: 🧪 Test on VPC cluster
-      uses: ./.github/local_action/start_ccm_e2e
+      uses: ./.github/actions/start_ccm_e2e
       with:
         osc_access_key: ${{ secrets[env.OSC_ACCESS_KEY_NAME] }}
         osc_secret_key: ${{ secrets[env.OSC_SECRET_KEY_NAME] }}
