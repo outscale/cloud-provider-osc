@@ -38,7 +38,7 @@ runs:
         path: "cluster-api-provider-outscale"
     - name: 👷 Deploy Cluster (VPC)
       id: caposc
-      uses: outscale/cluster-api-provider-outscale/github_actions/deploy_cluster@main
+      uses: outscale/cluster-api-provider-outscale/.github/actions/deploy_cluster@main
       with:
         RUNNER_NAME: ${{ runner.name }}
         OKS_ACCESS_KEY: ${{ inputs.oks_access_key }}
