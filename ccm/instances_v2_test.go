@@ -85,7 +85,10 @@ func TestInstanceMetadata(t *testing.T) {
 				{Type: v1.NodeInternalDNS, Address: "10.0.0.10.eu-west-2.compute.internal"},
 				{Type: v1.NodeHostName, Address: "10.0.0.10.eu-west-2.compute.internal"},
 			},
-			AdditionalLabels: map[string]string{},
+			AdditionalLabels: map[string]string{
+				ccm.NetLabel:                   "net-bar",
+				ccm.RoleLabelPrefix + "worker": "",
+			},
 		}, meta)
 	})
 	t.Run("Additional labels can be set", func(t *testing.T) {
@@ -106,6 +109,7 @@ func TestInstanceMetadata(t *testing.T) {
 			"label.foo":       "foo",
 			"label.bar":       "barbar",
 			"label.SubRegion": "eu-west-2a",
+			ccm.NetLabel:      "net-bar",
 		}, meta.AdditionalLabels)
 	})
 }
