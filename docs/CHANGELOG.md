@@ -1,5 +1,42 @@
 # Changelog
 
+## [v1.35.6] - 2026-06-03
+
+New version based on Kubernetes v1.35 packages 
+
+## [v1.34.6] - 2026-06-03
+
+### ✨ Added
+* ✨ feat(metadata): add net and role labels on nodes by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/666
+### 📦 Dependency updates
+* ⬆️ deps(gomod): update module github.com/outscale/osc-sdk-go/v3 to v3.0.0-rc.2 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/664
+* ⬆️ deps(dockerfile): update golang docker tag to v1.26.3 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/667
+* ⬆️ deps(dockerfile): update golang:1.26.3 docker digest to 313faae by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/668
+* ⬆️ deps(dockerfile): update golang:1.26.3 docker digest to 2d6c802 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/672
+* ⬆️ deps(dockerfile): update gcr.io/distroless/static docker digest to 3592aa8 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/670
+
+## [v1.33.6] - 2026-06-03
+
+### ✨ Added
+* ✨ feat(metadata): add net and role labels on nodes by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/666
+### 📦 Dependency updates
+* ⬆️ deps(gomod): update module github.com/outscale/osc-sdk-go/v3 to v3.0.0-rc.2 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/664
+* ⬆️ deps(dockerfile): update golang docker tag to v1.26.3 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/667
+* ⬆️ deps(dockerfile): update golang:1.26.3 docker digest to 313faae by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/668
+* ⬆️ deps(dockerfile): update golang:1.26.3 docker digest to 2d6c802 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/672
+* ⬆️ deps(dockerfile): update gcr.io/distroless/static docker digest to 3592aa8 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/670
+
+## [v1.32.6] - 2026-06-03
+
+### ✨ Added
+* ✨ feat(metadata): add net and role labels on nodes by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/666
+### 📦 Dependency updates
+* ⬆️ deps(gomod): update module github.com/outscale/osc-sdk-go/v3 to v3.0.0-rc.2 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/664
+* ⬆️ deps(dockerfile): update golang docker tag to v1.26.3 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/667
+* ⬆️ deps(dockerfile): update golang:1.26.3 docker digest to 313faae by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/668
+* ⬆️ deps(dockerfile): update golang:1.26.3 docker digest to 2d6c802 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/672
+* ⬆️ deps(dockerfile): update gcr.io/distroless/static docker digest to 3592aa8 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/670
+
 ## [v1.34.5] - 2026-05-06
 
 ### 🐛 Fixed

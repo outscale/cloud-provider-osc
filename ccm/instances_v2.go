@@ -15,6 +15,11 @@ import (
 	"k8s.io/klog/v2"
 )
 
+const (
+	NetLabel        = "topology.outscale.com/net"
+	RoleLabelPrefix = "role.outscale.com/"
+)
+
 // InstanceExists indicates whether a given node exists according to the cloud provider
 func (c *Provider) InstanceExists(ctx context.Context, node *v1.Node) (bool, error) {
 	vm, err := c.getVmByNodeName(ctx, node.Name)
@@ -47,7 +52,7 @@ func (c *Provider) InstanceMetadata(ctx context.Context, node *v1.Node) (*cloudp
 	if err != nil {
 		return nil, err
 	}
-	labels := make(map[string]string, len(c.opts.NodeLabels))
+	labels := make(map[string]string, len(c.opts.NodeLabels)+2)
 	for k, v := range c.opts.nodeLabelTemplates {
 		str := strings.Builder{}
 		err := v.Execute(&str, vm)
@@ -56,6 +61,12 @@ func (c *Provider) InstanceMetadata(ctx context.Context, node *v1.Node) (*cloudp
 			continue
 		}
 		labels[k] = str.String()
+	}
+	if vm.NetID != nil {
+		labels[NetLabel] = *vm.NetID
+	}
+	for _, role := range vm.Roles {
+		labels[RoleLabelPrefix+role] = ""
 	}
 	return &cloudprovider.InstanceMetadata{
 		ProviderID:       vm.ProviderID(),
