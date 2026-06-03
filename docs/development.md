@@ -153,7 +153,6 @@ VERSION=1.3X && git co kubernetes-$VERSION && git merge --no-edit main && git pu
 git co kubernetes-X.Y
 git pull --rebase
 export VERSION=vX.Y.Z
-git tag -a $VERSION -m "🔖 CCM $VERSION"
-git push origin $VERSION
+git tag -a $VERSION -m "🔖 CCM $VERSION" && git push origin $VERSION
 ```
 9. Publish the releases on Github
