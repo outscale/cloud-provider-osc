@@ -236,6 +236,8 @@ github.com/outscale/goutils/k8s v0.0.2 h1:GkYQu4qIIB09PAEOiD0fXZCFVKbPfOTr1cMIFs
 github.com/outscale/goutils/k8s v0.0.2/go.mod h1:tTa+38LngOZfihy3b6to2lTTqsohk+OKTRD9H2/ytGI=
 github.com/outscale/goutils/sdk v0.0.2 h1:btnhPmo2Sitm3PDtE4bBeuFpF0B4YEHUc91NT7rsVPM=
 github.com/outscale/goutils/sdk v0.0.2/go.mod h1:2Ae3lIQmdOC+n/VnOABrzS+kpjq/Hm0PJQhABpiFW8M=
+github.com/outscale/goutils/sdk v0.0.4 h1:hm+LZyeHUBYj066MjVVYYEPnlZRQSv4v74TZgfIQkRM=
+github.com/outscale/goutils/sdk v0.0.4/go.mod h1:LiXmAIA3CAXCdanEARKQ3Q/Lb8n8dKeGSbPRxIe43kc=
 github.com/outscale/osc-sdk-go/v3 v3.0.0-rc.1 h1:6/JP3i0HRV4BYuVfyVWowA0sX2HnrIqyi3YhaKe6PoI=
 github.com/outscale/osc-sdk-go/v3 v3.0.0-rc.1/go.mod h1:907IGb1sqHsDhXMDB8lkEqsOH5kK7/VTJ74+ZHqSLx0=
 github.com/outscale/osc-sdk-go/v3 v3.0.0-rc.2 h1:uj8s4jaqqzq2hFqQVAB6PTVwuPm43e5Ti/ZFQqvCAB0=
