@@ -42,15 +42,15 @@ require (
 // Kubernetes imports, isolated to avoid conflicts in version branches.
 
 require (
-	k8s.io/api v0.34.2
-	k8s.io/apimachinery v0.34.2
-	k8s.io/client-go v0.34.2
-	k8s.io/cloud-provider v0.34.2
-	k8s.io/component-base v0.34.2
+	k8s.io/api v0.34.9
+	k8s.io/apimachinery v0.34.9
+	k8s.io/client-go v0.34.9
+	k8s.io/cloud-provider v0.34.9
+	k8s.io/component-base v0.34.9
 	k8s.io/klog/v2 v2.140.0
-	k8s.io/kubectl v0.34.2
-	k8s.io/kubernetes v1.34.2
-	k8s.io/pod-security-admission v0.34.2
+	k8s.io/kubectl v0.34.9
+	k8s.io/kubernetes v1.34.9
+	k8s.io/pod-security-admission v0.34.9
 	k8s.io/utils v0.0.0-20250820121507-0af2bda4dd1d
 )
 
@@ -98,7 +98,7 @@ require (
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
-	github.com/moby/spdystream v0.5.0 // indirect
+	github.com/moby/spdystream v0.5.1 // indirect
 	github.com/moby/term v0.5.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
@@ -117,15 +117,15 @@ require (
 	go.etcd.io/etcd/api/v3 v3.6.4 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.6.4 // indirect
 	go.etcd.io/etcd/client/v3 v3.6.4 // indirect
-	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
+	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.60.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.58.0 // indirect
-	go.opentelemetry.io/otel v1.35.0 // indirect
+	go.opentelemetry.io/otel v1.41.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.34.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.34.0 // indirect
-	go.opentelemetry.io/otel/metric v1.35.0 // indirect
+	go.opentelemetry.io/otel/metric v1.41.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.34.0 // indirect
-	go.opentelemetry.io/otel/trace v1.35.0 // indirect
+	go.opentelemetry.io/otel/trace v1.41.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.5.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/ratelimit v0.3.1 // indirect
@@ -142,13 +142,13 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apiextensions-apiserver v0.34.2 // indirect
-	k8s.io/apiserver v0.34.2 // indirect
-	k8s.io/component-helpers v0.34.2 // indirect
-	k8s.io/controller-manager v0.34.2 // indirect
-	k8s.io/kms v0.34.2 // indirect
+	k8s.io/apiextensions-apiserver v0.34.9 // indirect
+	k8s.io/apiserver v0.34.9 // indirect
+	k8s.io/component-helpers v0.34.9 // indirect
+	k8s.io/controller-manager v0.34.9 // indirect
+	k8s.io/kms v0.34.9 // indirect
 	k8s.io/kube-openapi v0.0.0-20250710124328-f3f2b991d03b // indirect
-	k8s.io/kubelet v0.34.2 // indirect
+	k8s.io/kubelet v0.34.9 // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.31.2 // indirect
 	sigs.k8s.io/json v0.0.0-20241014173422-cfa47c3a1cc8 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
