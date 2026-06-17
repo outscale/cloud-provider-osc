@@ -6,7 +6,6 @@ SPDX-License-Identifier: BSD-3-Clause
 package ccm_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/outscale/cloud-provider-osc/ccm"
@@ -34,7 +33,7 @@ func TestNodeAddresses(t *testing.T) {
 		})
 		c, _, _ := newAPI(t, vm, []string{"foo"})
 		p := ccm.NewProviderWith(c, nil, ccm.Options{})
-		addrs, err := p.NodeAddresses(context.TODO(), vm.NodeName)
+		addrs, err := p.NodeAddresses(t.Context(), vm.NodeName)
 		require.NoError(t, err)
 		assert.Equal(t, []v1.NodeAddress{
 			{Type: v1.NodeInternalIP, Address: "10.0.0.10"},
@@ -56,7 +55,7 @@ func TestNodeAddresses(t *testing.T) {
 		})
 		c, _, _ := newAPI(t, vm, []string{"foo"})
 		p := ccm.NewProviderWith(c, nil, ccm.Options{})
-		addrs, err := p.NodeAddresses(context.TODO(), vm.NodeName)
+		addrs, err := p.NodeAddresses(t.Context(), vm.NodeName)
 		require.NoError(t, err)
 		assert.Equal(t, []v1.NodeAddress{
 			{Type: v1.NodeInternalIP, Address: "10.0.0.10"},
@@ -94,7 +93,7 @@ func TestNodeAddresses(t *testing.T) {
 		c, mock, _ := newAPI(t, self, []string{"foo"})
 		expectVMs(mock, *sdkself, *sdkvm)
 		p := ccm.NewProviderWith(c, nil, ccm.Options{})
-		addrs, err := p.NodeAddresses(context.TODO(), types.NodeName(name))
+		addrs, err := p.NodeAddresses(t.Context(), types.NodeName(name))
 		require.NoError(t, err)
 		assert.Equal(t, []v1.NodeAddress{
 			{Type: v1.NodeInternalIP, Address: "10.0.0.10"},
@@ -125,7 +124,7 @@ func TestNodeAddressesByProviderID(t *testing.T) {
 		})).
 		Return(&osc.ReadVmsResponse{Vms: &[]osc.Vm{*sdkvm}}, nil)
 	p := ccm.NewProviderWith(c, nil, ccm.Options{})
-	addrs, err := p.NodeAddressesByProviderID(context.TODO(), providerID)
+	addrs, err := p.NodeAddressesByProviderID(t.Context(), providerID)
 	require.NoError(t, err)
 	assert.Equal(t, []v1.NodeAddress{
 		{Type: v1.NodeInternalIP, Address: "10.0.0.10"},
@@ -154,7 +153,7 @@ func TestInstanceTypeByProviderID(t *testing.T) {
 		})).
 		Return(&osc.ReadVmsResponse{Vms: &[]osc.Vm{*sdkvm}}, nil)
 	p := ccm.NewProviderWith(c, nil, ccm.Options{})
-	typ, err := p.InstanceTypeByProviderID(context.TODO(), providerID)
+	typ, err := p.InstanceTypeByProviderID(t.Context(), providerID)
 	require.NoError(t, err)
 	assert.Equal(t, sdkvm.VmType, typ)
 }
@@ -171,7 +170,7 @@ func TestInstanceID(t *testing.T) {
 		})
 		c, _, _ := newAPI(t, vm, []string{"foo"})
 		p := ccm.NewProviderWith(c, nil, ccm.Options{})
-		id, err := p.InstanceID(context.TODO(), vm.NodeName)
+		id, err := p.InstanceID(t.Context(), vm.NodeName)
 		require.NoError(t, err)
 		assert.Equal(t, "/eu-west-2a/i-foo", id)
 	})
@@ -202,7 +201,7 @@ func TestInstanceID(t *testing.T) {
 		c, mock, _ := newAPI(t, self, []string{"foo"})
 		expectVMs(mock, *sdkself, *sdkvm)
 		p := ccm.NewProviderWith(c, nil, ccm.Options{})
-		id, err := p.InstanceID(context.TODO(), types.NodeName(name))
+		id, err := p.InstanceID(t.Context(), types.NodeName(name))
 		require.NoError(t, err)
 		assert.Equal(t, "/eu-west-2a/i-foo", id)
 	})

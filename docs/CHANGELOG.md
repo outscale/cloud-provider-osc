@@ -1,5 +1,35 @@
 # Changelog
 
+## [v1.35.7] - 2026-06-17
+
+### 🐛 Fixed
+* 🐛 fix(InstanceMetadata): fix crash on terminated VM by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/684
+### 📦 Dependency updates
+* ⬆️ deps(dockerfile): update golang docker tag to v1.26.4 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/680
+
+## [v1.34.7] - 2026-06-17
+
+### 🐛 Fixed
+* 🐛 fix(InstanceMetadata): fix crash on terminated VM by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/684
+### 📦 Dependency updates
+* ⬆️ deps(dockerfile): update golang docker tag to v1.26.4 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/680
+* ⬆️ deps: bump k8s libs to v1.34.9 by @jfbus
+
+## [v1.33.7] - 2026-06-17
+
+### 🐛 Fixed
+* 🐛 fix(InstanceMetadata): fix crash on terminated VM by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/684
+### 📦 Dependency updates
+* ⬆️ deps(dockerfile): update golang docker tag to v1.26.4 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/680
+* ⬆️ deps: bump k8s libs to v1.33.13 by @jfbus
+
+## [v1.32.7] - 2026-06-17
+
+### 🐛 Fixed
+* 🐛 fix(InstanceMetadata): fix crash on terminated VM by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/684
+### 📦 Dependency updates
+* ⬆️ deps(dockerfile): update golang docker tag to v1.26.4 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/680
+
 ## [v1.35.6] - 2026-06-03
 
 New version based on Kubernetes v1.35 packages 

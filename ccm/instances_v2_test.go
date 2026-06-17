@@ -6,7 +6,6 @@ SPDX-License-Identifier: BSD-3-Clause
 package ccm_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/outscale/cloud-provider-osc/ccm"
@@ -23,7 +22,7 @@ func TestInstanceExists(t *testing.T) {
 		c, mock, _ := newAPI(t, self, []string{"foo"})
 		expectVMs(mock, sdkSelf, sdkVM)
 		p := ccm.NewProviderWith(c, nil, ccm.Options{})
-		exists, err := p.InstanceExists(context.TODO(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
+		exists, err := p.InstanceExists(t.Context(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
 		require.NoError(t, err)
 		assert.True(t, exists)
 	})
@@ -31,17 +30,18 @@ func TestInstanceExists(t *testing.T) {
 		c, mock, _ := newAPI(t, self, []string{"foo"})
 		expectVMs(mock, sdkSelf)
 		p := ccm.NewProviderWith(c, nil, ccm.Options{})
-		exists, err := p.InstanceExists(context.TODO(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
+		exists, err := p.InstanceExists(t.Context(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
 		require.NoError(t, err)
 		assert.False(t, exists)
 	})
 	t.Run("If the instance is terminated, return false", func(t *testing.T) {
 		sdkTerminated := sdkVM
 		sdkTerminated.State = osc.VmStateTerminated
+		sdkTerminated.PrivateDnsName = nil
 		c, mock, _ := newAPI(t, self, []string{"foo"})
 		expectVMs(mock, sdkSelf, sdkTerminated)
 		p := ccm.NewProviderWith(c, nil, ccm.Options{})
-		exists, err := p.InstanceExists(context.TODO(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
+		exists, err := p.InstanceExists(t.Context(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
 		require.NoError(t, err)
 		assert.False(t, exists)
 	})
@@ -52,7 +52,7 @@ func TestInstanceShutdown(t *testing.T) {
 		c, mock, _ := newAPI(t, self, []string{"foo"})
 		expectVMs(mock, sdkSelf, sdkVM)
 		p := ccm.NewProviderWith(c, nil, ccm.Options{})
-		shut, err := p.InstanceShutdown(context.TODO(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
+		shut, err := p.InstanceShutdown(t.Context(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
 		require.NoError(t, err)
 		assert.False(t, shut)
 	})
@@ -62,9 +62,19 @@ func TestInstanceShutdown(t *testing.T) {
 		c, mock, _ := newAPI(t, self, []string{"foo"})
 		expectVMs(mock, sdkSelf, sdkVM)
 		p := ccm.NewProviderWith(c, nil, ccm.Options{})
-		shut, err := p.InstanceShutdown(context.TODO(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
+		shut, err := p.InstanceShutdown(t.Context(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
 		require.NoError(t, err)
 		assert.True(t, shut)
+	})
+	t.Run("If the instance is terminated, return a not found error", func(t *testing.T) {
+		sdkTerminated := sdkVM
+		sdkTerminated.State = osc.VmStateTerminated
+		sdkTerminated.PrivateDnsName = nil
+		c, mock, _ := newAPI(t, self, []string{"foo"})
+		expectVMs(mock, sdkSelf, sdkTerminated)
+		p := ccm.NewProviderWith(c, nil, ccm.Options{})
+		_, err := p.InstanceShutdown(t.Context(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
+		require.ErrorIs(t, err, cloudprovider.InstanceNotFound)
 	})
 }
 
@@ -73,7 +83,7 @@ func TestInstanceMetadata(t *testing.T) {
 		c, mock, _ := newAPI(t, self, []string{"foo"})
 		expectVMs(mock, sdkSelf, sdkVM)
 		p := ccm.NewProviderWith(c, nil, ccm.Options{})
-		meta, err := p.InstanceMetadata(context.TODO(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
+		meta, err := p.InstanceMetadata(t.Context(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
 		require.NoError(t, err)
 		assert.Equal(t, &cloudprovider.InstanceMetadata{
 			ProviderID:   "aws:///eu-west-2a/i-foo",
@@ -103,7 +113,7 @@ func TestInstanceMetadata(t *testing.T) {
 				"label.SubRegion": "{{ .SubRegion }}",
 			},
 		})
-		meta, err := p.InstanceMetadata(context.TODO(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
+		meta, err := p.InstanceMetadata(t.Context(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
 		require.NoError(t, err)
 		assert.Equal(t, map[string]string{
 			"label.foo":       "foo",
@@ -111,5 +121,15 @@ func TestInstanceMetadata(t *testing.T) {
 			"label.SubRegion": "eu-west-2a",
 			ccm.NetLabel:      "net-bar",
 		}, meta.AdditionalLabels)
+	})
+	t.Run("If the instance is terminated, return a not found error", func(t *testing.T) {
+		sdkTerminated := sdkVM
+		sdkTerminated.State = osc.VmStateTerminated
+		sdkTerminated.PrivateDnsName = nil
+		c, mock, _ := newAPI(t, self, []string{"foo"})
+		expectVMs(mock, sdkSelf, sdkTerminated)
+		p := ccm.NewProviderWith(c, nil, ccm.Options{})
+		_, err := p.InstanceMetadata(t.Context(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
+		require.ErrorIs(t, err, cloudprovider.InstanceNotFound)
 	})
 }

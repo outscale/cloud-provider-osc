@@ -63,12 +63,12 @@ CCM versions will be released for Kubernetes 1.32, 1.32, 1.33 and 1.34. As Kuber
 | Kubernetes version | Recommended CCM version |
 |--------------------|-------------------------|
 | v1.30.x            | v0.2.8                  |
-| v1.31.x            | v1.32.6                 |
-| v1.32.x            | v1.32.6                 |
-| v1.33.x            | v1.33.6                 |
-| v1.34.x            | v1.34.6                 |
-| v1.35.x            | v1.35.6                 |
-| v1.36.x            | v1.35.6                 |
+| v1.31.x            | v1.32.7                 |
+| v1.32.x            | v1.32.7                 |
+| v1.33.x            | v1.33.7                 |
+| v1.34.x            | v1.34.7                 |
+| v1.35.x            | v1.35.7                 |
+| v1.36.x            | v1.35.7                 |
 
 ### Deployment on a new cluster
 

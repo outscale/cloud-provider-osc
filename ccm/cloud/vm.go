@@ -143,13 +143,6 @@ func (c *Cloud) GetVMsByNodeName(ctx context.Context, nodeNames ...string) ([]VM
 	resp, err := c.api.OAPI().ReadVms(ctx, osc.ReadVmsRequest{
 		Filters: &osc.FiltersVm{
 			TagKeys: ptr.To(c.clusterIDTagKeys()),
-			VmStateNames: &[]osc.VmState{
-				osc.VmStatePending,
-				osc.VmStateRunning,
-				osc.VmStateStopping,
-				osc.VmStateStopped,
-				osc.VmStateShuttingDown,
-			},
 		},
 	})
 	switch {
@@ -161,8 +154,8 @@ func (c *Cloud) GetVMsByNodeName(ctx context.Context, nodeNames ...string) ([]VM
 	vms := make([]VM, 0, len(nodeNames))
 	for _, nodeName := range nodeNames {
 		for _, sdkVM := range *resp.Vms {
-			if tags.Has(sdkVM.Tags, tags.VmNodeName, nodeName) ||
-				mapInstanceToNodeName(&sdkVM) == types.NodeName(nodeName) {
+			if sdkVM.State != osc.VmStateTerminated && (tags.Has(sdkVM.Tags, tags.VmNodeName, nodeName) ||
+				mapInstanceToNodeName(&sdkVM) == types.NodeName(nodeName)) {
 				vms = append(vms, *FromOscVm(&sdkVM))
 			}
 		}
@@ -221,14 +214,16 @@ func (c *Cloud) GetVMsByID(ctx context.Context, vmIDs ...string) ([]VM, error) {
 	}
 	vms := make([]VM, 0, len(*resp.Vms))
 	for _, sdkVM := range *resp.Vms {
-		vms = append(vms, *FromOscVm(&sdkVM))
+		if sdkVM.State != osc.VmStateTerminated {
+			vms = append(vms, *FromOscVm(&sdkVM))
+		}
 	}
 	return vms, nil
 }
 
 // mapInstanceToNodeName maps an OSC instance to a k8s NodeName, by extracting the PrivateDNSName
 func mapInstanceToNodeName(i *osc.Vm) types.NodeName {
-	return types.NodeName(*i.PrivateDnsName)
+	return types.NodeName(ptr.From(i.PrivateDnsName))
 }
 
 func ParseProviderID(providerID string) (subregion, vmID string, err error) {
