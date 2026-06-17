@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.36.7] - 2026-06-17
+
+New version based on Kubernetes v1.36 packages
+
 ## [v1.35.7] - 2026-06-17
 
 ### 🐛 Fixed
@@ -32,7 +36,7 @@
 
 ## [v1.35.6] - 2026-06-03
 
-New version based on Kubernetes v1.35 packages 
+New version based on Kubernetes v1.35 packages
 
 ## [v1.34.6] - 2026-06-03
 
