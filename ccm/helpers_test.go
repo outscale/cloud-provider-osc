@@ -93,13 +93,6 @@ func expectVMs(mock *mocks_osc.MockClient, vms ...osc.Vm) {
 		ReadVms(gomock.Any(), gomock.Eq(osc.ReadVmsRequest{
 			Filters: &osc.FiltersVm{
 				TagKeys: &[]string{"OscK8sClusterID/foo"},
-				VmStateNames: &[]osc.VmState{
-					osc.VmStatePending,
-					osc.VmStateRunning,
-					osc.VmStateStopping,
-					osc.VmStateStopped,
-					osc.VmStateShuttingDown,
-				},
 			},
 		})).
 		Return(&osc.ReadVmsResponse{Vms: &vms}, nil)
