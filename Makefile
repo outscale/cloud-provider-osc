@@ -181,7 +181,7 @@ helm-manifest:
 	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.33.7 > deploy/osc-ccm-manifest-v1.33.yml
 	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.34.7 > deploy/osc-ccm-manifest-v1.34.yml
 	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.35.7 > deploy/osc-ccm-manifest-v1.35.yml
-	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.35.7 > deploy/osc-ccm-manifest-v1.36.yml
+	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.36.7 > deploy/osc-ccm-manifest-v1.36.yml
 
 check-helm-manifest:
 	./hack/verify-helm-manifest.sh
