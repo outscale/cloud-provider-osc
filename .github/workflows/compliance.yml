@@ -13,6 +13,6 @@ jobs:
     steps:
     - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
     - name: Plumber
-      uses: outscale/.github/pipeline-compliance@d1bf523f2ce3fccb0784dfd03ca3cd5e0b906be8 # main
+      uses: outscale/.github/pipeline-compliance@c83085abb9df43e707845a1dbac08a71073bf7cb # main
       with:
         github-token: ${{ secrets.PLUMBER_TOKEN }}
