@@ -58,6 +58,7 @@ vendor/
 .env/
 tests/e2e/single_az_test_e2e_report/
 out-helm/
+dist/
 
 # Ignore docs in the helm package
 deploy/k8s-osc-ccm/CHANGELOG.md

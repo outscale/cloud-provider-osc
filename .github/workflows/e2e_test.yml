@@ -26,11 +26,13 @@ jobs:
     runs-on: [self-hosted, linux]
     steps:
     - name: ⬇️ Checkout
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
-    - name: ⬇️ Install kubectl
-      uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       with:
-        version: v1.34.2
+        persist-credentials: false
+    - name: ⬇️ Install kubectl
+      uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
+      with:
+        version: v1.34.9
     - name: ⬇️ Install Helm
       uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
     - name: ⬇️ Install Python
@@ -39,22 +41,36 @@ jobs:
       uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
       with:
         go-version-file: 'go.mod'
+    - name: ⬇️ Set up Docker Buildx
+      uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
     - name: 🔐 Set AK/SK name based on runner region
       run: .github/scripts/runneraksk.sh
     - name: 🧹 Frieza
-      uses: outscale/frieza-github-actions/frieza-clean@68ffd39d7e181f3548369e332242b329b04a3182 # master
+      uses: outscale/frieza-github-actions/frieza-clean@1d8b83bc64d2230a0c3bc9f018ba6c0c67df98e8 # v0.15.0+hotfix.0
       with:
         access_key: ${{ secrets[env.OSC_ACCESS_KEY_NAME] }}
         secret_key: ${{ secrets[env.OSC_SECRET_KEY_NAME] }}
         region: ${{ env.OSC_REGION }}
         exclude_resource_types: access_key
-    - name: 📦 Build and push Docker image
+    - name: 🐳 Login to Harbor
+      uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+      with:
+        registry: ${{ vars.REGISTRY }}
+        username: admin
+        password: ${{ secrets.HARBOR_ADMIN_PASSWORD }}
+    - name: 📦 Run GoReleaser
+      uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+      with:
+        version: 'v2.15.4'
+        args: release --clean --snapshot
+    - name: 📦 Push the Docker image
       run: |
-        docker login ${{ vars.REGISTRY }} -u admin -p ${{ secrets.HARBOR_ADMIN_PASSWORD }}
-        make buildx-image image-tag image-push
+        make image-tag image-push
       env:
-        REGISTRY_IMAGE: ${{ vars.REGISTRY }}/outscale/cloud-provider-osc
-        VERSION: ${{ format('{0}.{1}', github.sha, github.run_attempt) }}
+        IMAGE: "outscale/cloud-provider-osc"
+        IMAGE_TAG: "${{ github.sha }}-amd64"
+        REGISTRY_IMAGE: "${{ vars.REGISTRY }}/outscale/cloud-provider-osc"
+        REGISTRY_TAG: ${{ github.sha }}
     ## Create VPC Cluster
     - name: 🧪 Test on VPC cluster
       uses: ./.github/actions/start_ccm_e2e
@@ -66,5 +82,5 @@ jobs:
         oks_secret_key: ${{ secrets.OKS_SECRET_KEY }}
         oks_region: ${{ vars.OKS_REGION }}
         image_name: ${{ vars.OMI_NAME }}
-        version: ${{ format('{0}.{1}', github.sha, github.run_attempt) }}
+        version: ${{ github.sha }}
         registry: ${{ vars.REGISTRY }}
