@@ -6,12 +6,12 @@ SPDX-License-Identifier: BSD-3-Clause
 package ccm_test
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/outscale/cloud-provider-osc/ccm"
 	"github.com/outscale/cloud-provider-osc/ccm/cloud"
 	"github.com/outscale/goutils/k8s/tags"
-	"github.com/outscale/goutils/sdk/ptr"
 	"github.com/outscale/osc-sdk-go/v3/pkg/osc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,14 +25,14 @@ func TestNodeAddresses(t *testing.T) {
 		vm := cloud.FromOscVm(&osc.Vm{
 			VmId:           "i-foo",
 			VmType:         "tinav3.c1r1p1",
-			PrivateDnsName: ptr.To("10.0.0.10.eu-west-2.compute.internal"),
+			PrivateDnsName: new("10.0.0.10.eu-west-2.compute.internal"),
 			PrivateIp:      "10.0.0.10",
-			NetId:          ptr.To("net-foo"),
-			SubnetId:       ptr.To("subnet-foo"),
+			NetId:          new("net-foo"),
+			SubnetId:       new("subnet-foo"),
 			Placement:      osc.Placement{SubregionName: "eu-west-2a"},
 		})
 		c, _, _ := newAPI(t, vm, []string{"foo"})
-		p := ccm.NewProviderWith(c, nil, ccm.Options{})
+		p := ccm.NewProviderWith(c, nil, ccm.Options{}, &sync.WaitGroup{})
 		addrs, err := p.NodeAddresses(t.Context(), vm.NodeName)
 		require.NoError(t, err)
 		assert.Equal(t, []v1.NodeAddress{
@@ -45,16 +45,16 @@ func TestNodeAddresses(t *testing.T) {
 		vm := cloud.FromOscVm(&osc.Vm{
 			VmId:           "i-foo",
 			VmType:         "tinav3.c1r1p1",
-			PrivateDnsName: ptr.To("10.0.0.10.eu-west-2.compute.internal"),
+			PrivateDnsName: new("10.0.0.10.eu-west-2.compute.internal"),
 			PrivateIp:      "10.0.0.10",
-			PublicDnsName:  ptr.To("ip-198-51-100-10.eu-west-2.compute.internal"),
-			PublicIp:       ptr.To("198.51.100.10"),
-			NetId:          ptr.To("net-foo"),
-			SubnetId:       ptr.To("subnet-foo"),
+			PublicDnsName:  new("ip-198-51-100-10.eu-west-2.compute.internal"),
+			PublicIp:       new("198.51.100.10"),
+			NetId:          new("net-foo"),
+			SubnetId:       new("subnet-foo"),
 			Placement:      osc.Placement{SubregionName: "eu-west-2a"},
 		})
 		c, _, _ := newAPI(t, vm, []string{"foo"})
-		p := ccm.NewProviderWith(c, nil, ccm.Options{})
+		p := ccm.NewProviderWith(c, nil, ccm.Options{}, &sync.WaitGroup{})
 		addrs, err := p.NodeAddresses(t.Context(), vm.NodeName)
 		require.NoError(t, err)
 		assert.Equal(t, []v1.NodeAddress{
@@ -70,29 +70,29 @@ func TestNodeAddresses(t *testing.T) {
 		sdkvm := &osc.Vm{
 			VmId:           "i-foo",
 			VmType:         "tinav3.c1r1p1",
-			PrivateDnsName: ptr.To(name),
+			PrivateDnsName: new(name),
 			PrivateIp:      "10.0.0.10",
 			Tags: []osc.ResourceTag{{
 				Key:   tags.VmNodeName,
 				Value: name,
 			}},
-			NetId:     ptr.To("net-foo"),
-			SubnetId:  ptr.To("subnet-foo"),
+			NetId:     new("net-foo"),
+			SubnetId:  new("subnet-foo"),
 			Placement: osc.Placement{SubregionName: "eu-west-2a"},
 		}
 		sdkself := &osc.Vm{
 			VmId:           "i-bar",
 			VmType:         "tinav3.c1r1p1",
-			PrivateDnsName: ptr.To("10.0.0.11.eu-west-2.compute.internal"),
+			PrivateDnsName: new("10.0.0.11.eu-west-2.compute.internal"),
 			PrivateIp:      "10.0.0.11",
-			NetId:          ptr.To("net-foo"),
-			SubnetId:       ptr.To("subnet-foo"),
+			NetId:          new("net-foo"),
+			SubnetId:       new("subnet-foo"),
 			Placement:      osc.Placement{SubregionName: "eu-west-2a"},
 		}
 		self := cloud.FromOscVm(sdkself)
 		c, mock, _ := newAPI(t, self, []string{"foo"})
 		expectVMs(mock, *sdkself, *sdkvm)
-		p := ccm.NewProviderWith(c, nil, ccm.Options{})
+		p := ccm.NewProviderWith(c, nil, ccm.Options{}, &sync.WaitGroup{})
 		addrs, err := p.NodeAddresses(t.Context(), types.NodeName(name))
 		require.NoError(t, err)
 		assert.Equal(t, []v1.NodeAddress{
@@ -107,10 +107,10 @@ func TestNodeAddressesByProviderID(t *testing.T) {
 	sdkvm := &osc.Vm{
 		VmId:           "i-foo",
 		VmType:         "tinav3.c1r1p1",
-		PrivateDnsName: ptr.To("10.0.0.10.eu-west-2.compute.internal"),
+		PrivateDnsName: new("10.0.0.10.eu-west-2.compute.internal"),
 		PrivateIp:      "10.0.0.10",
-		NetId:          ptr.To("net-foo"),
-		SubnetId:       ptr.To("subnet-foo"),
+		NetId:          new("net-foo"),
+		SubnetId:       new("subnet-foo"),
 		Placement:      osc.Placement{SubregionName: "eu-west-2a"},
 	}
 	vm := cloud.FromOscVm(sdkvm)
@@ -123,7 +123,7 @@ func TestNodeAddressesByProviderID(t *testing.T) {
 			},
 		})).
 		Return(&osc.ReadVmsResponse{Vms: &[]osc.Vm{*sdkvm}}, nil)
-	p := ccm.NewProviderWith(c, nil, ccm.Options{})
+	p := ccm.NewProviderWith(c, nil, ccm.Options{}, &sync.WaitGroup{})
 	addrs, err := p.NodeAddressesByProviderID(t.Context(), providerID)
 	require.NoError(t, err)
 	assert.Equal(t, []v1.NodeAddress{
@@ -137,9 +137,9 @@ func TestInstanceTypeByProviderID(t *testing.T) {
 	sdkvm := &osc.Vm{
 		VmId:           "i-foo",
 		VmType:         "tinav7.c1r1p1",
-		NetId:          ptr.To("net-foo"),
-		SubnetId:       ptr.To("subnet-foo"),
-		PrivateDnsName: ptr.To("10.0.0.10.eu-west-2.compute.internal"),
+		NetId:          new("net-foo"),
+		SubnetId:       new("subnet-foo"),
+		PrivateDnsName: new("10.0.0.10.eu-west-2.compute.internal"),
 		Placement:      osc.Placement{SubregionName: "eu-west-2a"},
 	}
 	vm := cloud.FromOscVm(sdkvm)
@@ -152,7 +152,7 @@ func TestInstanceTypeByProviderID(t *testing.T) {
 			},
 		})).
 		Return(&osc.ReadVmsResponse{Vms: &[]osc.Vm{*sdkvm}}, nil)
-	p := ccm.NewProviderWith(c, nil, ccm.Options{})
+	p := ccm.NewProviderWith(c, nil, ccm.Options{}, &sync.WaitGroup{})
 	typ, err := p.InstanceTypeByProviderID(t.Context(), providerID)
 	require.NoError(t, err)
 	assert.Equal(t, sdkvm.VmType, typ)
@@ -164,12 +164,12 @@ func TestInstanceID(t *testing.T) {
 			VmId:           "i-foo",
 			VmType:         "tinav7.c1r1p1",
 			Placement:      osc.Placement{SubregionName: "eu-west-2a"},
-			NetId:          ptr.To("net-foo"),
-			SubnetId:       ptr.To("subnet-foo"),
-			PrivateDnsName: ptr.To("10.0.0.10.eu-west-2.compute.internal"),
+			NetId:          new("net-foo"),
+			SubnetId:       new("subnet-foo"),
+			PrivateDnsName: new("10.0.0.10.eu-west-2.compute.internal"),
 		})
 		c, _, _ := newAPI(t, vm, []string{"foo"})
-		p := ccm.NewProviderWith(c, nil, ccm.Options{})
+		p := ccm.NewProviderWith(c, nil, ccm.Options{}, &sync.WaitGroup{})
 		id, err := p.InstanceID(t.Context(), vm.NodeName)
 		require.NoError(t, err)
 		assert.Equal(t, "/eu-west-2a/i-foo", id)
@@ -184,23 +184,23 @@ func TestInstanceID(t *testing.T) {
 				Key:   tags.VmNodeName,
 				Value: name,
 			}},
-			NetId:          ptr.To("net-foo"),
-			SubnetId:       ptr.To("subnet-foo"),
-			PrivateDnsName: ptr.To(name),
+			NetId:          new("net-foo"),
+			SubnetId:       new("subnet-foo"),
+			PrivateDnsName: new(name),
 		}
 		sdkself := &osc.Vm{
 			VmId:           "i-bar",
 			VmType:         "tinav7.c1r1p1",
-			PrivateDnsName: ptr.To("10.0.0.11.eu-west-2.compute.internal"),
+			PrivateDnsName: new("10.0.0.11.eu-west-2.compute.internal"),
 			PrivateIp:      "10.0.0.11",
-			NetId:          ptr.To("net-foo"),
-			SubnetId:       ptr.To("subnet-foo"),
+			NetId:          new("net-foo"),
+			SubnetId:       new("subnet-foo"),
 			Placement:      osc.Placement{SubregionName: "eu-west-2a"},
 		}
 		self := cloud.FromOscVm(sdkself)
 		c, mock, _ := newAPI(t, self, []string{"foo"})
 		expectVMs(mock, *sdkself, *sdkvm)
-		p := ccm.NewProviderWith(c, nil, ccm.Options{})
+		p := ccm.NewProviderWith(c, nil, ccm.Options{}, &sync.WaitGroup{})
 		id, err := p.InstanceID(t.Context(), types.NodeName(name))
 		require.NoError(t, err)
 		assert.Equal(t, "/eu-west-2a/i-foo", id)
