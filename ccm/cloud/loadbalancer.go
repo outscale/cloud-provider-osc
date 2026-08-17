@@ -1383,16 +1383,21 @@ func (c *Cloud) DeleteLoadBalancer(ctx context.Context, l *LoadBalancer) error {
 }
 
 // RunGarbageCollector deletes LB security groups
-func (c *Cloud) RunGarbageCollector(ctx context.Context) error {
+func (c *Cloud) RunGarbageCollector(ctx context.Context) {
+	logger := klog.FromContext(ctx)
+	errlog := func(err error) {
+		logger.V(3).Error(err, "Error running garbage collector")
+	}
 	// We collect all the SG from the cluster
 	// This is the list of SG we will scan to find rules linking to the SG to be deleted.
 	resp, err := c.api.OAPI().ReadSecurityGroups(ctx, osc.ReadSecurityGroupsRequest{
 		Filters: &osc.FiltersSecurityGroup{
-			TagKeys: ptr.To(c.clusterIDTagKeys()),
+			TagKeys: new(c.clusterIDTagKeys()),
 		},
 	})
 	if err != nil {
-		return fmt.Errorf("find security groups: %w", err)
+		errlog(fmt.Errorf("find security groups: %w", err))
+		return
 	}
 	// Find SG to delete
 	var toDelete []string
@@ -1401,11 +1406,12 @@ func (c *Cloud) RunGarbageCollector(ctx context.Context) error {
 			toDelete = append(toDelete, sg.SecurityGroupId)
 		}
 	}
-	klog.FromContext(ctx).V(4).Info("Security groups marked for deletion", "count", len(toDelete))
+	logger.V(4).Info("Security groups marked for deletion", "count", len(toDelete))
 	for _, delSGID := range toDelete {
 		// delete all inbound rules from this SG
+	LOOPSG:
 		for _, sg := range *resp.SecurityGroups {
-			klog.FromContext(ctx).V(2).Info("Deleting inbound rule", "from", delSGID, "to", sg.SecurityGroupId)
+			logger.V(2).Info("Deleting inbound rule", "from", delSGID, "to", sg.SecurityGroupId)
 			for _, r := range sg.InboundRules {
 				if slices.ContainsFunc(r.SecurityGroupsMembers, func(m osc.SecurityGroupsMember) bool {
 					return slices.Contains(toDelete, m.SecurityGroupId)
@@ -1423,18 +1429,18 @@ func (c *Cloud) RunGarbageCollector(ctx context.Context) error {
 						}},
 					})
 					if err != nil {
-						return fmt.Errorf("delete rule from %s to %s: %w", delSGID, sg.SecurityGroupId, err)
+						errlog(fmt.Errorf("delete rule from %s to %s: %w", delSGID, sg.SecurityGroupId, err))
+						continue LOOPSG
 					}
 				}
 			}
 		}
-		klog.FromContext(ctx).V(2).Info("Deleting SG", "securityGroupId", delSGID)
+		logger.V(2).Info("Deleting SG", "securityGroupId", delSGID)
 		_, err = c.api.OAPI().DeleteSecurityGroup(ctx, osc.DeleteSecurityGroupRequest{
 			SecurityGroupId: &delSGID,
 		})
 		if err != nil {
-			return fmt.Errorf("delete SG %s: %w", delSGID, err)
+			errlog(fmt.Errorf("delete SG %s: %w", delSGID, err))
 		}
 	}
-	return nil
 }
