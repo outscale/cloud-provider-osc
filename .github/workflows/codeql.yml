@@ -6,6 +6,9 @@ on:
       - main
       - kubernetes-*
   pull_request:
+    branches:
+      - main
+      - kubernetes-*
   schedule:
     - cron: "28 17 * * 0"
 
