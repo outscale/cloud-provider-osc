@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"dario.cat/mergo"
-	"github.com/aws/aws-sdk-go/aws"         //nolint:staticcheck
 	"github.com/aws/aws-sdk-go/service/elb" //nolint:staticcheck
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/outscale/cloud-provider-osc/ccm/oapi"
@@ -303,7 +302,7 @@ func NewLoadBalancer(svc *corev1.Service, addTags map[string]string) (*LoadBalan
 		lb.HealthCheck.Protocol = "tcp"
 	}
 	if lb.IngressAddress.NeedIP() && lb.IPMode == nil {
-		lb.IPMode = ptr.To(corev1.LoadBalancerIPModeProxy)
+		lb.IPMode = new(corev1.LoadBalancerIPModeProxy)
 	}
 
 	return lb, nil
@@ -342,24 +341,24 @@ func (l *LoadBalancer) decodeAnnotations(annotations map[string]string) error {
 func (l *LoadBalancer) elbAttributes() *elb.LoadBalancerAttributes {
 	attrs := &elb.LoadBalancerAttributes{
 		ConnectionSettings: &elb.ConnectionSettings{},
-		ConnectionDraining: &elb.ConnectionDraining{Enabled: aws.Bool(l.Connection.ConnectionDraining)},
-		AccessLog:          &elb.AccessLog{Enabled: aws.Bool(l.AccessLog.Enabled)},
+		ConnectionDraining: &elb.ConnectionDraining{Enabled: new(l.Connection.ConnectionDraining)},
+		AccessLog:          &elb.AccessLog{Enabled: new(l.AccessLog.Enabled)},
 	}
 	if l.Connection.ConnectionDraining && l.Connection.ConnectionDrainingTimeout > 0 {
-		attrs.ConnectionDraining.Timeout = aws.Int64(l.Connection.ConnectionDrainingTimeout)
+		attrs.ConnectionDraining.Timeout = new(l.Connection.ConnectionDrainingTimeout)
 	}
 	if l.Connection.IdleTimeout > 0 {
-		attrs.ConnectionSettings.IdleTimeout = aws.Int64(l.Connection.IdleTimeout)
+		attrs.ConnectionSettings.IdleTimeout = new(l.Connection.IdleTimeout)
 	}
 	if l.AccessLog.Enabled {
 		if l.AccessLog.EmitInterval > 0 {
-			attrs.AccessLog.EmitInterval = aws.Int64(l.AccessLog.EmitInterval)
+			attrs.AccessLog.EmitInterval = new(l.AccessLog.EmitInterval)
 		}
 		if l.AccessLog.BucketName != "" {
-			attrs.AccessLog.S3BucketName = aws.String(l.AccessLog.BucketName)
+			attrs.AccessLog.S3BucketName = new(l.AccessLog.BucketName)
 		}
 		if l.AccessLog.BucketPrefix != "" {
-			attrs.AccessLog.S3BucketPrefix = aws.String(l.AccessLog.BucketPrefix)
+			attrs.AccessLog.S3BucketPrefix = new(l.AccessLog.BucketPrefix)
 		}
 	}
 	return attrs
@@ -384,7 +383,7 @@ func (l *LoadBalancer) listeners() []osc.ListenerForCreation {
 			default:
 				protocol = "ssl"
 			}
-			olstnr.ServerCertificateId = ptr.To(l.ListenerDefaults.SSLCertificate)
+			olstnr.ServerCertificateId = new(l.ListenerDefaults.SSLCertificate)
 		} else {
 			switch backendProtocol {
 			case "http":
@@ -398,7 +397,7 @@ func (l *LoadBalancer) listeners() []osc.ListenerForCreation {
 		}
 
 		olstnr.LoadBalancerProtocol = strings.ToUpper(protocol)
-		olstnr.BackendProtocol = ptr.To(strings.ToUpper(backendProtocol))
+		olstnr.BackendProtocol = new(strings.ToUpper(backendProtocol))
 		lst = append(lst, olstnr)
 	}
 	return lst
@@ -419,7 +418,7 @@ func (l *LoadBalancer) healthCheck() *osc.HealthCheck {
 	switch hc.Protocol {
 	case "HTTP", "HTTPS":
 		if l.HealthCheck.Path != "" {
-			hc.Path = ptr.To(l.HealthCheck.Path)
+			hc.Path = new(l.HealthCheck.Path)
 		}
 	default:
 	}
@@ -488,7 +487,7 @@ func (c *Cloud) CreateLoadBalancer(ctx context.Context, l *LoadBalancer, backend
 		}
 
 		if l.Internal {
-			createRequest.LoadBalancerType = ptr.To("internal")
+			createRequest.LoadBalancerType = new("internal")
 		}
 		switch {
 		case len(l.PublicIPID) > 0:
@@ -533,7 +532,7 @@ func (c *Cloud) CreateLoadBalancer(ctx context.Context, l *LoadBalancer, backend
 			stags = map[string]string{}
 		}
 		stags[tags.ServiceName] = l.ServiceName
-		stags[c.clusterIDTagKey()] = tags.ResourceLifecycleOwned
+		stags[c.clusterIDTagKey()] = string(tags.ResourceLifecycleOwned)
 
 		dtags := lo.MapToSlice(stags, func(k, v string) osc.ResourceTag {
 			return osc.ResourceTag{Key: k, Value: v}
@@ -593,18 +592,18 @@ func (c *Cloud) ensureSubnet(ctx context.Context, l *LoadBalancer) error {
 		switch {
 		case err != nil:
 			return fmt.Errorf("find existing subnet: %w", err)
-		case len(*resp.Subnets) < len(l.SubnetID):
-			return fmt.Errorf("not enough subnets found: %d expected, %d found", len(l.SubnetID), len(*resp.Subnets))
+		case len(ptr.From(resp.Subnets)) < len(l.SubnetID):
+			return fmt.Errorf("not enough subnets found: %d expected, %d found", len(l.SubnetID), len(ptr.From(resp.Subnets)))
 		}
-		l.NetID = (*resp.Subnets)[0].NetId
+		l.NetID = ptr.From(resp.Subnets)[0].NetId
 		return nil
 	}
 	resp, err := c.api.OAPI().ReadSubnets(ctx, osc.ReadSubnetsRequest{
 		Filters: &osc.FiltersSubnet{
-			TagKeys: ptr.To(c.clusterIDTagKeys()),
+			TagKeys: new(c.clusterIDTagKeys()),
 		},
 	})
-	if err == nil && len(*resp.Subnets) == 0 {
+	if err == nil && len(ptr.From(resp.Subnets)) == 0 {
 		resp, err = c.api.OAPI().ReadSubnets(ctx, osc.ReadSubnetsRequest{
 			Filters: &osc.FiltersSubnet{
 				NetIds: &[]string{*c.Self.NetID},
@@ -614,7 +613,7 @@ func (c *Cloud) ensureSubnet(ctx context.Context, l *LoadBalancer) error {
 	if err != nil {
 		return fmt.Errorf("find subnet: %w", err)
 	}
-	if len(*resp.Subnets) == 0 {
+	if len(ptr.From(resp.Subnets)) == 0 {
 		return errors.New("no subnet found")
 	}
 	azs := l.SubRegions
@@ -629,7 +628,7 @@ func (c *Cloud) ensureSubnet(ctx context.Context, l *LoadBalancer) error {
 	l.SubnetID = make([]string, l.Instances)
 	ensureByTag := func(key, subregion string, i int) bool {
 		// right tag, right subregion
-		for _, subnet := range *resp.Subnets {
+		for _, subnet := range ptr.From(resp.Subnets) {
 			if tags.Has(subnet.Tags, key) && subnet.SubregionName == subregion {
 				l.SubnetID[i] = subnet.SubnetId
 				l.NetID = subnet.NetId
@@ -637,7 +636,7 @@ func (c *Cloud) ensureSubnet(ctx context.Context, l *LoadBalancer) error {
 			}
 		}
 		// fallback: right tag, other subregion
-		for _, subnet := range *resp.Subnets {
+		for _, subnet := range ptr.From(resp.Subnets) {
 			if tags.Has(subnet.Tags, key) {
 				l.SubnetID[i] = subnet.SubnetId
 				l.NetID = subnet.NetId
@@ -655,7 +654,7 @@ func (c *Cloud) ensureSubnet(ctx context.Context, l *LoadBalancer) error {
 		case ensureByTag(tags.RoleKey(role.Service), azs[i], i):
 		case ensureByTag(tags.RoleKey(role.LoadBalancer), azs[i], i):
 		default:
-			discovered, err := c.discoverSubnet(ctx, l, *resp.Subnets, azs[i])
+			discovered, err := c.discoverSubnet(ctx, l, ptr.From(resp.Subnets), azs[i])
 			if err != nil {
 				return err
 			}
@@ -680,7 +679,7 @@ func (c *Cloud) discoverSubnet(ctx context.Context, l *LoadBalancer, subnets []o
 	// find a public or private subnet, depending on LB type
 	var discovered *osc.Subnet
 	for _, subnet := range subnets {
-		if oapi.IsSubnetPublic(subnet.SubnetId, *resp.RouteTables) == !l.Internal {
+		if oapi.IsSubnetPublic(subnet.SubnetId, ptr.From(resp.RouteTables)) == !l.Internal {
 			switch {
 			case discovered == nil:
 				// we ensure that a subnet is selected even if no subregion matches
@@ -722,10 +721,10 @@ func (c *Cloud) ensureSecurityGroup(ctx context.Context, l *LoadBalancer) (*osc.
 		switch {
 		case err != nil:
 			return nil, fmt.Errorf("read security groups: %w", err)
-		case len(*resp.SecurityGroups) == 0: // this has a tiny chance of occurring, but we would not want the CCM to panic
+		case len(ptr.From(resp.SecurityGroups)) == 0: // this has a tiny chance of occurring, but we would not want the CCM to panic
 			return nil, errors.New("duplicate SG but none found")
 		default:
-			sg = &(*resp.SecurityGroups)[0]
+			sg = &(ptr.From(resp.SecurityGroups))[0]
 		}
 	case err != nil:
 		return nil, fmt.Errorf("create SG: %w", err)
@@ -738,7 +737,7 @@ func (c *Cloud) ensureSecurityGroup(ctx context.Context, l *LoadBalancer) (*osc.
 	case tags.GetClusterID(sg.Tags) == "": // new SG or existing SG without tag => create
 		_, err = c.api.OAPI().CreateTags(ctx, osc.CreateTagsRequest{
 			ResourceIds: []string{sg.SecurityGroupId},
-			Tags:        []osc.ResourceTag{{Key: c.clusterIDTagKey(), Value: tags.ResourceLifecycleOwned}},
+			Tags:        []osc.ResourceTag{{Key: c.clusterIDTagKey(), Value: string(tags.ResourceLifecycleOwned)}},
 		})
 		if err != nil {
 			return nil, fmt.Errorf("create SG: %w", err)
@@ -820,7 +819,7 @@ func (c *Cloud) UpdateLoadBalancer(ctx context.Context, l *LoadBalancer, backend
 func (c *Cloud) updateProxyProtocol(ctx context.Context, l *LoadBalancer, oscExisting *osc.LoadBalancer) error {
 	name := oscExisting.LoadBalancerName
 	elbu, err := c.api.LBU().DescribeLoadBalancersWithContext(ctx, &elb.DescribeLoadBalancersInput{
-		LoadBalancerNames: []*string{aws.String(name)},
+		LoadBalancerNames: []*string{&name},
 	})
 	if err != nil {
 		return fmt.Errorf("check proxy protocol: %w", err)
@@ -847,13 +846,13 @@ func (c *Cloud) updateProxyProtocol(ctx context.Context, l *LoadBalancer, oscExi
 	var policies []*string
 	if need {
 		request := &elb.CreateLoadBalancerPolicyInput{
-			LoadBalancerName: aws.String(name),
-			PolicyName:       aws.String(proxyProtocolPolicyName),
-			PolicyTypeName:   aws.String("ProxyProtocolPolicyType"),
+			LoadBalancerName: &name,
+			PolicyName:       new(proxyProtocolPolicyName),
+			PolicyTypeName:   new("ProxyProtocolPolicyType"),
 			PolicyAttributes: []*elb.PolicyAttribute{
 				{
-					AttributeName:  aws.String("ProxyProtocol"),
-					AttributeValue: aws.String("true"),
+					AttributeName:  new("ProxyProtocol"),
+					AttributeValue: new("true"),
 				},
 			},
 		}
@@ -866,7 +865,7 @@ func (c *Cloud) updateProxyProtocol(ctx context.Context, l *LoadBalancer, oscExi
 		default:
 			return fmt.Errorf("create proxy protocol policy: %w", err)
 		}
-		policies = []*string{aws.String(proxyProtocolPolicyName)}
+		policies = []*string{new(proxyProtocolPolicyName)}
 	} else {
 		policies = []*string{}
 	}
@@ -876,8 +875,8 @@ func (c *Cloud) updateProxyProtocol(ctx context.Context, l *LoadBalancer, oscExi
 			continue
 		}
 		request := &elb.SetLoadBalancerPoliciesForBackendServerInput{
-			LoadBalancerName: aws.String(name),
-			InstancePort:     aws.Int64(int64(listener.BackendPort)),
+			LoadBalancerName: &name,
+			InstancePort:     new(int64(listener.BackendPort)),
 			PolicyNames:      policies,
 		}
 		if len(policies) > 0 {
@@ -911,8 +910,8 @@ func (c *Cloud) updateListeners(ctx context.Context, l *LoadBalancer, existing *
 	for _, port := range delback {
 		klog.FromContext(ctx).V(2).Info(fmt.Sprintf("Reseting policies on backend port %d", port))
 		_, err := c.api.LBU().SetLoadBalancerPoliciesForBackendServerWithContext(ctx, &elb.SetLoadBalancerPoliciesForBackendServerInput{
-			LoadBalancerName: aws.String(existing.LoadBalancerName),
-			InstancePort:     aws.Int64(int64(port)),
+			LoadBalancerName: &existing.LoadBalancerName,
+			InstancePort:     new(int64(port)),
 			PolicyNames:      []*string{},
 		})
 		if err != nil {
@@ -1000,7 +999,7 @@ func (c *Cloud) updateSSLCert(ctx context.Context, l *LoadBalancer, existing *os
 
 func (c *Cloud) updateAttributes(ctx context.Context, l *LoadBalancer, oscExisting *osc.LoadBalancer) error {
 	existing, err := c.api.LBU().DescribeLoadBalancerAttributesWithContext(ctx, &elb.DescribeLoadBalancerAttributesInput{
-		LoadBalancerName: aws.String(oscExisting.LoadBalancerName),
+		LoadBalancerName: new(oscExisting.LoadBalancerName),
 	})
 	if err != nil {
 		return fmt.Errorf("check LB attributes: %w", err)
@@ -1009,7 +1008,7 @@ func (c *Cloud) updateAttributes(ctx context.Context, l *LoadBalancer, oscExisti
 	if !accessLogAttributesAreEqual(existing.LoadBalancerAttributes, expected) {
 		klog.FromContext(ctx).V(2).Info("Updating access log attributes")
 		_, err := c.api.LBU().ModifyLoadBalancerAttributesWithContext(ctx, &elb.ModifyLoadBalancerAttributesInput{
-			LoadBalancerName: aws.String(oscExisting.LoadBalancerName),
+			LoadBalancerName: &oscExisting.LoadBalancerName,
 			LoadBalancerAttributes: &elb.LoadBalancerAttributes{
 				AccessLog: expected.AccessLog,
 			},
@@ -1021,7 +1020,7 @@ func (c *Cloud) updateAttributes(ctx context.Context, l *LoadBalancer, oscExisti
 	if !connectionAttributesAreEqual(existing.LoadBalancerAttributes, expected) {
 		klog.FromContext(ctx).V(2).Info("Updating connection attributes")
 		_, err := c.api.LBU().ModifyLoadBalancerAttributesWithContext(ctx, &elb.ModifyLoadBalancerAttributesInput{
-			LoadBalancerName: aws.String(oscExisting.LoadBalancerName),
+			LoadBalancerName: &oscExisting.LoadBalancerName,
 			LoadBalancerAttributes: &elb.LoadBalancerAttributes{
 				ConnectionDraining: expected.ConnectionDraining,
 				ConnectionSettings: expected.ConnectionSettings,
@@ -1041,7 +1040,7 @@ func accessLogAttributesAreEqual(actual, expected *elb.LoadBalancerAttributes) b
 	case expected.AccessLog == nil:
 	case !equal(actual.AccessLog.Enabled, expected.AccessLog.Enabled):
 		return false
-	case aws.BoolValue(expected.AccessLog.Enabled):
+	case ptr.From(expected.AccessLog.Enabled):
 		if !equal(actual.AccessLog.EmitInterval, expected.AccessLog.EmitInterval) ||
 			!equal(actual.AccessLog.S3BucketName, expected.AccessLog.S3BucketName) ||
 			!equal(actual.AccessLog.S3BucketPrefix, expected.AccessLog.S3BucketPrefix) {
@@ -1058,7 +1057,7 @@ func connectionAttributesAreEqual(actual, expected *elb.LoadBalancerAttributes) 
 	case expected.ConnectionDraining == nil:
 	case !equal(actual.ConnectionDraining.Enabled, expected.ConnectionDraining.Enabled):
 		return false
-	case aws.BoolValue(expected.ConnectionDraining.Enabled):
+	case ptr.From(expected.ConnectionDraining.Enabled):
 		if !equal(actual.ConnectionDraining.Timeout, expected.ConnectionDraining.Timeout) {
 			return false
 		}
@@ -1160,10 +1159,10 @@ func (c *Cloud) getLBSecurityGroup(ctx context.Context, id string) (*osc.Securit
 	if err != nil {
 		return nil, fmt.Errorf("list SGs: %w", err)
 	}
-	if len(*resp.SecurityGroups) == 0 {
+	if len(ptr.From(resp.SecurityGroups)) == 0 {
 		return nil, errors.New("no SG found for load balancer")
 	}
-	return &(*resp.SecurityGroups)[0], nil
+	return &(ptr.From(resp.SecurityGroups))[0], nil
 }
 
 func (c *Cloud) getBackendSecurityGroup(ctx context.Context, l *LoadBalancer, vms []VM) (backendSG *osc.SecurityGroup, err error) {
@@ -1175,17 +1174,17 @@ func (c *Cloud) getBackendSecurityGroup(ctx context.Context, l *LoadBalancer, vm
 	}
 	resp, err := c.api.OAPI().ReadSecurityGroups(ctx, osc.ReadSecurityGroupsRequest{
 		Filters: &osc.FiltersSecurityGroup{
-			SecurityGroupIds: ptr.To(sets.List(sgIDs)),
+			SecurityGroupIds: new(sets.List(sgIDs)),
 		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("list SGs: %w", err)
 	}
-	if len(*resp.SecurityGroups) == 0 {
+	if len(ptr.From(resp.SecurityGroups)) == 0 {
 		return nil, errors.New("no SG found for target nodes")
 	}
 	roleTagCount := math.MaxInt
-	for _, sg := range *resp.SecurityGroups {
+	for _, sg := range ptr.From(resp.SecurityGroups) {
 		if tags.Has(sg.Tags, c.mainSGTagKey()) {
 			klog.FromContext(ctx).V(4).Info("Found security group having main tag", "securityGroupId", sg.SecurityGroupId)
 			backendSG = &sg
@@ -1200,7 +1199,7 @@ func (c *Cloud) getBackendSecurityGroup(ctx context.Context, l *LoadBalancer, vm
 		}
 	}
 	if backendSG == nil {
-		backendSG = &(*resp.SecurityGroups)[0]
+		backendSG = &(ptr.From(resp.SecurityGroups)[0])
 		klog.FromContext(ctx).V(3).Info("No security group found by tag, using a random one", "securityGroupId", backendSG.SecurityGroupId)
 	}
 	return
@@ -1401,7 +1400,7 @@ func (c *Cloud) RunGarbageCollector(ctx context.Context) {
 	}
 	// Find SG to delete
 	var toDelete []string
-	for _, sg := range *resp.SecurityGroups {
+	for _, sg := range ptr.From(resp.SecurityGroups) {
 		if tags.Has(sg.Tags, SGToDeleteTagKey) {
 			toDelete = append(toDelete, sg.SecurityGroupId)
 		}
@@ -1410,7 +1409,7 @@ func (c *Cloud) RunGarbageCollector(ctx context.Context) {
 	for _, delSGID := range toDelete {
 		// delete all inbound rules from this SG
 	LOOPSG:
-		for _, sg := range *resp.SecurityGroups {
+		for _, sg := range ptr.From(resp.SecurityGroups) {
 			logger.V(2).Info("Deleting inbound rule", "from", delSGID, "to", sg.SecurityGroupId)
 			for _, r := range sg.InboundRules {
 				if slices.ContainsFunc(r.SecurityGroupsMembers, func(m osc.SecurityGroupsMember) bool {

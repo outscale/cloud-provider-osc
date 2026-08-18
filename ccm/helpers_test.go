@@ -440,7 +440,7 @@ func expectCreateSecurityGroup(mock *mocks_osc.MockClient) {
 		CreateTags(gomock.Any(), gomock.Eq(osc.CreateTagsRequest{
 			ResourceIds: []string{"sg-foo"},
 			Tags: []osc.ResourceTag{
-				{Key: tags.ClusterIDKey("foo"), Value: tags.ResourceLifecycleOwned},
+				{Key: tags.ClusterIDKey("foo"), Value: string(tags.ResourceLifecycleOwned)},
 			},
 		})).
 		Return(&osc.CreateTagsResponse{}, nil)

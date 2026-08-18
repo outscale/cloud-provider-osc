@@ -9,11 +9,13 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/outscale/cloud-provider-osc/ccm/oapi"
 	"github.com/outscale/goutils/k8s/sdk"
 	"github.com/outscale/goutils/k8s/tags"
 	"github.com/outscale/goutils/sdk/metadata"
+	"github.com/outscale/goutils/sdk/ptr"
 	"github.com/outscale/osc-sdk-go/v3/pkg/osc"
 	"github.com/samber/lo"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -56,10 +58,11 @@ func New(ctx context.Context, clusterID string, opts ...sdk.Options) (*Cloud, er
 			if err != nil {
 				return nil, fmt.Errorf("error finding self subnets: %w", err)
 			}
-			if len(*subs.Subnets) == 1 {
-				clusterID := tags.GetClusterID((*subs.Subnets)[0].Tags)
-				if clusterID != "" && !slices.Contains(c.clusterID, clusterID) {
-					c.clusterID = append(c.clusterID, clusterID)
+			if len(ptr.From(subs.Subnets)) == 1 {
+				for _, t := range ptr.From(subs.Subnets)[0].Tags {
+					if cid, ok := strings.CutPrefix(t.Key, tags.ClusterIDPrefix); ok && !slices.Contains(c.clusterID, cid) {
+						c.clusterID = append(c.clusterID, cid)
+					}
 				}
 			}
 		}
@@ -94,7 +97,13 @@ func (c *Cloud) Initialize(ctx context.Context, kube clientset.Interface) {
 }
 
 func (c *Cloud) sameCluster(t []osc.ResourceTag) bool {
-	return slices.Contains(c.clusterID, tags.GetClusterID(t))
+	for _, cid := range c.clusterID {
+		ok, _ := tags.HasClusterID(t, cid)
+		if ok {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *Cloud) mainSGTagKey() string {
