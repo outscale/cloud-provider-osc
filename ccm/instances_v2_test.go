@@ -6,7 +6,6 @@ SPDX-License-Identifier: BSD-3-Clause
 package ccm_test
 
 import (
-	"sync"
 	"testing"
 
 	"github.com/outscale/cloud-provider-osc/ccm"
@@ -22,7 +21,7 @@ func TestInstanceExists(t *testing.T) {
 	t.Run("If the instance exists, return true", func(t *testing.T) {
 		c, mock, _ := newAPI(t, self, []string{"foo"})
 		expectVMs(mock, sdkSelf, sdkVM)
-		p := ccm.NewProviderWith(c, nil, ccm.Options{}, &sync.WaitGroup{})
+		p := ccm.NewProviderWith(c, nil, ccm.Options{})
 		exists, err := p.InstanceExists(t.Context(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
 		require.NoError(t, err)
 		assert.True(t, exists)
@@ -30,7 +29,7 @@ func TestInstanceExists(t *testing.T) {
 	t.Run("If the instance does not exists, return false", func(t *testing.T) {
 		c, mock, _ := newAPI(t, self, []string{"foo"})
 		expectVMs(mock, sdkSelf)
-		p := ccm.NewProviderWith(c, nil, ccm.Options{}, &sync.WaitGroup{})
+		p := ccm.NewProviderWith(c, nil, ccm.Options{})
 		exists, err := p.InstanceExists(t.Context(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
 		require.NoError(t, err)
 		assert.False(t, exists)
@@ -41,7 +40,7 @@ func TestInstanceExists(t *testing.T) {
 		sdkTerminated.PrivateDnsName = nil
 		c, mock, _ := newAPI(t, self, []string{"foo"})
 		expectVMs(mock, sdkSelf, sdkTerminated)
-		p := ccm.NewProviderWith(c, nil, ccm.Options{}, &sync.WaitGroup{})
+		p := ccm.NewProviderWith(c, nil, ccm.Options{})
 		exists, err := p.InstanceExists(t.Context(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
 		require.NoError(t, err)
 		assert.False(t, exists)
@@ -52,7 +51,7 @@ func TestInstanceShutdown(t *testing.T) {
 	t.Run("If the instance is running, return false", func(t *testing.T) {
 		c, mock, _ := newAPI(t, self, []string{"foo"})
 		expectVMs(mock, sdkSelf, sdkVM)
-		p := ccm.NewProviderWith(c, nil, ccm.Options{}, &sync.WaitGroup{})
+		p := ccm.NewProviderWith(c, nil, ccm.Options{})
 		shut, err := p.InstanceShutdown(t.Context(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
 		require.NoError(t, err)
 		assert.False(t, shut)
@@ -62,7 +61,7 @@ func TestInstanceShutdown(t *testing.T) {
 		sdkVM.State = osc.VmStateStopped
 		c, mock, _ := newAPI(t, self, []string{"foo"})
 		expectVMs(mock, sdkSelf, sdkVM)
-		p := ccm.NewProviderWith(c, nil, ccm.Options{}, &sync.WaitGroup{})
+		p := ccm.NewProviderWith(c, nil, ccm.Options{})
 		shut, err := p.InstanceShutdown(t.Context(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
 		require.NoError(t, err)
 		assert.True(t, shut)
@@ -73,7 +72,7 @@ func TestInstanceShutdown(t *testing.T) {
 		sdkTerminated.PrivateDnsName = nil
 		c, mock, _ := newAPI(t, self, []string{"foo"})
 		expectVMs(mock, sdkSelf, sdkTerminated)
-		p := ccm.NewProviderWith(c, nil, ccm.Options{}, &sync.WaitGroup{})
+		p := ccm.NewProviderWith(c, nil, ccm.Options{})
 		_, err := p.InstanceShutdown(t.Context(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
 		require.ErrorIs(t, err, cloudprovider.InstanceNotFound)
 	})
@@ -83,7 +82,7 @@ func TestInstanceMetadata(t *testing.T) {
 	t.Run("Metadata is returned", func(t *testing.T) {
 		c, mock, _ := newAPI(t, self, []string{"foo"})
 		expectVMs(mock, sdkSelf, sdkVM)
-		p := ccm.NewProviderWith(c, nil, ccm.Options{}, &sync.WaitGroup{})
+		p := ccm.NewProviderWith(c, nil, ccm.Options{})
 		meta, err := p.InstanceMetadata(t.Context(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
 		require.NoError(t, err)
 		assert.Equal(t, &cloudprovider.InstanceMetadata{
@@ -113,7 +112,7 @@ func TestInstanceMetadata(t *testing.T) {
 				"label.bar":       "{{ .Tags.bar }}",
 				"label.SubRegion": "{{ .SubRegion }}",
 			},
-		}, &sync.WaitGroup{})
+		})
 		meta, err := p.InstanceMetadata(t.Context(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
 		require.NoError(t, err)
 		assert.Equal(t, map[string]string{
@@ -129,7 +128,7 @@ func TestInstanceMetadata(t *testing.T) {
 		sdkTerminated.PrivateDnsName = nil
 		c, mock, _ := newAPI(t, self, []string{"foo"})
 		expectVMs(mock, sdkSelf, sdkTerminated)
-		p := ccm.NewProviderWith(c, nil, ccm.Options{}, &sync.WaitGroup{})
+		p := ccm.NewProviderWith(c, nil, ccm.Options{})
 		_, err := p.InstanceMetadata(t.Context(), &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: vmNodeName}})
 		require.ErrorIs(t, err, cloudprovider.InstanceNotFound)
 	})
