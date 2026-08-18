@@ -53,7 +53,7 @@ jobs:
         region: ${{ env.OSC_REGION }}
         exclude_resource_types: access_key
     - name: 🐳 Login to Harbor
-      uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+      uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
       with:
         registry: ${{ vars.REGISTRY }}
         username: admin
