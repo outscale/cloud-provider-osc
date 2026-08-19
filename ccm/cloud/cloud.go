@@ -44,6 +44,9 @@ func New(ctx context.Context, clusterID string, opts ...sdk.Options) (*Cloud, er
 	if err != nil {
 		return nil, fmt.Errorf("error finding self: %w", err)
 	}
+	if self.NetID == nil {
+		klog.FromContext(ctx).Info("Running in public cloud... LoadBalancer creation will not be possible")
+	}
 	c.Self = self
 	if clusterID != "" {
 		c.clusterID = []string{clusterID}

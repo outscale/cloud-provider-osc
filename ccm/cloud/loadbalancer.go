@@ -467,6 +467,9 @@ func (c *Cloud) GetLoadBalancer(ctx context.Context, l *LoadBalancer) (ingresses
 
 // CreateLoadBalancer creates a load-balancer.
 func (c *Cloud) CreateLoadBalancer(ctx context.Context, l *LoadBalancer, backend []VM) (ingresses []Ingress, err error) {
+	if c.Self.NetID == nil {
+		return nil, errors.New("creating LoadBalancers in a public cloud cluster is not supported")
+	}
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("unable to create LB: %w", err)
@@ -753,7 +756,7 @@ func (c *Cloud) ensureSecurityGroup(ctx context.Context, l *LoadBalancer) (*osc.
 func (c *Cloud) UpdateLoadBalancer(ctx context.Context, l *LoadBalancer, backend []VM) (ingresses []Ingress, err error) {
 	defer func() {
 		if err != nil {
-			err = fmt.Errorf("unable to create LB: %w", err)
+			err = fmt.Errorf("unable to update LB: %w", err)
 		}
 	}()
 	existings, err := c.getLBUs(ctx, l)
@@ -764,19 +767,23 @@ func (c *Cloud) UpdateLoadBalancer(ctx context.Context, l *LoadBalancer, backend
 		return nil, errors.New("existing LBU not found")
 	}
 
-	lbSG, err := c.getLBSecurityGroup(ctx, existings[0].SecurityGroups[0])
-	if err == nil {
-		err = c.updateIngressSecurityGroupRules(ctx, l, lbSG)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("ingress rules: %w", err)
-	}
-	backendSG, err := c.getBackendSecurityGroup(ctx, l, backend)
-	if err == nil {
-		err = c.updateBackendSecurityGroupRules(ctx, l, lbSG, backendSG)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("backend rules: %w", err)
+	if len(existings[0].SecurityGroups) == 0 {
+		klog.FromContext(ctx).V(3).Info("LoadBalancer has no security group, rules will not be updated")
+	} else {
+		lbSG, err := c.getLBSecurityGroup(ctx, existings[0].SecurityGroups[0])
+		if err == nil {
+			err = c.updateIngressSecurityGroupRules(ctx, l, lbSG)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("ingress rules: %w", err)
+		}
+		backendSG, err := c.getBackendSecurityGroup(ctx, l, backend)
+		if err == nil {
+			err = c.updateBackendSecurityGroupRules(ctx, l, lbSG, backendSG)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("backend rules: %w", err)
+		}
 	}
 
 	ingresses = make([]Ingress, 0, len(existings))
