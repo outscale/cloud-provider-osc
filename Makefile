@@ -33,8 +33,8 @@ GOPATH ?= $(shell go env GOPATH)
 # Full log with  -v -x
 #GO_ADD_OPTIONS := -v -x
 
-IMAGE = "outscale/cloud-provider-osc"
-IMAGE_TAG = "${VERSION}"
+IMAGE ?= "outscale/cloud-provider-osc"
+IMAGE_TAG ?= "${VERSION}"
 
 export GO111MODULE=on
 #GOPATH=$(PWD)
@@ -181,7 +181,7 @@ helm-manifest:
 	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.33.7 > deploy/osc-ccm-manifest-v1.33.yml
 	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.34.7 > deploy/osc-ccm-manifest-v1.34.yml
 	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.35.7 > deploy/osc-ccm-manifest-v1.35.yml
-	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.35.7 > deploy/osc-ccm-manifest-v1.36.yml
+	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.36.7 > deploy/osc-ccm-manifest-v1.36.yml
 
 check-helm-manifest:
 	./hack/verify-helm-manifest.sh
