@@ -33,8 +33,8 @@ GOPATH ?= $(shell go env GOPATH)
 # Full log with  -v -x
 #GO_ADD_OPTIONS := -v -x
 
-IMAGE = "outscale/cloud-provider-osc"
-IMAGE_TAG = "${VERSION}"
+IMAGE ?= "outscale/cloud-provider-osc"
+IMAGE_TAG ?= "${VERSION}"
 
 export GO111MODULE=on
 #GOPATH=$(PWD)

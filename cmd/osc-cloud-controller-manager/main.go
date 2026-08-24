@@ -9,9 +9,10 @@ import (
 	"context"
 	"io"
 	"os"
+	"os/signal"
+	"sync"
 
 	"github.com/outscale/cloud-provider-osc/ccm"
-	"k8s.io/apimachinery/pkg/util/wait"
 	cloudprovider "k8s.io/cloud-provider"
 	"k8s.io/cloud-provider/app"
 	cloudcontrollerconfig "k8s.io/cloud-provider/app/config"
@@ -42,15 +43,29 @@ func main() {
 	oopts := ccm.Options{}
 	oopts.AddFlags(ofss)
 
-	command := app.NewCloudControllerManagerCommand(opts, cloudInitializer, controllerInitializers, controllerAliases, fss, wait.NeverStop)
+	// wg will store goroutines refs.
+	// we will wait for all goroutines to stop before quitting.
+	wg := sync.WaitGroup{}
+	// catch interrupt signals
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	stopCh := make(chan struct{})
+	go func() {
+		<-c
+		close(stopCh)
+	}()
+
+	command := app.NewCloudControllerManagerCommand(opts, cloudInitializer, controllerInitializers, controllerAliases, fss, stopCh)
 
 	cloudprovider.RegisterCloudProvider(ccm.ProviderName, func(config io.Reader) (cloudprovider.Interface, error) {
-		return ccm.NewProvider(context.Background(), oopts)
+		return ccm.NewProvider(context.Background(), oopts, &wg)
 	})
 
 	if err := command.Execute(); err != nil {
 		os.Exit(1)
 	}
+	// wait for all goroutines to stop
+	wg.Wait()
 }
 
 func cloudInitializer(config *cloudcontrollerconfig.CompletedConfig) cloudprovider.Interface {
