@@ -116,6 +116,8 @@ When using Cluster API Provider for Outscale (CAPOSC), the tag is automatically 
 
 ## 🚀 Creating load-balancers
 
+> Load-balancer creation is currently not supported in public cloud clusters in v1.x.
+
 ### Subnets
 
 The CCM will look for a subnet having one of the following tags:
@@ -166,6 +168,8 @@ The CCM will search for a subnet as before and expects fo find a matching subnet
 > Changing `service.beta.kubernetes.io/osc-load-balancer-instances` is not supported.
 
 ## ⬆️ Upgrading CCM v0.x to v1.x
+
+> Load-balancer creation is currently not supported in public cloud clusters in v1.x, public cloud clusters using load-balancers should not be upgraded.
 
 The secret has now the same format as the CSI driver. You need to rename:
 * `key_id` to `access_key`,

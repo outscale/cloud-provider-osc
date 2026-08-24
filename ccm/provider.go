@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/outscale/cloud-provider-osc/ccm/cloud"
@@ -48,10 +49,12 @@ type Provider struct {
 	nodeInformer     informercorev1.NodeInformer
 	eventBroadcaster record.EventBroadcaster
 	eventRecorder    record.EventRecorder
+
+	wg *sync.WaitGroup
 }
 
 // NewProvider builds a provider.
-func NewProvider(ctx context.Context, opts Options) (*Provider, error) {
+func NewProvider(ctx context.Context, opts Options, wg *sync.WaitGroup) (*Provider, error) {
 	klog.V(2).Infof("Starting OSC cloud provider")
 
 	c, err := cloud.New(ctx, os.Getenv("OSC_CLUSTER_ID"), opts.sdkOpts)
@@ -69,10 +72,11 @@ func NewProvider(ctx context.Context, opts Options) (*Provider, error) {
 		cloud:    c,
 		resolver: net.DefaultResolver,
 		self:     self,
+		wg:       wg,
 	}, nil
 }
 
-func NewProviderWith(c *cloud.Cloud, r Resolver, opts Options) *Provider {
+func NewProviderWith(c *cloud.Cloud, r Resolver, opts Options, wg *sync.WaitGroup) *Provider {
 	if err := opts.Compile(); err != nil {
 		panic(err)
 	}
@@ -81,12 +85,12 @@ func NewProviderWith(c *cloud.Cloud, r Resolver, opts Options) *Provider {
 		cloud:    c,
 		resolver: r,
 		self:     c.Self,
+		wg:       wg,
 	}
 }
 
 // Initialize passes a Kubernetes clientBuilder interface to the cloud provider
-func (c *Provider) Initialize(clientBuilder cloudprovider.ControllerClientBuilder,
-	_ <-chan struct{}) {
+func (c *Provider) Initialize(clientBuilder cloudprovider.ControllerClientBuilder, stop <-chan struct{}) {
 	c.clientBuilder = clientBuilder
 	c.kubeClient = clientBuilder.ClientOrDie("osc-cloud-provider")
 	c.eventBroadcaster = record.NewBroadcaster()
@@ -96,7 +100,9 @@ func (c *Provider) Initialize(clientBuilder cloudprovider.ControllerClientBuilde
 
 	ctx := context.Background()
 	c.cloud.Initialize(ctx, c.kubeClient)
-	go c.garbageCollector(ctx)
+	// register GC in wait group
+	c.wg.Add(1)
+	go c.garbageCollector(ctx, stop)
 }
 
 // ProviderName returns the cloud provider ID.
@@ -139,7 +145,8 @@ func (c *Provider) HasClusterID() bool {
 	return c.self.ClusterID() != ""
 }
 
-func (c *Provider) garbageCollector(ctx context.Context) {
+func (c *Provider) garbageCollector(ctx context.Context, stop <-chan struct{}) {
+	defer c.wg.Done()
 	logger := klog.Background().WithValues("version", utils.GetVersion(), "method", "GarbageCollector")
 	logger.V(5).Info("Starting garbage collector")
 
@@ -147,16 +154,16 @@ func (c *Provider) garbageCollector(ctx context.Context) {
 	defer t.Stop()
 	for {
 		select {
-		case <-ctx.Done():
+		case <-stop:
+			logger.V(5).Info("Collecting final garbage")
+			// we wrap the context in case it ha been cancelled.
+			c.cloud.RunGarbageCollector(context.WithoutCancel(ctx))
 			return
 		case <-t.C:
 			logger.V(5).Info("Collecting garbage")
 			glogger := logger.WithValues("span_id", xid.New().String())
 			ctx = klog.NewContext(ctx, glogger)
-			err := c.cloud.RunGarbageCollector(ctx)
-			if err != nil {
-				logger.V(3).Error(err, "Error running garbage collector")
-			}
+			c.cloud.RunGarbageCollector(ctx)
 		}
 	}
 }
