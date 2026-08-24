@@ -1,6 +1,6 @@
 # Changelog
 
-## [v1.32.8](https://github.com/outscale/cloud-provider-osc/releases/tag/v1.32.8) - 2026-08-24
+## [v1.35.8](https://github.com/outscale/cloud-provider-osc/releases/tag/v1.35.8) - 2026-08-24
 
 ### 🛠️ Changed / Refactoring
 * ♻️ refacto(loadbalancers): continue SG GC on errors, final GC before exit by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/714
