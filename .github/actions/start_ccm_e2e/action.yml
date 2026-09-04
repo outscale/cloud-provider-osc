@@ -51,6 +51,14 @@ runs:
         IMAGE_NAME: ${{ inputs.image_name }}
         WORKER_COUNT: 2
         CCM: "false"
+    - name: 🔎 Fetch Cluster ID
+      id: clusterid
+      run: |
+        cid=`kubectl get -n ccm osccluster.infrastructure.cluster.x-k8s.io/ccm -o json | jq -r '.metadata.labels."outscale.com/clusterUID"'`
+        echo "clusterid=$cid" >> $GITHUB_OUTPUT
+      shell: bash
+      env:
+        KUBECONFIG: "${{ github.workspace }}/${{ steps.caposc.outputs.MANAGEMENT_KUBECONFIG }}"
     - name: 👷 Install CCM
       run: |
         kubectl create secret generic osc-secret --from-literal=access_key=${{ inputs.osc_access_key }} --from-literal=secret_key=${{ inputs.osc_secret_key }} --from-literal=region=${{ inputs.osc_region }} \
@@ -88,6 +96,38 @@ runs:
       shell: bash
       env:
         KUBECONFIG: "${{ github.workspace }}/${{ steps.caposc.outputs.KUBECONFIG }}"
+    - name: 👷 Reconfigure CCM in remote mode
+      id: setupremote
+      run: |
+        echo "updating CCM config"
+        helm upgrade --wait k8s-osc-ccm deploy/k8s-osc-ccm --set oscSecretName=osc-secret-file --set oscCredentialsFromFile=true --set image.repository=${{ inputs.registry }}/outscale/cloud-provider-osc --set image.tag=${{ inputs.version }}\
+          --set extraLoadBalancerTags.clikey=clivalue --set "extraNodeLabels.clilabel=\{\{ .SubRegion \}\}" --set remote=true --set customClusterID=$CLUSTER_ID
+        sleep 5
+        kubectl get pod -n kube-system -l "app=osc-cloud-controller-manager"
+      shell: bash
+      env:
+        KUBECONFIG: "${{ github.workspace }}/${{ steps.caposc.outputs.KUBECONFIG }}"
+        OSC_ACCESS_KEY: ${{ inputs.osc_access_key }}
+        OSC_SECRET_KEY: ${{ inputs.osc_secret_key }}
+        OSC_REGION: ${{ inputs.osc_region }}
+        CLUSTER_ID: ${{ steps.clusterid.output.clusterid }}
+    - name: 🧪 Run e2e tests in remote mode
+      id: e2remote
+      run: |
+        E2E_FOCUS=fast make e2etest
+      shell: bash
+      env:
+        KUBECONFIG: "${{ github.workspace }}/${{ steps.caposc.outputs.KUBECONFIG }}"
+        OSC_ACCESS_KEY: ${{ inputs.osc_access_key }}
+        OSC_SECRET_KEY: ${{ inputs.osc_secret_key }}
+        OSC_REGION: ${{ inputs.osc_region }}
+    - name: 📝 Get CCM logs
+      run: |
+        kubectl logs -l app=osc-cloud-controller-manager -n kube-system --tail=-1
+      if: ${{ failure() && (steps.setupremote.conclusion == 'failure' || steps.e2remote.conclusion == 'failure') }}
+      shell: bash
+      env:
+        KUBECONFIG: "${{ github.workspace }}/${{ steps.caposc.outputs.KUBECONFIG }}"
     - name: 👷 Reconfigure CCM with credentials in profile file
       run: |
         profile="{\"default\":{\"access_key\":\"${{ inputs.osc_access_key }}\",\"secret_key\":\"${{ inputs.osc_secret_key }}\"}}"
@@ -104,7 +144,7 @@ runs:
         OSC_SECRET_KEY: ${{ inputs.osc_secret_key }}
         OSC_REGION: ${{ inputs.osc_region }}
     - name: 🧪 Run e2e tests with credentials in profile file
-      id: e2efast
+      id: e2eprofile
       run: |
         E2E_FOCUS=fast make e2etest
       shell: bash
@@ -116,7 +156,7 @@ runs:
     - name: 📝 Get CCM logs
       run: |
         kubectl logs -l app=osc-cloud-controller-manager -n kube-system --tail=-1
-      if: ${{ failure() && steps.e2efast.conclusion == 'failure' }}
+      if: ${{ failure() && steps.e2eprofile.conclusion == 'failure' }}
       shell: bash
       env:
         KUBECONFIG: "${{ github.workspace }}/${{ steps.caposc.outputs.KUBECONFIG }}"

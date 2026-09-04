@@ -36,9 +36,30 @@ jobs:
     - name: 🔎 Reuse check
       run: make lint-reuse
       shell: bash
-    - name: Test
-      run: bash -c "make test"
     - name: 🔎 Check docs
       run: bash -c "make check-helm-docs"
     - name: 🔎 Check manifest
       run: bash -c "make check-helm-manifest"
+  Unit:
+    runs-on: [self-hosted, linux]
+    steps:
+    - name: ⬇️ Checkout repository
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+    - name: 🔐 Set AK/SK name based on runner region
+      run: .github/scripts/runneraksk.sh
+    - name: ⬇️ Install Go
+      uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      with:
+        go-version-file: 'go.mod'
+    - name: ⬇️ Install Helm
+      uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+      with:
+        version: v4.2.3
+    - name: 🧪 Test
+      run: bash -c "make test"
+      env:
+        OSC_ACCESS_KEY: ${{ secrets[env.OSC_ACCESS_KEY_NAME] }}
+        OSC_SECRET_KEY: ${{ secrets[env.OSC_SECRET_KEY_NAME] }}
+        OSC_REGION: ${{ env.OSC_REGION }}

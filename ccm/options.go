@@ -19,12 +19,15 @@ type Options struct {
 	NodeLabels         map[string]string
 	nodeLabelTemplates map[string]*template.Template
 
+	Remote bool
+
 	sdkOpts sdk.Options
 }
 
 func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.Var(cliflag.NewMapStringString(&o.LBTags), "extra-loadbalancer-tags", "Extra tags to add to load-balancers. It is a comma separated list of key value pairs like '<key1>=<value1>,<key2>=<value2>'")
 	fs.Var(cliflag.NewMapStringString(&o.NodeLabels), "extra-node-labels", "Extra labels to add to nodes. It is a comma separated list of key value pairs like '<key1>=<value1>,<key2>=<value2>'")
+	fs.BoolVar(&o.Remote, "remote", false, "Set this if the control-plane is running outside the cluster")
 	o.sdkOpts.AddFlags(fs)
 }
 

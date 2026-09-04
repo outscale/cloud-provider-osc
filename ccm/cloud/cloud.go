@@ -7,6 +7,7 @@ package cloud
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -29,42 +30,50 @@ type Cloud struct {
 	clusterID []string
 }
 
-func New(ctx context.Context, clusterID string, opts ...sdk.Options) (*Cloud, error) {
+func New(ctx context.Context, clusterID string, remote bool, opts ...sdk.Options) (*Cloud, error) {
 	api, err := oapi.NewClient(ctx, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("init cloud: %w", err)
 	}
 	c := &Cloud{api: api}
 
-	id, err := metadata.GetInstanceID(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("get metadata: %w", err)
-	}
-	self, err := c.GetVMByID(ctx, id)
-	if err != nil {
-		return nil, fmt.Errorf("error finding self: %w", err)
-	}
-	if self.NetID == nil {
-		klog.FromContext(ctx).Info("Running in public cloud... LoadBalancer creation will not be possible")
-	}
-	c.Self = self
 	if clusterID != "" {
 		c.clusterID = []string{clusterID}
+	}
+
+	if remote {
+		if clusterID == "" {
+			return nil, errors.New("OSC_CLUSTER_ID needs to be configured in remote setups")
+		}
 	} else {
-		// primary cluster ID (CAPOSC v1)
-		c.clusterID = []string{self.ClusterID()}
-		if self.SubnetID != nil {
-			// alternate cluster ID (CAPOSC v0)
-			subs, err := api.OAPI().ReadSubnets(ctx, osc.ReadSubnetsRequest{
-				Filters: &osc.FiltersSubnet{SubnetIds: &[]string{*self.SubnetID}},
-			})
-			if err != nil {
-				return nil, fmt.Errorf("error finding self subnets: %w", err)
-			}
-			if len(ptr.From(subs.Subnets)) == 1 {
-				for _, t := range ptr.From(subs.Subnets)[0].Tags {
-					if cid, ok := strings.CutPrefix(t.Key, tags.ClusterIDPrefix); ok && !slices.Contains(c.clusterID, cid) {
-						c.clusterID = append(c.clusterID, cid)
+		id, err := metadata.GetInstanceID(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("get metadata: %w", err)
+		}
+		self, err := c.GetVMByID(ctx, id)
+		if err != nil {
+			return nil, fmt.Errorf("error finding self: %w", err)
+		}
+		if self.NetID == nil {
+			klog.FromContext(ctx).Info("Running in public cloud... LoadBalancer creation will not be possible")
+		}
+		c.Self = self
+		if clusterID == "" {
+			// primary cluster ID (CAPOSC v1)
+			c.clusterID = []string{self.ClusterID()}
+			if self.SubnetID != nil {
+				// alternate cluster ID (CAPOSC v0)
+				subs, err := api.OAPI().ReadSubnets(ctx, osc.ReadSubnetsRequest{
+					Filters: &osc.FiltersSubnet{SubnetIds: &[]string{*self.SubnetID}},
+				})
+				if err != nil {
+					return nil, fmt.Errorf("error finding self subnets: %w", err)
+				}
+				if len(ptr.From(subs.Subnets)) == 1 {
+					for _, t := range ptr.From(subs.Subnets)[0].Tags {
+						if cid, ok := strings.CutPrefix(t.Key, tags.ClusterIDPrefix); ok && !slices.Contains(c.clusterID, cid) {
+							c.clusterID = append(c.clusterID, cid)
+						}
 					}
 				}
 			}
@@ -107,6 +116,10 @@ func (c *Cloud) sameCluster(t []osc.ResourceTag) bool {
 		}
 	}
 	return false
+}
+
+func (c *Cloud) HasClusterID() bool {
+	return len(c.clusterID) > 0
 }
 
 func (c *Cloud) mainSGTagKey() string {
