@@ -51,11 +51,12 @@ runs:
         IMAGE_NAME: ${{ inputs.image_name }}
         WORKER_COUNT: 2
         CCM: "false"
-    - name: 👷 Deploy Cluster (VPC)
+    - name: 🔎 Fetch Cluster ID
       id: clusterid
       run: |
         cid = `kubectl get -n ccm osccluster.infrastructure.cluster.x-k8s.io/ccm -o json | jq -r '.metadata.labels."outscale.com/clusterUID"'`
         echo "clusterid=$cid" >> $GITHUB_OUTPUT
+      shell: bash
       env:
         KUBECONFIG: "${{ github.workspace }}/${{ steps.caposc.outputs.MANAGEMENT_KUBECONFIG }}"
     - name: 👷 Install CCM
