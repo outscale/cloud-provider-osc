@@ -11,13 +11,13 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/onsi/ginkgo/v2 v2.32.1
 	github.com/onsi/gomega v1.40.0
-	github.com/outscale/goutils/k8s v0.0.4
+	github.com/outscale/goutils/k8s v0.0.5-0.20260907082855-0461546580ee
 	github.com/outscale/goutils/sdk v0.0.6
 	github.com/outscale/osc-sdk-go/v3 v3.0.0-rc.4
 	github.com/rs/xid v1.6.0
 	github.com/samber/lo v1.53.0
 	github.com/spf13/pflag v1.0.10
-	github.com/stretchr/testify v1.11.1
+	github.com/stretchr/testify v1.12.0
 	go.uber.org/mock v0.6.0
 )
 
@@ -29,7 +29,6 @@ require (
 require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
-	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	golang.org/x/crypto v0.54.0 // indirect
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 // indirect
 	golang.org/x/net v0.57.0 // indirect
@@ -110,6 +109,7 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.8 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/jarcoal/httpmock v1.4.1 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/karrick/godirwalk v1.17.0 // indirect
