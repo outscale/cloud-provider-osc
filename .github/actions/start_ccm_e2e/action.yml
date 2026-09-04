@@ -54,7 +54,7 @@ runs:
     - name: 🔎 Fetch Cluster ID
       id: clusterid
       run: |
-        cid = `kubectl get -n ccm osccluster.infrastructure.cluster.x-k8s.io/ccm -o json | jq -r '.metadata.labels."outscale.com/clusterUID"'`
+        cid=`kubectl get -n ccm osccluster.infrastructure.cluster.x-k8s.io/ccm -o json | jq -r '.metadata.labels."outscale.com/clusterUID"'`
         echo "clusterid=$cid" >> $GITHUB_OUTPUT
       shell: bash
       env:
