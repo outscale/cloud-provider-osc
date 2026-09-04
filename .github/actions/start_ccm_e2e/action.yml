@@ -97,6 +97,7 @@ runs:
       env:
         KUBECONFIG: "${{ github.workspace }}/${{ steps.caposc.outputs.KUBECONFIG }}"
     - name: 👷 Reconfigure CCM in remote mode
+      id: setupremote
       run: |
         echo "updating CCM config"
         helm upgrade --wait k8s-osc-ccm deploy/k8s-osc-ccm --set oscSecretName=osc-secret-file --set oscCredentialsFromFile=true --set image.repository=${{ inputs.registry }}/outscale/cloud-provider-osc --set image.tag=${{ inputs.version }}\
@@ -123,7 +124,7 @@ runs:
     - name: 📝 Get CCM logs
       run: |
         kubectl logs -l app=osc-cloud-controller-manager -n kube-system --tail=-1
-      if: ${{ failure() && steps.e2remote.conclusion == 'failure' }}
+      if: ${{ failure() && (steps.setupremote.conclusion == 'failure' || steps.e2remote.conclusion == 'failure') }}
       shell: bash
       env:
         KUBECONFIG: "${{ github.workspace }}/${{ steps.caposc.outputs.KUBECONFIG }}"
