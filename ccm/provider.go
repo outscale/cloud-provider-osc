@@ -55,9 +55,9 @@ type Provider struct {
 
 // NewProvider builds a provider.
 func NewProvider(ctx context.Context, opts Options, wg *sync.WaitGroup) (*Provider, error) {
-	klog.V(2).Infof("Starting OSC cloud provider")
+	klog.V(2).Info("Starting OSC cloud provider")
 
-	c, err := cloud.New(ctx, os.Getenv("OSC_CLUSTER_ID"), opts.sdkOpts)
+	c, err := cloud.New(ctx, os.Getenv("OSC_CLUSTER_ID"), opts.Remote, opts.sdkOpts)
 	if err != nil {
 		return nil, fmt.Errorf("init: %w", err)
 	}
@@ -66,7 +66,11 @@ func NewProvider(ctx context.Context, opts Options, wg *sync.WaitGroup) (*Provid
 		return nil, fmt.Errorf("init: %w", err)
 	}
 	self := c.Self
-	klog.V(3).Infof("Instance: %s", self.ID)
+	if self != nil {
+		klog.V(3).Infof("Instance: %s", self.ID)
+	} else {
+		klog.V(3).Info("Remote control-plane")
+	}
 	return &Provider{
 		opts:     opts,
 		cloud:    c,
@@ -142,7 +146,7 @@ func (c *Provider) Routes() (cloudprovider.Routes, bool) {
 
 // HasClusterID returns true if the cluster has a clusterID
 func (c *Provider) HasClusterID() bool {
-	return c.self.ClusterID() != ""
+	return c.cloud.HasClusterID()
 }
 
 func (c *Provider) garbageCollector(ctx context.Context, stop <-chan struct{}) {

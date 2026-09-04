@@ -92,8 +92,7 @@ mock-generate:
 
 .PHONY: test
 test:
-	CGO_ENABLED=0 OSC_ACCESS_KEY=test OSC_SECRET_KEY=test go test -count=1  -v ./ccm/... ./deploy/...
-
+	CGO_ENABLED=0 OSC_ACCESS_KEY=test OSC_SECRET_KEY=test OSC_REGION=test go test -count=1  -v ./ccm/... ./deploy/...
 
 .PHONY: build-image
 build-image:
@@ -194,3 +193,58 @@ helm-package:
 
 helm-push: helm-package
 	helm push out-helm/*.tgz oci://registry-1.docker.io/${DOCKER_USER}
+
+
+KIND ?= kind
+KIND_CLUSTER ?= ccm
+KIND_NODE_IMAGE ?= kindest/node:v1.34.8@sha256:02722c2dedddcfc00febf5d27fbeb9b7b2c14294c82109ff4a85d89ac9ba3256
+KIND_REGISTRY_PORT ?= 5001
+
+.PHONY: setup-kind
+setup-kind: ## Set up a Kind cluster for e2e tests if it does not exist
+	@command -v $(KIND) >/dev/null 2>&1 || { \
+		echo "Kind is not installed. Please install Kind manually."; \
+		exit 1; \
+	}
+	hack/ensure-dev.sh $(KIND_CLUSTER) $(KIND_NODE_IMAGE)
+
+.PHONY: use-kind
+use-kind:
+	kubectl config use-context kind-$(KIND_CLUSTER)
+
+.PHONY: credentials
+credentials: ## Set Credentials
+	octl kube secret --name osc-secret --namespace kube-system | kubectl apply -f - ||:
+
+.PHONY: setup-dev
+setup-dev: setup-kind use-kind credentials
+
+KIND_IMG_TAG ?= $(shell date '+%Y%m%d%H%M')
+KIND_IMG ?= localhost:$(KIND_REGISTRY_PORT)/$(IMAGE)
+
+.PHONY: build-dev
+build-dev:
+	goreleaser release --clean --snapshot
+
+.PHONY: push-dev
+push-dev:
+	docker tag $(IMAGE):dev-amd64 $(KIND_IMG):$(KIND_IMG_TAG)
+	docker push $(KIND_IMG):$(KIND_IMG_TAG)
+
+.PHONY: deploy-dev
+deploy-dev: build-dev push-dev
+	helm upgrade \
+		--install \
+		--wait \
+		--wait-for-jobs k8s-osc-ccm \
+		--set oscSecretName=osc-secret \
+		--set image.repository=$(KIND_IMG) \
+		--set image.tag=$(KIND_IMG_TAG) \
+		--set image.pullPolicy=Always \
+		--set remote=true \
+		--set customClusterID=dev \
+		deploy/k8s-osc-ccm
+
+.PHONY: cleanup-dev
+cleanup-dev: ## Tear down the Kind cluster used for e2e tests
+	@$(KIND) delete cluster --name $(KIND_CLUSTER)
