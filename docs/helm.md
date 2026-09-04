@@ -29,9 +29,9 @@ Kubernetes: `>=1.30.0-0`
 | caBundle.name | string | `""` | Secret name containing additional certificates authorities |
 | customClusterID | string | `""` | Set this if you want to use a specific cluster ID instead of the automatically computed one. Use with caution. |
 | customEndpoint | string | `""` | Use customEndpoint (url with protocol) ex: https://api.eu-west-2.outscale.com/api/v1 |
-| customEndpointEim | string | `""` | Use customEndpointEim (url with protocol) ex: https://eim.eu-west-2.outscale.com     |
+| customEndpointEim | string | `""` | Use customEndpointEim (url with protocol) ex: https://eim.eu-west-2.outscale.com |
 | customEndpointFcu | string | `""` | Use customEndpointFcu (url with protocol) ex: https://fcu.eu-west-2.outscale.com |
-| customEndpointLbu | string | `""` | Use customEndpointLbu (url with protocol) ex: https://lbu.eu-west-2.outscale.com   |
+| customEndpointLbu | string | `""` | Use customEndpointLbu (url with protocol) ex: https://lbu.eu-west-2.outscale.com |
 | extraLoadBalancerTags | object | `{}` | Add extra tags on load-balancers |
 | extraNodeLabels | object | `{}` | Add extra labels on nodes. [Go templates](https://pkg.go.dev/text/template) can be used in values to set dynamic labels (available attributes: `ID` (VM ID), `SubRegion`, `Region`, `VmType` and `Tags`). Example: `--set "extraNodeLabels.labelName=\{\{ .Tags.key \}\}"` |
 | httpsProxy | string | `""` | Value used to create environment variable HTTPS_PROXY |
@@ -45,6 +45,7 @@ Kubernetes: `>=1.30.0-0`
 | oscSecretFormat | string | `"v1"` | Set to v1 if deploying a v1 image using access_key/secret_key secret values, v0 otherwise. |
 | oscSecretName | string | `"osc-secret"` | Secret name containing cloud credentials |
 | podLabels | object | `{}` | Labels for pod |
+| remote | bool | `false` | Set this if the CCM runs outside the cluster, on a hosted control-plane. |
 | replicaCount | int | `1` | Number of replicas to deploy |
 | resources | object | `{}` | Pod resource requests and limits. |
 | tolerations | list | `[{"effect":"NoSchedule","key":"node.cloudprovider.kubernetes.io/uninitialized","value":"true"},{"effect":"NoSchedule","key":"node-role.kubernetes.io/control-plane"}]` | Pod tolerations (see [kubernetes doc](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)) |
