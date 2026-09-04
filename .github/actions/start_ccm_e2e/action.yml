@@ -51,6 +51,13 @@ runs:
         IMAGE_NAME: ${{ inputs.image_name }}
         WORKER_COUNT: 2
         CCM: "false"
+    - name: 👷 Deploy Cluster (VPC)
+      id: clusterid
+      run: |
+        cid = `kubectl get -n ccm osccluster.infrastructure.cluster.x-k8s.io/ccm -o json | jq -r '.metadata.labels."outscale.com/clusterUID"'`
+        echo "clusterid=$cid" >> $GITHUB_OUTPUT
+      env:
+        KUBECONFIG: "${{ github.workspace }}/${{ steps.caposc.outputs.MANAGEMENT_KUBECONFIG }}"
     - name: 👷 Install CCM
       run: |
         kubectl create secret generic osc-secret --from-literal=access_key=${{ inputs.osc_access_key }} --from-literal=secret_key=${{ inputs.osc_secret_key }} --from-literal=region=${{ inputs.osc_region }} \
@@ -91,9 +98,8 @@ runs:
     - name: 👷 Reconfigure CCM in remote mode
       run: |
         echo "updating CCM config"
-        cid := `kubectl get -n ccm osccluster.infrastructure.cluster.x-k8s.io/ccm -o json | jq -r '.metadata.labels."outscale.com/clusterUID"'`
         helm upgrade --wait k8s-osc-ccm deploy/k8s-osc-ccm --set oscSecretName=osc-secret-file --set oscCredentialsFromFile=true --set image.repository=${{ inputs.registry }}/outscale/cloud-provider-osc --set image.tag=${{ inputs.version }}\
-          --set extraLoadBalancerTags.clikey=clivalue --set "extraNodeLabels.clilabel=\{\{ .SubRegion \}\}" --set remote=true --set customClusterID=$cid
+          --set extraLoadBalancerTags.clikey=clivalue --set "extraNodeLabels.clilabel=\{\{ .SubRegion \}\}" --set remote=true --set customClusterID=$CLUSTER_ID
         sleep 5
         kubectl get pod -n kube-system -l "app=osc-cloud-controller-manager"
       shell: bash
@@ -102,6 +108,7 @@ runs:
         OSC_ACCESS_KEY: ${{ inputs.osc_access_key }}
         OSC_SECRET_KEY: ${{ inputs.osc_secret_key }}
         OSC_REGION: ${{ inputs.osc_region }}
+        CLUSTER_ID: ${{ steps.clusterid.output.clusterid }}
     - name: 🧪 Run e2e tests in remote mode
       id: e2remote
       run: |
