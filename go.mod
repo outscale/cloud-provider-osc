@@ -2,7 +2,7 @@ module github.com/outscale/cloud-provider-osc
 
 go 1.26.0
 
-toolchain go1.26.6
+toolchain go1.27.1
 
 // Outscale imports
 require (
