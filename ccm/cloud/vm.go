@@ -18,6 +18,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	cloudprovider "k8s.io/cloud-provider"
+	"k8s.io/klog/v2"
 )
 
 // VM provide Virtual Machine representation
@@ -170,6 +171,10 @@ func (c *Cloud) GetVMByProviderID(ctx context.Context, providerID string) (*VM, 
 	if err != nil {
 		return nil, fmt.Errorf("GetVmByProviderID: %w", err)
 	}
+	if !strings.HasPrefix(vmID, "i-") {
+		klog.FromContext(ctx).V(3).Info("Seems node is not running on an Outscale VM", "providerID", providerID)
+		return nil, cloudprovider.ImplementedElsewhere
+	}
 	return c.GetVMByID(ctx, vmID)
 }
 
@@ -182,7 +187,13 @@ func (c *Cloud) GetVMsByProviderID(ctx context.Context, providerIDs ...string) (
 		if err != nil {
 			return nil, fmt.Errorf("GetVmByProviderID: %w", err)
 		}
+		if !strings.HasPrefix(id, "i-") {
+			continue
+		}
 		ids = append(ids, id)
+	}
+	if len(ids) == 0 {
+		return nil, nil
 	}
 	return c.GetVMsByID(ctx, ids...)
 }

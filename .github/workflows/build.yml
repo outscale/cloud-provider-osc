@@ -32,13 +32,28 @@ jobs:
     - name: 🔎 Docker Lint
       run: bash -c "make dockerlint"
     - name: 🔎 golangci-lint
-      uses: outscale/goutils/.github/actions/lint@ba9b0e7bcc1ab4b8fd2c69d8b4de17d86218f5b5 # v1
+      uses: outscale/goutils/.github/actions/lint@bd54158ec41d8d18182eb99e516353ed5ea92858 # v1.0.1
     - name: 🔎 Reuse check
       run: make lint-reuse
       shell: bash
-    - name: Test
-      run: bash -c "make test"
     - name: 🔎 Check docs
       run: bash -c "make check-helm-docs"
     - name: 🔎 Check manifest
       run: bash -c "make check-helm-manifest"
+  Unit:
+    runs-on: ubuntu-latest
+    steps:
+    - name: ⬇️ Checkout repository
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+    - name: ⬇️ Install Go
+      uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      with:
+        go-version-file: 'go.mod'
+    - name: ⬇️ Install Helm
+      uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+      with:
+        version: v4.2.3
+    - name: 🧪 Test
+      run: bash -c "make test"

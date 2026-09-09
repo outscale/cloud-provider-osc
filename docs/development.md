@@ -151,7 +151,7 @@ VERSION=1.3X && git co kubernetes-$VERSION && git merge --no-edit main && git pu
 8. Tag release for each release branch
 ```shell
 git co kubernetes-X.Y
-git pull --rebase
+git pull
 export VERSION=vX.Y.Z
 git tag -a $VERSION -m "🔖 CCM $VERSION" && git push origin $VERSION
 ```

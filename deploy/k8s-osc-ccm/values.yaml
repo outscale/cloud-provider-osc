@@ -8,9 +8,9 @@ replicaCount: 1
 customEndpoint: ""
 # -- Use customEndpointFcu (url with protocol) ex: https://fcu.eu-west-2.outscale.com
 customEndpointFcu: ""
-# -- Use customEndpointLbu (url with protocol) ex: https://lbu.eu-west-2.outscale.com  
+# -- Use customEndpointLbu (url with protocol) ex: https://lbu.eu-west-2.outscale.com
 customEndpointLbu: ""
-# -- Use customEndpointEim (url with protocol) ex: https://eim.eu-west-2.outscale.com    
+# -- Use customEndpointEim (url with protocol) ex: https://eim.eu-west-2.outscale.com
 customEndpointEim: ""
 image:
   # -- Container image to use
@@ -77,3 +77,6 @@ extraNodeLabels: {}
 
 # -- Set this if you want to use a specific cluster ID instead of the automatically computed one. Use with caution.
 customClusterID: ''
+
+# -- Set this if the CCM runs outside the cluster, on a hosted control-plane.
+remote: false

@@ -35,6 +35,8 @@ jobs:
         version: v1.34.9
     - name: ⬇️ Install Helm
       uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+      with:
+        version: v4.2.3
     - name: ⬇️ Install Python
       uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
     - name: ⬇️ Install Go
@@ -42,9 +44,15 @@ jobs:
       with:
         go-version-file: 'go.mod'
     - name: ⬇️ Set up Docker Buildx
-      uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+      uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
     - name: 🔐 Set AK/SK name based on runner region
       run: .github/scripts/runneraksk.sh
+    - name: ⬇️ Install octl
+      uses: outscale/octl/.github/actions/setup_octl@1611a6d99b4017e59a3a5d755fdbf0147ac070e8 # v0.0.31
+      with:
+        OSC_ACCESS_KEY: ${{ secrets[env.OSC_ACCESS_KEY_NAME] }}
+        OSC_SECRET_KEY: ${{ secrets[env.OSC_SECRET_KEY_NAME] }}
+        OSC_REGION: ${{ env.OSC_REGION }}
     - name: 🧹 Frieza
       uses: outscale/frieza-github-actions/frieza-clean@1a8eba5199913da60ae6d92d6050e17410186a38 # v0.16.1+hotfix.0
       with:
@@ -71,16 +79,117 @@ jobs:
         IMAGE_TAG: "${{ github.sha }}-amd64"
         REGISTRY_IMAGE: "${{ vars.REGISTRY }}/outscale/cloud-provider-osc"
         REGISTRY_TAG: ${{ github.sha }}
-    ## Create VPC Cluster
-    - name: 🧪 Test on VPC cluster
-      uses: ./.github/actions/start_ccm_e2e
+
+    - name: 👷 Deploy Cluster
+      id: caposc
+      uses: outscale/cluster-api-provider-outscale/.github/actions/deploy_cluster@f505cfa8d2bcc452b7a733879f27307859188ed3 # v1.5
       with:
-        osc_access_key: ${{ secrets[env.OSC_ACCESS_KEY_NAME] }}
-        osc_secret_key: ${{ secrets[env.OSC_SECRET_KEY_NAME] }}
-        osc_region: ${{ env.OSC_REGION }}
-        oks_access_key: ${{ secrets.OKS_ACCESS_KEY }}
-        oks_secret_key: ${{ secrets.OKS_SECRET_KEY }}
-        oks_region: ${{ vars.OKS_REGION }}
-        image_name: "ubuntu-2404-kubernetes-v1.35.5-2026-05-13"
-        version: ${{ github.sha }}
-        registry: ${{ vars.REGISTRY }}
+        RUNNER_NAME: ${{ runner.name }}
+        OKS_ACCESS_KEY: ${{ secrets.OKS_ACCESS_KEY }}
+        OKS_SECRET_KEY: ${{ secrets.OKS_SECRET_KEY }}
+        OKS_REGION: ${{ vars.OKS_REGION }}
+        OSC_ACCESS_KEY: ${{ secrets[env.OSC_ACCESS_KEY_NAME] }}
+        OSC_SECRET_KEY: ${{ secrets[env.OSC_SECRET_KEY_NAME] }}
+        OSC_REGION: ${{ env.OSC_REGION }}
+        CLUSTER_NAME: "ccm"
+        IMAGE_NAME: "ubuntu-2404-kubernetes-v1.35.5-2026-05-13"
+        WORKER_COUNT: 2
+        CCM: "false"
+    - name: 🔎 Fetch Cluster ID
+      id: clusterid
+      run: |
+        cid=`kubectl get -n ccm osccluster.infrastructure.cluster.x-k8s.io/ccm -o json | jq -r '.metadata.labels."outscale.com/clusterUID"'`
+        echo "clusterid=$cid" | tee $GITHUB_OUTPUT
+      shell: bash
+      env:
+        KUBECONFIG: "${{ github.workspace }}/${{ steps.caposc.outputs.MANAGEMENT_KUBECONFIG }}"
+    - name: 🔐 Configure credentials
+      run: |
+        octl kube secret --name osc-secret | kubectl apply -f -
+      env:
+        KUBECONFIG: "${{ github.workspace }}/${{ steps.caposc.outputs.KUBECONFIG }}"
+    - name: 👷 Install CCM
+      run: |
+        echo "installing CCM"
+        helm install --wait k8s-osc-ccm deploy/k8s-osc-ccm --set oscSecretName=osc-secret --set image.repository=${{ vars.REGISTRY }}/outscale/cloud-provider-osc --set oscSecretFormat=v1 --set image.tag=${{ github.sha }} \
+          --set extraLoadBalancerTags.clikey=clivalue --set "extraNodeLabels.clilabel=\{\{ .SubRegion \}\}" --set verbose=6
+        echo "waiting for worker nodes"
+        kubectl wait --for=condition=Ready nodes --all --timeout=900s
+        kubectl get nodes -o wide
+        echo "waiting for pods"
+        kubectl wait --for=condition=Ready po --all -A --timeout=900s
+        kubectl get po -A
+      shell: bash
+      env:
+        KUBECONFIG: "${{ github.workspace }}/${{ steps.caposc.outputs.KUBECONFIG }}"
+        OSC_ACCESS_KEY: ${{ secrets[env.OSC_ACCESS_KEY_NAME] }}
+        OSC_SECRET_KEY: ${{ secrets[env.OSC_SECRET_KEY_NAME] }}
+        OSC_REGION: ${{ env.OSC_REGION }}
+    - name: 🧪 Run e2e tests
+      id: e2etest
+      run: |
+        make e2etest
+      shell: bash
+      env:
+        KUBECONFIG: "${{ github.workspace }}/${{ steps.caposc.outputs.KUBECONFIG }}"
+        OSC_ACCESS_KEY: ${{ secrets[env.OSC_ACCESS_KEY_NAME] }}
+        OSC_SECRET_KEY: ${{ secrets[env.OSC_SECRET_KEY_NAME] }}
+        OSC_REGION: ${{ env.OSC_REGION }}
+        CCM_IMAGE: "${{ vars.REGISTRY }}/outscale/cloud-provider-osc:${{ github.sha }}"
+    - name: 👷 Reconfigure CCM in remote mode
+      id: setupremote
+      run: |
+        echo "updating CCM config"
+        helm upgrade --wait k8s-osc-ccm deploy/k8s-osc-ccm --set oscSecretName=osc-secret --set image.repository=${{ vars.REGISTRY }}/outscale/cloud-provider-osc --set image.tag=${{ github.sha }}\
+          --set extraLoadBalancerTags.clikey=clivalue --set "extraNodeLabels.clilabel=\{\{ .SubRegion \}\}" --set remote=true --set customClusterID=$CLUSTER_ID --set verbose=6
+        sleep 5
+        kubectl get pod -n kube-system -l "app=osc-cloud-controller-manager"
+      shell: bash
+      env:
+        KUBECONFIG: "${{ github.workspace }}/${{ steps.caposc.outputs.KUBECONFIG }}"
+        OSC_ACCESS_KEY: ${{ secrets[env.OSC_ACCESS_KEY_NAME] }}
+        OSC_SECRET_KEY: ${{ secrets[env.OSC_SECRET_KEY_NAME] }}
+        OSC_REGION: ${{ env.OSC_REGION }}
+        CLUSTER_ID: ${{ steps.clusterid.outputs.clusterid }}
+    - name: 🧪 Run e2e tests in remote mode
+      id: e2remote
+      run: |
+        E2E_FOCUS=fast make e2etest
+      shell: bash
+      env:
+        KUBECONFIG: "${{ github.workspace }}/${{ steps.caposc.outputs.KUBECONFIG }}"
+        OSC_ACCESS_KEY: ${{ secrets[env.OSC_ACCESS_KEY_NAME] }}
+        OSC_SECRET_KEY: ${{ secrets[env.OSC_SECRET_KEY_NAME] }}
+        OSC_REGION: ${{ env.OSC_REGION }}
+    - name: 👷 Reconfigure CCM with credentials in profile file
+      run: |
+        profile="{\"default\":{\"access_key\":\"${{ secrets[env.OSC_ACCESS_KEY_NAME] }}\",\"secret_key\":\"${{ secrets[env.OSC_SECRET_KEY_NAME] }}\"}}"
+        kubectl create secret generic osc-secret-file --from-literal=config.json=$profile -n kube-system
+        echo "updating CCM config"
+        helm upgrade --wait k8s-osc-ccm deploy/k8s-osc-ccm --set oscSecretName=osc-secret-file --set oscCredentialsFromFile=true --set image.repository=${{ vars.REGISTRY }}/outscale/cloud-provider-osc --set image.tag=${{ github.sha }}\
+          --set extraLoadBalancerTags.clikey=clivalue --set "extraNodeLabels.clilabel=\{\{ .SubRegion \}\}" --set verbose=6
+        sleep 5
+        kubectl get pod -n kube-system -l "app=osc-cloud-controller-manager"
+      shell: bash
+      env:
+        KUBECONFIG: "${{ github.workspace }}/${{ steps.caposc.outputs.KUBECONFIG }}"
+        OSC_ACCESS_KEY: ${{ secrets[env.OSC_ACCESS_KEY_NAME] }}
+        OSC_SECRET_KEY: ${{ secrets[env.OSC_SECRET_KEY_NAME] }}
+        OSC_REGION: ${{ env.OSC_REGION }}
+    - name: 🧪 Run e2e tests with credentials in profile file
+      id: e2eprofile
+      run: |
+        E2E_FOCUS=fast make e2etest
+      shell: bash
+      env:
+        KUBECONFIG: "${{ github.workspace }}/${{ steps.caposc.outputs.KUBECONFIG }}"
+        OSC_ACCESS_KEY: ${{ secrets[env.OSC_ACCESS_KEY_NAME] }}
+        OSC_SECRET_KEY: ${{ secrets[env.OSC_SECRET_KEY_NAME] }}
+        OSC_REGION: ${{ env.OSC_REGION }}
+    - name: 📝 Get CCM logs
+      run: |
+        kubectl logs -l app=osc-cloud-controller-manager -n kube-system --tail=-1 | grep -v "successfully renewed lease"
+      if: ${{ failure() }}
+      shell: bash
+      env:
+        KUBECONFIG: "${{ github.workspace }}/${{ steps.caposc.outputs.KUBECONFIG }}"

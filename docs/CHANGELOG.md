@@ -1,5 +1,150 @@
 # Changelog
 
+## [v1.36.9](https://github.com/outscale/cloud-provider-osc/releases/tag/v1.36.9) - 2026-09-09
+
+### ✨ Added
+* ✨ feat: add remote mode by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/756
+### 📦 Dependency updates
+* ⬆️ deps(gomod): update go toolchain directive to v1.27.1 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/745
+* ⬆️ deps(dockerfile): update gcr.io/distroless/static docker digest to f2ea270 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/744
+* ⬆️ deps(gomod): update module github.com/outscale/goutils/sdk to v0.0.8 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/757
+
+## [v1.35.9](https://github.com/outscale/cloud-provider-osc/releases/tag/v1.35.9) - 2026-09-09
+
+### ✨ Added
+* ✨ feat: add remote mode by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/756
+### 📦 Dependency updates
+* ⬆️ deps(gomod): update go toolchain directive to v1.27.1 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/745
+* ⬆️ deps(dockerfile): update gcr.io/distroless/static docker digest to f2ea270 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/744
+* ⬆️ deps(gomod): update module github.com/outscale/goutils/sdk to v0.0.8 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/757
+
+## [v1.34.9](https://github.com/outscale/cloud-provider-osc/releases/tag/v1.34.9) - 2026-09-09
+
+### ✨ Added
+* ✨ feat: add remote mode by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/756
+### 📦 Dependency updates
+* ⬆️ deps(gomod): update go toolchain directive to v1.27.1 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/745
+* ⬆️ deps(dockerfile): update gcr.io/distroless/static docker digest to f2ea270 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/744
+* ⬆️ deps(gomod): update module github.com/outscale/goutils/sdk to v0.0.8 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/757
+
+## [v1.33.9](https://github.com/outscale/cloud-provider-osc/releases/tag/v1.33.9) - 2026-09-09
+
+### ✨ Added
+* ✨ feat: add remote mode by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/756
+### 📦 Dependency updates
+* ⬆️ deps(gomod): update go toolchain directive to v1.27.1 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/745
+* ⬆️ deps(dockerfile): update gcr.io/distroless/static docker digest to f2ea270 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/744
+* ⬆️ deps(gomod): update module github.com/outscale/goutils/sdk to v0.0.8 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/757
+
+## [v1.32.9](https://github.com/outscale/cloud-provider-osc/releases/tag/v1.32.9) - 2026-09-09
+
+### ✨ Added
+* ✨ feat: add remote mode by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/756
+### 📦 Dependency updates
+* ⬆️ deps(gomod): update go toolchain directive to v1.27.1 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/745
+* ⬆️ deps(dockerfile): update gcr.io/distroless/static docker digest to f2ea270 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/744
+* ⬆️ deps(gomod): update module github.com/outscale/goutils/sdk to v0.0.8 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/757
+
+## [v1.36.8](https://github.com/outscale/cloud-provider-osc/releases/tag/v1.36.8) - 2026-08-24
+
+This version has been built using a new building process.
+
+### 🛠️ Changed / Refactoring
+* ♻️ refacto(loadbalancers): continue SG GC on errors, final GC before exit by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/714
+* 🥅 feat(loadbalancer): skip load-balancers in public cloud by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/740
+### 🐛 Fixed
+* 🐛 fix(loadbalancer): alt ownership tag on subnets/SG may be missed by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/715
+### 📦 Dependency updates
+* ⬆️ deps(dockerfile): update golang:1.26.4 docker digest to 792443b by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/683
+* ⬆️ deps(gomod): update module github.com/outscale/goutils/sdk to v0.0.4 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/657
+* ⬆️ deps(gomod): update module github.com/outscale/goutils/sdk to v0.0.5 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/701
+* ⬆️ deps(gomod): update module github.com/outscale/osc-sdk-go/v3 to v3.0.0-rc.3 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/702
+* ⬆️ deps(gomod): update go toolchain directive to v1.26.6 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/728
+* ⬆️ deps(dockerfile): update gcr.io/distroless/static docker digest to 9197324 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/725
+* ⬆️ deps(gomod): update module github.com/onsi/ginkgo/v2 to v2.32.1 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/673
+* ⬆️ deps(gomod): update module github.com/outscale/goutils/sdk to v0.0.6 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/732
+* ⬆️ deps(gomod): update module github.com/outscale/goutils/k8s to v0.0.4 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/729
+
+## [v1.35.8](https://github.com/outscale/cloud-provider-osc/releases/tag/v1.35.8) - 2026-08-24
+
+This version has been built using a new building process.
+
+### 🛠️ Changed / Refactoring
+* ♻️ refacto(loadbalancers): continue SG GC on errors, final GC before exit by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/714
+* 🥅 feat(loadbalancer): skip load-balancers in public cloud by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/740
+### 🐛 Fixed
+* 🐛 fix(loadbalancer): alt ownership tag on subnets/SG may be missed by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/715
+### 📦 Dependency updates
+* ⬆️ deps(dockerfile): update golang:1.26.4 docker digest to 792443b by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/683
+* ⬆️ deps(gomod): update module github.com/outscale/goutils/sdk to v0.0.4 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/657
+* ⬆️ deps(gomod): update module github.com/outscale/goutils/sdk to v0.0.5 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/701
+* ⬆️ deps(gomod): update module github.com/outscale/osc-sdk-go/v3 to v3.0.0-rc.3 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/702
+* ⬆️ deps(gomod): update go toolchain directive to v1.26.6 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/728
+* ⬆️ deps(dockerfile): update gcr.io/distroless/static docker digest to 9197324 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/725
+* ⬆️ deps(gomod): update module github.com/onsi/ginkgo/v2 to v2.32.1 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/673
+* ⬆️ deps(gomod): update module github.com/outscale/goutils/sdk to v0.0.6 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/732
+* ⬆️ deps(gomod): update module github.com/outscale/goutils/k8s to v0.0.4 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/729
+
+## [v1.34.8](https://github.com/outscale/cloud-provider-osc/releases/tag/v1.34.8) - 2026-08-24
+
+This version has been built using a new building process.
+
+### 🛠️ Changed / Refactoring
+* ♻️ refacto(loadbalancers): continue SG GC on errors, final GC before exit by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/714
+* 🥅 feat(loadbalancer): skip load-balancers in public cloud by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/740
+### 🐛 Fixed
+* 🐛 fix(loadbalancer): alt ownership tag on subnets/SG may be missed by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/715
+### 📦 Dependency updates
+* ⬆️ deps(dockerfile): update golang:1.26.4 docker digest to 792443b by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/683
+* ⬆️ deps(gomod): update module github.com/outscale/goutils/sdk to v0.0.4 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/657
+* ⬆️ deps(gomod): update module github.com/outscale/goutils/sdk to v0.0.5 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/701
+* ⬆️ deps(gomod): update module github.com/outscale/osc-sdk-go/v3 to v3.0.0-rc.3 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/702
+* ⬆️ deps(gomod): update go toolchain directive to v1.26.6 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/728
+* ⬆️ deps(dockerfile): update gcr.io/distroless/static docker digest to 9197324 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/725
+* ⬆️ deps(gomod): update module github.com/onsi/ginkgo/v2 to v2.32.1 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/673
+* ⬆️ deps(gomod): update module github.com/outscale/goutils/sdk to v0.0.6 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/732
+* ⬆️ deps(gomod): update module github.com/outscale/goutils/k8s to v0.0.4 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/729
+
+## [v1.33.8](https://github.com/outscale/cloud-provider-osc/releases/tag/v1.33.8) - 2026-08-24
+
+This version has been built using a new building process.
+
+### 🛠️ Changed / Refactoring
+* ♻️ refacto(loadbalancers): continue SG GC on errors, final GC before exit by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/714
+* 🥅 feat(loadbalancer): skip load-balancers in public cloud by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/740
+### 🐛 Fixed
+* 🐛 fix(loadbalancer): alt ownership tag on subnets/SG may be missed by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/715
+### 📦 Dependency updates
+* ⬆️ deps(dockerfile): update golang:1.26.4 docker digest to 792443b by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/683
+* ⬆️ deps(gomod): update module github.com/outscale/goutils/sdk to v0.0.4 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/657
+* ⬆️ deps(gomod): update module github.com/outscale/goutils/sdk to v0.0.5 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/701
+* ⬆️ deps(gomod): update module github.com/outscale/osc-sdk-go/v3 to v3.0.0-rc.3 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/702
+* ⬆️ deps(gomod): update go toolchain directive to v1.26.6 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/728
+* ⬆️ deps(dockerfile): update gcr.io/distroless/static docker digest to 9197324 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/725
+* ⬆️ deps(gomod): update module github.com/onsi/ginkgo/v2 to v2.32.1 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/673
+* ⬆️ deps(gomod): update module github.com/outscale/goutils/sdk to v0.0.6 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/732
+* ⬆️ deps(gomod): update module github.com/outscale/goutils/k8s to v0.0.4 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/729
+
+## [v1.32.8](https://github.com/outscale/cloud-provider-osc/releases/tag/v1.32.8) - 2026-08-24
+
+This version has been built using a new building process.
+
+### 🛠️ Changed / Refactoring
+* ♻️ refacto(loadbalancers): continue SG GC on errors, final GC before exit by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/714
+* 🥅 feat(loadbalancer): skip load-balancers in public cloud by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/740
+### 🐛 Fixed
+* 🐛 fix(loadbalancer): alt ownership tag on subnets/SG may be missed by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/715
+### 📦 Dependency updates
+* ⬆️ deps(dockerfile): update golang:1.26.4 docker digest to 792443b by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/683
+* ⬆️ deps(gomod): update module github.com/outscale/goutils/sdk to v0.0.4 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/657
+* ⬆️ deps(gomod): update module github.com/outscale/goutils/sdk to v0.0.5 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/701
+* ⬆️ deps(gomod): update module github.com/outscale/osc-sdk-go/v3 to v3.0.0-rc.3 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/702
+* ⬆️ deps(gomod): update go toolchain directive to v1.26.6 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/728
+* ⬆️ deps(dockerfile): update gcr.io/distroless/static docker digest to 9197324 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/725
+* ⬆️ deps(gomod): update module github.com/onsi/ginkgo/v2 to v2.32.1 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/673
+* ⬆️ deps(gomod): update module github.com/outscale/goutils/sdk to v0.0.6 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/732
+* ⬆️ deps(gomod): update module github.com/outscale/goutils/k8s to v0.0.4 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/729
+
 ## [v1.36.7] - 2026-06-17
 
 New version based on Kubernetes v1.36 packages
