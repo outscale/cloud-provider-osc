@@ -44,6 +44,7 @@ dockers_v2:
     tags:
       - "v{{ .Version }}"
       - "{{ if .IsSnapshot }}{{ .FullCommit }}{{ end }}"
+      - "{{ if .IsSnapshot }}dev{{ end }}"
     platforms:
       - linux/amd64
     labels:

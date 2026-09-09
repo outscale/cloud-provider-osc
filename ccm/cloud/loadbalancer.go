@@ -70,6 +70,8 @@ var (
 	ErrLoadBalancerIsNotReady = controllerapi.NewRetryError("load balancer is not ready", 30*time.Second)
 
 	ErrBelongsToSomeoneElse = errors.New("found a LBU with the same name belonging to")
+
+	ErrNoBackendVms = errors.New("no backend VM")
 )
 
 // HealthCheck is the healcheck configuration.
@@ -467,7 +469,7 @@ func (c *Cloud) GetLoadBalancer(ctx context.Context, l *LoadBalancer) (ingresses
 
 // CreateLoadBalancer creates a load-balancer.
 func (c *Cloud) CreateLoadBalancer(ctx context.Context, l *LoadBalancer, backend []VM) (ingresses []Ingress, err error) {
-	if c.Self.NetID == nil {
+	if c.Self != nil && c.Self.NetID == nil {
 		return nil, errors.New("creating LoadBalancers in a public cloud cluster is not supported")
 	}
 	defer func() {
@@ -475,6 +477,10 @@ func (c *Cloud) CreateLoadBalancer(ctx context.Context, l *LoadBalancer, backend
 			err = fmt.Errorf("unable to create LB: %w", err)
 		}
 	}()
+
+	if len(backend) == 0 {
+		return nil, ErrNoBackendVms
+	}
 
 	err = c.ensureSubnet(ctx, l)
 	if err != nil {
@@ -606,7 +612,7 @@ func (c *Cloud) ensureSubnet(ctx context.Context, l *LoadBalancer) error {
 			TagKeys: new(c.clusterIDTagKeys()),
 		},
 	})
-	if err == nil && len(ptr.From(resp.Subnets)) == 0 {
+	if err == nil && len(ptr.From(resp.Subnets)) == 0 && c.Self != nil {
 		resp, err = c.api.OAPI().ReadSubnets(ctx, osc.ReadSubnetsRequest{
 			Filters: &osc.FiltersSubnet{
 				NetIds: &[]string{*c.Self.NetID},
@@ -621,8 +627,9 @@ func (c *Cloud) ensureSubnet(ctx context.Context, l *LoadBalancer) error {
 	}
 	azs := l.SubRegions
 	if len(azs) == 0 {
+		subnets := ptr.From(resp.Subnets)
 		for i := range l.Instances {
-			azs = append(azs, c.Self.Region+string([]byte{'a' + byte(i)}))
+			azs = append(azs, subnets[i%len(subnets)].SubregionName)
 		}
 	}
 
@@ -727,7 +734,7 @@ func (c *Cloud) ensureSecurityGroup(ctx context.Context, l *LoadBalancer) (*osc.
 		case len(ptr.From(resp.SecurityGroups)) == 0: // this has a tiny chance of occurring, but we would not want the CCM to panic
 			return nil, errors.New("duplicate SG but none found")
 		default:
-			sg = &(ptr.From(resp.SecurityGroups))[0]
+			sg = &ptr.From(resp.SecurityGroups)[0]
 		}
 	case err != nil:
 		return nil, fmt.Errorf("create SG: %w", err)
@@ -1121,7 +1128,9 @@ func (c *Cloud) updateBackendVms(ctx context.Context, l *LoadBalancer, vms []VM,
 		}
 		add = append(add, vm.ID)
 	}
-	if len(add) > 0 {
+	if len(add) == 0 {
+		klog.FromContext(ctx).V(2).Info("Load-balancer has no backend instances")
+	} else {
 		klog.FromContext(ctx).V(2).Info("Adding backend instances", "count", len(add))
 		_, err := c.api.OAPI().RegisterVmsInLoadBalancer(ctx, osc.RegisterVmsInLoadBalancerRequest{
 			LoadBalancerName: existing.LoadBalancerName,
@@ -1169,7 +1178,7 @@ func (c *Cloud) getLBSecurityGroup(ctx context.Context, id string) (*osc.Securit
 	if len(ptr.From(resp.SecurityGroups)) == 0 {
 		return nil, errors.New("no SG found for load balancer")
 	}
-	return &(ptr.From(resp.SecurityGroups))[0], nil
+	return &ptr.From(resp.SecurityGroups)[0], nil
 }
 
 func (c *Cloud) getBackendSecurityGroup(ctx context.Context, l *LoadBalancer, vms []VM) (backendSG *osc.SecurityGroup, err error) {
@@ -1206,7 +1215,7 @@ func (c *Cloud) getBackendSecurityGroup(ctx context.Context, l *LoadBalancer, vm
 		}
 	}
 	if backendSG == nil {
-		backendSG = &(ptr.From(resp.SecurityGroups)[0])
+		backendSG = &ptr.From(resp.SecurityGroups)[0]
 		klog.FromContext(ctx).V(3).Info("No security group found by tag, using a random one", "securityGroupId", backendSG.SecurityGroupId)
 	}
 	return
