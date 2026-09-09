@@ -237,6 +237,8 @@ github.com/opencontainers/selinux v1.11.1 h1:nHFvthhM0qY8/m+vfhJylliSshm8G1jJ2jD
 github.com/opencontainers/selinux v1.11.1/go.mod h1:E5dMC3VPuVvVHDYmi78qvhJp8+M586T4DlDRYpFkyec=
 github.com/outscale/goutils/k8s v0.0.5-0.20260907082855-0461546580ee h1:1cZdA6kE0mzSnZ6d7136YS+Aa043+zaem+5VXYvOHQI=
 github.com/outscale/goutils/k8s v0.0.5-0.20260907082855-0461546580ee/go.mod h1:n0zmLEdCtkqOUQPbclTD1bh6qg3ZO+5nDbGDSEilT1I=
+github.com/outscale/goutils/k8s v0.0.5-0.20260909072437-f56de1753c41 h1:+hIS0vDjVIUsjKb9C/jxhS39kHxjQa8fYE4A69Hwu1s=
+github.com/outscale/goutils/k8s v0.0.5-0.20260909072437-f56de1753c41/go.mod h1:n0zmLEdCtkqOUQPbclTD1bh6qg3ZO+5nDbGDSEilT1I=
 github.com/outscale/goutils/sdk v0.0.6 h1:XxN2cVKxuqftD5jjnNDcYZZOwoHlvBBFKAw+JpxZOSs=
 github.com/outscale/goutils/sdk v0.0.6/go.mod h1:xybTmkur3i2UWb6POGrjUssyZICKZHDjfgsSdrwsXe8=
 github.com/outscale/goutils/sdk v0.0.8 h1:NDFm3RFDLzmP3kOSLdrcF8peBCIZpubWrGGAZNqo4pk=

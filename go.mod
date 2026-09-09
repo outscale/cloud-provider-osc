@@ -18,7 +18,7 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/onsi/ginkgo/v2 v2.32.1
 	github.com/onsi/gomega v1.40.0
-	github.com/outscale/goutils/k8s v0.0.5-0.20260907082855-0461546580ee
+	github.com/outscale/goutils/k8s v0.0.5-0.20260909072437-f56de1753c41
 	github.com/outscale/goutils/sdk v0.0.8
 	github.com/outscale/osc-sdk-go/v3 v3.0.0-rc.5
 	github.com/rs/xid v1.6.0
