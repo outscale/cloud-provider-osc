@@ -1,8 +1,8 @@
 apiVersion: v1
-appVersion: "1.31.0/1.32.0/1.33.0"
+appVersion: "1.32.x/1.33.x/1.34.x/1.35.x/1.36.x"
 description: A Helm chart for OSC CCM cloud provider
 name: osc-cloud-controller-manager
-version: 0.7.0
+version: 0.8.0
 kubeVersion: ">=1.30.0-0"
 home: https://github.com/outscale/cloud-provider-osc/
 sources:
@@ -15,4 +15,3 @@ keywords:
 maintainers:
   - name: 3DS Outscale
     email: support@outscale.com
-
