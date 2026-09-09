@@ -187,7 +187,8 @@ check-helm-manifest:
 
 helm-package:
 # Copy docs into the archive for ArtfactHub, symlink does not work with helm-git
-	cp docs/CHANGELOG.md docs/README.md LICENSE deploy/k8s-osc-ccm/
+	cp docs/CHANGELOG.md docs/README.md deploy/k8s-osc-ccm/
+	cp LICENSES/BSD-3-Clause.txt deploy/k8s-osc-ccm/LICENSE
 	helm package deploy/k8s-osc-ccm -d out-helm
 	rm deploy/k8s-osc-ccm/CHANGELOG.md deploy/k8s-osc-ccm/README.md deploy/k8s-osc-ccm/LICENSE
 
