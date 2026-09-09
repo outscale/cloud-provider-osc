@@ -1,5 +1,50 @@
 # Changelog
 
+## [v1.36.9](https://github.com/outscale/cloud-provider-osc/releases/tag/v1.36.9) - 2026-09-09
+
+### ✨ Added
+* ✨ feat: add remote mode by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/756
+### 📦 Dependency updates
+* ⬆️ deps(gomod): update go toolchain directive to v1.27.1 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/745
+* ⬆️ deps(dockerfile): update gcr.io/distroless/static docker digest to f2ea270 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/744
+* ⬆️ deps(gomod): update module github.com/outscale/goutils/sdk to v0.0.8 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/757
+
+## [v1.35.9](https://github.com/outscale/cloud-provider-osc/releases/tag/v1.35.9) - 2026-09-09
+
+### ✨ Added
+* ✨ feat: add remote mode by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/756
+### 📦 Dependency updates
+* ⬆️ deps(gomod): update go toolchain directive to v1.27.1 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/745
+* ⬆️ deps(dockerfile): update gcr.io/distroless/static docker digest to f2ea270 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/744
+* ⬆️ deps(gomod): update module github.com/outscale/goutils/sdk to v0.0.8 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/757
+
+## [v1.34.9](https://github.com/outscale/cloud-provider-osc/releases/tag/v1.34.9) - 2026-09-09
+
+### ✨ Added
+* ✨ feat: add remote mode by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/756
+### 📦 Dependency updates
+* ⬆️ deps(gomod): update go toolchain directive to v1.27.1 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/745
+* ⬆️ deps(dockerfile): update gcr.io/distroless/static docker digest to f2ea270 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/744
+* ⬆️ deps(gomod): update module github.com/outscale/goutils/sdk to v0.0.8 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/757
+
+## [v1.33.9](https://github.com/outscale/cloud-provider-osc/releases/tag/v1.33.9) - 2026-09-09
+
+### ✨ Added
+* ✨ feat: add remote mode by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/756
+### 📦 Dependency updates
+* ⬆️ deps(gomod): update go toolchain directive to v1.27.1 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/745
+* ⬆️ deps(dockerfile): update gcr.io/distroless/static docker digest to f2ea270 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/744
+* ⬆️ deps(gomod): update module github.com/outscale/goutils/sdk to v0.0.8 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/757
+
+## [v1.32.9](https://github.com/outscale/cloud-provider-osc/releases/tag/v1.32.9) - 2026-09-09
+
+### ✨ Added
+* ✨ feat: add remote mode by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/756
+### 📦 Dependency updates
+* ⬆️ deps(gomod): update go toolchain directive to v1.27.1 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/745
+* ⬆️ deps(dockerfile): update gcr.io/distroless/static docker digest to f2ea270 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/744
+* ⬆️ deps(gomod): update module github.com/outscale/goutils/sdk to v0.0.8 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/757
+
 ## [v1.36.8](https://github.com/outscale/cloud-provider-osc/releases/tag/v1.36.8) - 2026-08-24
 
 This version has been built using a new building process.
