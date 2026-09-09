@@ -30,6 +30,8 @@ func (c *Provider) InstanceExists(ctx context.Context, node *v1.Node) (bool, err
 		return false, err
 	case vm.IsTerminated():
 		return false, nil
+	case errors.Is(err, cloudprovider.ImplementedElsewhere):
+		return true, nil
 	default:
 		return true, nil
 	}
@@ -39,6 +41,8 @@ func (c *Provider) InstanceExists(ctx context.Context, node *v1.Node) (bool, err
 func (c *Provider) InstanceShutdown(ctx context.Context, node *v1.Node) (bool, error) {
 	vm, err := c.getVmByNodeName(ctx, node.Name)
 	switch {
+	case errors.Is(err, cloudprovider.ImplementedElsewhere):
+		return false, nil
 	case err != nil:
 		return false, err
 	default:
@@ -49,7 +53,10 @@ func (c *Provider) InstanceShutdown(ctx context.Context, node *v1.Node) (bool, e
 // InstanceMetadata returns the instance's metadata.
 func (c *Provider) InstanceMetadata(ctx context.Context, node *v1.Node) (*cloudprovider.InstanceMetadata, error) {
 	vm, err := c.getVmByNodeName(ctx, node.Name)
-	if err != nil {
+	switch {
+	case errors.Is(err, cloudprovider.ImplementedElsewhere):
+		return &cloudprovider.InstanceMetadata{}, nil
+	case err != nil:
 		return nil, err
 	}
 	labels := make(map[string]string, len(c.opts.NodeLabels)+2)
