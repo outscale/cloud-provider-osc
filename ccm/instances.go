@@ -23,13 +23,13 @@ func (c *Provider) NodeAddresses(ctx context.Context, name types.NodeName) ([]v1
 		vm  *cloud.VM
 		err error
 	)
-	if c.self.NodeName == name || name == "" {
+	if c.self != nil && (c.self.NodeName == name || name == "") {
 		vm = c.self
 	} else {
 		vm, err = c.getVmByNodeName(ctx, string(name))
 	}
 	switch {
-	case errors.Is(err, cloudprovider.InstanceNotFound):
+	case errors.Is(err, cloudprovider.InstanceNotFound) || errors.Is(err, cloudprovider.ImplementedElsewhere):
 		return nil, err
 	case err != nil:
 		return nil, fmt.Errorf("unable to fetch vm: %w", err)
@@ -57,12 +57,12 @@ func (c *Provider) NodeAddressesByProviderID(ctx context.Context, providerID str
 func (c *Provider) InstanceID(ctx context.Context, nodeName types.NodeName) (string, error) {
 	// In the future it is possible to also return an endpoint as:
 	// <endpoint>/<zone>/<instanceid>
-	if c.self.NodeName == nodeName {
+	if c.self != nil && c.self.NodeName == nodeName {
 		return c.self.InstanceID(), nil
 	}
 	vm, err := c.getVmByNodeName(ctx, string(nodeName))
 	switch {
-	case errors.Is(err, cloudprovider.InstanceNotFound):
+	case errors.Is(err, cloudprovider.InstanceNotFound) || errors.Is(err, cloudprovider.ImplementedElsewhere):
 		return "", err
 	case err != nil:
 		return "", fmt.Errorf("unable to fetch vm: %w", err)
@@ -88,12 +88,12 @@ func (c *Provider) InstanceTypeByProviderID(ctx context.Context, providerID stri
 
 // InstanceType returns the type of the node with the specified nodeName.
 func (c *Provider) InstanceType(ctx context.Context, nodeName types.NodeName) (string, error) {
-	if c.self.NodeName == nodeName {
+	if c.self != nil && c.self.NodeName == nodeName {
 		return c.self.VmType, nil
 	}
 	vm, err := c.getVmByNodeName(ctx, string(nodeName))
 	switch {
-	case errors.Is(err, cloudprovider.InstanceNotFound):
+	case errors.Is(err, cloudprovider.InstanceNotFound) || errors.Is(err, cloudprovider.ImplementedElsewhere):
 		return "", err
 	case err != nil:
 		return "", fmt.Errorf("unable to fetch vm: %w", err)
@@ -109,6 +109,9 @@ func (c *Provider) AddSSHKeyToAllInstances(ctx context.Context, user string, key
 
 // CurrentNodeName returns the name of the current node
 func (c *Provider) CurrentNodeName(ctx context.Context, hostname string) (types.NodeName, error) {
+	if c.self == nil {
+		return types.NodeName(hostname), nil
+	}
 	return c.self.NodeName, nil
 }
 

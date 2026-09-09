@@ -319,24 +319,32 @@ func TestHelmTemplate(t *testing.T) {
 		require.IsType(t, &appsv1.DaemonSet{}, specs[4])
 		ds := specs[4].(*appsv1.DaemonSet)
 		require.Len(t, ds.Spec.Template.Spec.Containers, 1)
-		require.Len(t, ds.Spec.Template.Spec.Containers[0].Command, 4)
-		assert.Equal(t, "-v=42", ds.Spec.Template.Spec.Containers[0].Command[3])
+		assert.Contains(t, ds.Spec.Template.Spec.Containers[0].Command, "-v=42")
 	})
 	t.Run("Extra tags can be set", func(t *testing.T) {
 		specs := getHelmSpecs(t, []string{"extraLoadBalancerTags.key1=value1", "extraLoadBalancerTags.key2=value2"})
 		require.IsType(t, &appsv1.DaemonSet{}, specs[4])
 		ds := specs[4].(*appsv1.DaemonSet)
 		require.Len(t, ds.Spec.Template.Spec.Containers, 1)
-		require.Len(t, ds.Spec.Template.Spec.Containers[0].Command, 5)
-		assert.Equal(t, "--extra-loadbalancer-tags=key1=value1,key2=value2", ds.Spec.Template.Spec.Containers[0].Command[4])
+		assert.Contains(t, ds.Spec.Template.Spec.Containers[0].Command, "--extra-loadbalancer-tags=key1=value1,key2=value2")
 	})
 	t.Run("Extra labels can be set using templates", func(t *testing.T) {
 		specs := getHelmSpecs(t, []string{"extraNodeLabels.key=\\{\\{ .value \\}\\}"})
 		require.IsType(t, &appsv1.DaemonSet{}, specs[4])
 		ds := specs[4].(*appsv1.DaemonSet)
 		require.Len(t, ds.Spec.Template.Spec.Containers, 1)
-		require.Len(t, ds.Spec.Template.Spec.Containers[0].Command, 5)
-		assert.Equal(t, "--extra-node-labels=key={{ .value }}", ds.Spec.Template.Spec.Containers[0].Command[4])
+		assert.Contains(t, ds.Spec.Template.Spec.Containers[0].Command, "--extra-node-labels=key={{ .value }}")
+	})
+	t.Run("Remote mode can be configured", func(t *testing.T) {
+		specs := getHelmSpecs(t, []string{"remote=true", "customClusterID=foo"})
+		require.IsType(t, &appsv1.DaemonSet{}, specs[4])
+		ds := specs[4].(*appsv1.DaemonSet)
+		require.Len(t, ds.Spec.Template.Spec.Containers, 1)
+		assert.Contains(t, ds.Spec.Template.Spec.Containers[0].Command, "--remote")
+		assert.Contains(t, ds.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+			Name:  "OSC_CLUSTER_ID",
+			Value: "foo",
+		})
 	})
 	t.Run("The secret containing access keys may be changed", func(t *testing.T) {
 		{
