@@ -37,8 +37,6 @@ jobs:
       uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
       with:
         version: v4.2.3
-    - name: ⬇️ Install Python
-      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
     - name: ⬇️ Install Go
       uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
       with:
@@ -66,7 +64,7 @@ jobs:
         registry: ${{ vars.REGISTRY }}
         username: admin
         password: ${{ secrets.HARBOR_ADMIN_PASSWORD }}
-    - name: 📦 Run GoReleaser
+    - name: 📦 Build Docker image
       uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
       with:
         version: 'v2.15.4'
