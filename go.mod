@@ -2,7 +2,7 @@ module github.com/outscale/cloud-provider-osc
 
 go 1.27.0
 
-toolchain go1.27.1
+toolchain go1.27.2
 
 // replace (
 // 	github.com/outscale/goutils/k8s => ../goutils/k8s
