@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
     - name: Plumber
       uses: outscale/.github/pipeline-compliance@82a9889d98a317d5ef844026429dbc8827f306f2 # v1.2.1
       with:
