@@ -18,9 +18,29 @@ import (
 
 // GetLoadBalancer implements cloudprovider.LoadBalancer
 func (c *Provider) GetLoadBalancer(ctx context.Context, clusterName string, svc *v1.Service) (*v1.LoadBalancerStatus, bool, error) {
-	lb, err := cloud.NewLoadBalancer(svc, c.opts.LBTags)
-	if err != nil {
-		return nil, false, fmt.Errorf("unable to build LB: %w", err)
+	lb, buildErr := cloud.NewLoadBalancer(svc, c.opts.LBTags)
+	switch {
+	case buildErr == nil:
+	case !errors.Is(buildErr, cloud.ErrNonTCP):
+		return nil, false, fmt.Errorf("unable to build LB: %w", buildErr)
+	default:
+		// Use the current Service metadata to check for an existing LBU.
+		fallbackLB, err := c.buildLoadBalancerIgnoringProtocol(svc)
+		if err != nil {
+			return nil, false, fmt.Errorf("unable to build LB: %w", err)
+		}
+		exists, err := c.cloud.LoadBalancerExists(ctx, fallbackLB)
+		switch {
+		case errors.Is(err, cloud.ErrBelongsToSomeoneElse):
+			return nil, false, nil
+		case err != nil:
+			return nil, false, fmt.Errorf("unable to check LB: %w", err)
+		case !exists:
+			return nil, false, nil
+		default:
+			// The non-TCP spec cannot produce a status for the existing LBU.
+			return nil, true, nil
+		}
 	}
 	ingresses, err := c.cloud.GetLoadBalancer(ctx, lb)
 	if err != nil || len(ingresses) == 0 {
@@ -31,6 +51,17 @@ func (c *Provider) GetLoadBalancer(ctx context.Context, clusterName string, svc 
 		return nil, false, err
 	}
 	return res, true, nil
+}
+
+// buildLoadBalancerIgnoringProtocol builds an LBU from the current Service
+// metadata after normalizing its ports to TCP. Name-driving metadata may have
+// changed since an LBU was created.
+func (c *Provider) buildLoadBalancerIgnoringProtocol(svc *v1.Service) (*cloud.LoadBalancer, error) {
+	tcpSvc := svc.DeepCopy()
+	for i := range tcpSvc.Spec.Ports {
+		tcpSvc.Spec.Ports[i].Protocol = v1.ProtocolTCP
+	}
+	return cloud.NewLoadBalancer(tcpSvc, c.opts.LBTags)
 }
 
 // GetLoadBalancerName implements cloudprovider.LoadBalancer
@@ -109,9 +140,14 @@ LOOPNODES:
 
 // UpdateLoadBalancer implements cloudprovider.LoadBalancer
 func (c *Provider) UpdateLoadBalancer(ctx context.Context, clusterName string, svc *v1.Service, nodes []*v1.Node) error {
-	lb, err := cloud.NewLoadBalancer(svc, c.opts.LBTags)
-	if err != nil {
-		return fmt.Errorf("unable to build LB: %w", err)
+	lb, buildErr := cloud.NewLoadBalancer(svc, c.opts.LBTags)
+	switch {
+	case buildErr == nil:
+	case errors.Is(buildErr, cloud.ErrNonTCP):
+		klog.V(2).Infof("Skipping load balancer update for non-TCP Service %s/%s", svc.Namespace, svc.Name)
+		return nil
+	default:
+		return fmt.Errorf("unable to build LB: %w", buildErr)
 	}
 	exists, err := c.cloud.LoadBalancerExists(ctx, lb)
 	switch {
@@ -132,9 +168,18 @@ func (c *Provider) UpdateLoadBalancer(ctx context.Context, clusterName string, s
 
 // EnsureLoadBalancerDeleted implements cloudprovider.LoadBalancer.
 func (c *Provider) EnsureLoadBalancerDeleted(ctx context.Context, clusterName string, svc *v1.Service) error {
-	lb, err := cloud.NewLoadBalancer(svc, c.opts.LBTags)
-	if err != nil {
-		return fmt.Errorf("unable to build LB: %w", err)
+	lb, buildErr := cloud.NewLoadBalancer(svc, c.opts.LBTags)
+	switch {
+	case buildErr == nil:
+	case !errors.Is(buildErr, cloud.ErrNonTCP):
+		return fmt.Errorf("unable to build LB: %w", buildErr)
+	default:
+		// Use the current Service metadata to find an LBU that needs cleanup.
+		fallbackLB, err := c.buildLoadBalancerIgnoringProtocol(svc)
+		if err != nil {
+			return fmt.Errorf("unable to build LB: %w", err)
+		}
+		lb = fallbackLB
 	}
 	exists, err := c.cloud.LoadBalancerExists(ctx, lb)
 	switch {
