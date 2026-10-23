@@ -69,6 +69,9 @@ var (
 	// ErrLoadBalancerIsNotReady is returned by CreateLoadBalancer/UpdateLoadBalancer when the LB is not ready yet.
 	ErrLoadBalancerIsNotReady = controllerapi.NewRetryError("load balancer is not ready", 30*time.Second)
 
+	// ErrNonTCP is returned by NewLoadBalancer for a Service declaring a non-TCP port.
+	ErrNonTCP = errors.New("only TCP load balancers are supported")
+
 	ErrBelongsToSomeoneElse = errors.New("found a LBU with the same name belonging to")
 
 	ErrNoBackendVms = errors.New("no backend VM")
@@ -269,7 +272,7 @@ func NewLoadBalancer(svc *corev1.Service, addTags map[string]string) (*LoadBalan
 
 	for _, port := range svc.Spec.Ports {
 		if port.Protocol != corev1.ProtocolTCP {
-			return nil, errors.New("only TCP load balancers are supported")
+			return nil, ErrNonTCP
 		}
 		if port.NodePort == 0 {
 			continue

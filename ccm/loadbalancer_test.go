@@ -15,13 +15,38 @@ import (
 	"github.com/outscale/cloud-provider-osc/ccm"
 	"github.com/outscale/cloud-provider-osc/ccm/cloud"
 	"github.com/outscale/goutils/k8s/tags"
+	"github.com/outscale/goutils/sdk/mocks_osc"
 	"github.com/outscale/osc-sdk-go/v3/pkg/osc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
+
+// TestNonTCPNameDerivation checks the stub used by the lenient non-TCP
+// existence path: the derived LBU name follows the same UID-based naming as
+// GetLoadBalancerName (dash-stripped UID when no name annotation is set).
+func TestNonTCPNameDerivation(t *testing.T) {
+	uid := "01234567-89ab-cdef-0123-456789abcdef"
+	svc := testSvc()
+	delete(svc.Annotations, "service.beta.kubernetes.io/osc-load-balancer-name")
+	svc.UID = types.UID(uid)
+	svc.Spec.Ports[0].Protocol = corev1.ProtocolUDP
+	c, oa, _ := newAPI(t, self, []string{"foo"})
+	oa.EXPECT().
+		ReadLoadBalancers(gomock.Any(), gomock.Eq(osc.ReadLoadBalancersRequest{
+			Filters: &osc.FiltersLoadBalancer{
+				LoadBalancerNames: &[]string{strings.ReplaceAll(uid, "-", "")},
+			},
+		})).
+		Return(&osc.ReadLoadBalancersResponse{LoadBalancers: &[]osc.LoadBalancer{}}, nil)
+	p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{}, &sync.WaitGroup{})
+	_, exists, err := p.GetLoadBalancer(t.Context(), "foo", svc)
+	require.NoError(t, err)
+	assert.False(t, exists)
+}
 
 func testSvc() *corev1.Service {
 	return &corev1.Service{
@@ -46,7 +71,45 @@ func testSvc() *corev1.Service {
 	}
 }
 
+// newNonTCPAPI returns a client, a provider and a Service mutated to a
+// non-TCP port — the only buildLB refusal treated as non-existent. The
+// variadic setup registers the mock expectations backing the lenient
+// name-derivation check; with none, any API call fails the test.
+func newNonTCPAPI(t *testing.T, setup ...func(*mocks_osc.MockClient)) (*cloud.Cloud, *ccm.Provider, *corev1.Service) {
+	svc := testSvc()
+	svc.Spec.Ports[0].Protocol = corev1.ProtocolUDP
+	c, oa, _ := newAPI(t, self, []string{"foo"})
+	for _, s := range setup {
+		s(oa)
+	}
+	p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{}, &sync.WaitGroup{})
+	return c, p, svc
+}
+
 func TestGetLoadBalancer(t *testing.T) {
+	t.Run("A Service provisioned as TCP then mutated to non-TCP is reported as existing", func(t *testing.T) {
+		_, p, svc := newNonTCPAPI(t, func(m *mocks_osc.MockClient) { expectLoadbalancerExistsAndOwned(m) })
+		status, exists, err := p.GetLoadBalancer(t.Context(), "foo", svc)
+		require.NoError(t, err)
+		assert.True(t, exists)
+		assert.Nil(t, status)
+	})
+	t.Run("A never-provisioned non-TCP Service is reported as non-existent, with only the name check as API call", func(t *testing.T) {
+		_, p, svc := newNonTCPAPI(t, expectNoLoadbalancer)
+		status, exists, err := p.GetLoadBalancer(t.Context(), "foo", svc)
+		require.NoError(t, err)
+		assert.False(t, exists)
+		assert.Nil(t, status)
+	})
+	t.Run("A Service refused for a reason other than non-TCP keeps failing loudly", func(t *testing.T) {
+		svc := testSvc()
+		svc.Spec.SessionAffinity = corev1.ServiceAffinityClientIP
+		c, _, _ := newAPI(t, self, []string{"foo"}) // no expectation: any API call fails the test
+		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{}, &sync.WaitGroup{})
+		_, _, err := p.GetLoadBalancer(t.Context(), "foo", svc)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unable to build LB")
+	})
 	t.Run("If the ingress is configured, it is returned", func(t *testing.T) {
 		svc := testSvc()
 		c, mock, _ := newAPI(t, self, []string{"foo"})
@@ -162,6 +225,15 @@ func TestGetLoadBalancerName(t *testing.T) {
 }
 
 func TestEnsureLoadBalancer_Create(t *testing.T) {
+	t.Run("A Service with a non-TCP port is refused, without calling the API", func(t *testing.T) {
+		svc := testSvc()
+		svc.Spec.Ports[0].Protocol = corev1.ProtocolUDP
+		c, _, _ := newAPI(t, self, []string{"foo"}) // no expectation: any API call fails the test
+		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{}, &sync.WaitGroup{})
+		_, err := p.EnsureLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
+		require.Error(t, err)
+		assert.ErrorIs(t, err, cloud.ErrNonTCP)
+	})
 	t.Run("Cannot create a load-balancer if a LBU with the same name already exists but from another cluster", func(t *testing.T) {
 		svc := testSvc()
 		c, oapimock, _ := newAPI(t, self, []string{"foo"})
@@ -1047,6 +1119,11 @@ func TestEnsureLoadBalancer_Update(t *testing.T) {
 }
 
 func TestUpdateLoadBalancer(t *testing.T) {
+	t.Run("A Service that cannot be built is a no-op, without calling the API", func(t *testing.T) {
+		_, p, svc := newNonTCPAPI(t)
+		err := p.UpdateLoadBalancer(t.Context(), "foo", svc, []*corev1.Node{&vmNode})
+		require.NoError(t, err)
+	})
 	t.Run("Listeners are updated", func(t *testing.T) {
 		svc := testSvc()
 		svc.Spec.Ports[0].Port = 8080
@@ -1196,6 +1273,46 @@ func TestUpdateLoadBalancer(t *testing.T) {
 }
 
 func TestEnsureLoadBalancerDeleted(t *testing.T) {
+	t.Run("A Service provisioned as TCP then mutated to non-TCP is deleted", func(t *testing.T) {
+		svc := testSvc()
+		svc.Spec.Ports[0].Protocol = corev1.ProtocolUDP
+		c, oapimock, _ := newAPI(t, self, []string{"foo"})
+		expectLoadbalancerExistsAndOwned(oapimock)
+		expectReadLoadBalancer(oapimock, func(desc *osc.LoadBalancer) {
+			desc.DnsName = "foo.example.com"
+			desc.BackendVmIds = []string{"i-foo"}
+		})
+		expectDeregisterInstances(oapimock, "i-foo")
+		expectCreateTag(oapimock, "sg-foo", osc.ResourceTag{Key: cloud.SGToDeleteTagKey})
+		expectDeleteLoadBalancer(oapimock)
+		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{}, &sync.WaitGroup{})
+		err := p.EnsureLoadBalancerDeleted(t.Context(), "foo", svc)
+		require.NoError(t, err)
+	})
+	t.Run("A never-provisioned non-TCP Service needs no deletion, with only the name check as API call", func(t *testing.T) {
+		_, p, svc := newNonTCPAPI(t, expectNoLoadbalancer)
+		err := p.EnsureLoadBalancerDeleted(t.Context(), "foo", svc)
+		require.NoError(t, err)
+	})
+	t.Run("A Service refused for a reason other than non-TCP keeps failing loudly", func(t *testing.T) {
+		svc := testSvc()
+		svc.Spec.SessionAffinity = corev1.ServiceAffinityClientIP
+		c, _, _ := newAPI(t, self, []string{"foo"}) // no expectation: any API call fails the test
+		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{}, &sync.WaitGroup{})
+		err := p.EnsureLoadBalancerDeleted(t.Context(), "foo", svc)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unable to build LB")
+	})
+	t.Run("A Service whose status ingress no longer matches the instances annotation keeps failing loudly", func(t *testing.T) {
+		svc := testSvc()
+		svc.Status.LoadBalancer.Ingress = []corev1.LoadBalancerIngress{{Hostname: "x"}}
+		svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-instances"] = "2"
+		c, _, _ := newAPI(t, self, []string{"foo"}) // no expectation: any API call fails the test
+		p := ccm.NewProviderWith(c, staticDNSResolver{}, ccm.Options{}, &sync.WaitGroup{})
+		err := p.EnsureLoadBalancerDeleted(t.Context(), "foo", svc)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unable to build LB")
+	})
 	t.Run("If the load-balancer exists, delete it", func(t *testing.T) {
 		svc := testSvc()
 		c, oapimock, _ := newAPI(t, self, []string{"foo"})
