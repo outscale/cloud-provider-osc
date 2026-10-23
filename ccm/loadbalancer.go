@@ -18,9 +18,32 @@ import (
 
 // GetLoadBalancer implements cloudprovider.LoadBalancer
 func (c *Provider) GetLoadBalancer(ctx context.Context, clusterName string, svc *v1.Service) (*v1.LoadBalancerStatus, bool, error) {
-	lb, err := cloud.NewLoadBalancer(svc, c.opts.LBTags)
-	if err != nil {
-		return nil, false, fmt.Errorf("unable to build LB: %w", err)
+	lb, buildErr := c.buildLB(svc)
+	if buildErr != nil {
+		if !errors.Is(buildErr, cloud.ErrNonTCP) {
+			return nil, false, fmt.Errorf("unable to build LB: %w", buildErr)
+		}
+		// Non-TCP Service: the LBU name is still derivable (see stubLB) — a
+		// Service provisioned as TCP then mutated to non-TCP may own an LBU.
+		stub := c.stubLB(svc)
+		if stub == nil {
+			klog.V(2).Infof("Service %s/%s cannot own a load balancer: %v", svc.Namespace, svc.Name, buildErr)
+			return nil, false, nil
+		}
+		exists, err := c.cloud.LoadBalancerExists(ctx, stub)
+		switch {
+		case errors.Is(err, cloud.ErrBelongsToSomeoneElse):
+			// Not our LBU: nothing of ours to read.
+			return nil, false, nil
+		case err != nil:
+			return nil, false, fmt.Errorf("unable to check LB: %w", err)
+		case !exists:
+			klog.V(2).Infof("Service %s/%s cannot own a load balancer: %v", svc.Namespace, svc.Name, buildErr)
+			return nil, false, nil
+		}
+		// The LBU exists but the current (non-TCP) spec cannot describe it:
+		// report it as existing without a status.
+		return nil, true, nil
 	}
 	ingresses, err := c.cloud.GetLoadBalancer(ctx, lb)
 	if err != nil || len(ingresses) == 0 {
@@ -31,6 +54,49 @@ func (c *Provider) GetLoadBalancer(ctx context.Context, clusterName string, svc 
 		return nil, false, err
 	}
 	return res, true, nil
+}
+
+// buildLB maps a Service to the load balancer it describes.
+//
+// cloud.NewLoadBalancer derives the LBU name from svc.UID/annotations BEFORE
+// refusing the Service, and one refusal (instances count on a Service with
+// existing status ingress) fires precisely when an LBU exists. Therefore ONLY
+// the non-TCP refusal is treated as non-existent by the read, update and
+// delete paths: a non-TCP Service can never reach an API call, so it can
+// never have provisioned an LBU. Every other refusal is returned so callers
+// keep failing loudly — the Service may own an LBU provisioned under a prior
+// spec/annotation state. Provisioning still goes through
+// EnsureLoadBalancer, which keeps refusing unsupported Services.
+func (c *Provider) buildLB(svc *v1.Service) (*cloud.LoadBalancer, error) {
+	return cloud.NewLoadBalancer(svc, c.opts.LBTags)
+}
+
+// stubLB covers the provisioned-then-mutated case: a Service provisioned as
+// TCP (its LBU was created, named from svc.UID/annotations) then mutated to a
+// non-TCP port. buildLB then fails with cloud.ErrNonTCP although the LBU
+// still exists — treating it as non-existent would remove the finalizer and
+// orphan a billable LBU.
+//
+// The LBU name derivation in cloud.NewLoadBalancer does not depend on the
+// port protocol: forcing every port to TCP lets the full derivation run
+// (annotation decoding, defaults, UID naming) and yields the name the LBU was
+// provisioned with. The returned stub LB is that derived build, suitable for
+// LoadBalancerExists and DeleteLoadBalancer.
+//
+// When the Service cannot be built even with TCP ports — a second defect
+// checked after the non-TCP refusal (session affinity, invalid name/source
+// range annotations, instances mismatch…) — no name can be derived and nil is
+// returned: the caller keeps the non-existent behavior.
+func (c *Provider) stubLB(svc *v1.Service) *cloud.LoadBalancer {
+	tcpSvc := svc.DeepCopy()
+	for i := range tcpSvc.Spec.Ports {
+		tcpSvc.Spec.Ports[i].Protocol = v1.ProtocolTCP
+	}
+	lb, err := cloud.NewLoadBalancer(tcpSvc, c.opts.LBTags)
+	if err != nil || len(lb.Name) == 0 {
+		return nil
+	}
+	return lb
 }
 
 // GetLoadBalancerName implements cloudprovider.LoadBalancer
@@ -61,7 +127,7 @@ func (c *Provider) resolveLBUHostname(ctx context.Context, hostname string) (str
 // EnsureLoadBalancer implements cloudprovider.LoadBalancer
 func (c *Provider) EnsureLoadBalancer(ctx context.Context, clusterName string, svc *v1.Service,
 	nodes []*v1.Node) (*v1.LoadBalancerStatus, error) {
-	lb, err := cloud.NewLoadBalancer(svc, c.opts.LBTags)
+	lb, err := c.buildLB(svc)
 	if err != nil {
 		return nil, fmt.Errorf("unable to build LB: %w", err)
 	}
@@ -109,9 +175,15 @@ LOOPNODES:
 
 // UpdateLoadBalancer implements cloudprovider.LoadBalancer
 func (c *Provider) UpdateLoadBalancer(ctx context.Context, clusterName string, svc *v1.Service, nodes []*v1.Node) error {
-	lb, err := cloud.NewLoadBalancer(svc, c.opts.LBTags)
-	if err != nil {
-		return fmt.Errorf("unable to build LB: %w", err)
+	lb, buildErr := c.buildLB(svc)
+	if buildErr != nil {
+		if !errors.Is(buildErr, cloud.ErrNonTCP) {
+			return fmt.Errorf("unable to build LB: %w", buildErr)
+		}
+		// Non-TCP Service: nothing to update — a non-TCP spec cannot be
+		// served, and the read/delete paths still resolve any existing LBU.
+		klog.V(2).Infof("Service %s/%s cannot own a load balancer: %v", svc.Namespace, svc.Name, buildErr)
+		return nil
 	}
 	exists, err := c.cloud.LoadBalancerExists(ctx, lb)
 	switch {
@@ -132,9 +204,20 @@ func (c *Provider) UpdateLoadBalancer(ctx context.Context, clusterName string, s
 
 // EnsureLoadBalancerDeleted implements cloudprovider.LoadBalancer.
 func (c *Provider) EnsureLoadBalancerDeleted(ctx context.Context, clusterName string, svc *v1.Service) error {
-	lb, err := cloud.NewLoadBalancer(svc, c.opts.LBTags)
-	if err != nil {
-		return fmt.Errorf("unable to build LB: %w", err)
+	lb, buildErr := c.buildLB(svc)
+	if buildErr != nil {
+		if !errors.Is(buildErr, cloud.ErrNonTCP) {
+			return fmt.Errorf("unable to build LB: %w", buildErr)
+		}
+		// Non-TCP Service: the LBU name is still derivable (see stubLB) —
+		// resolve the stub so an existing LBU is really deleted instead of
+		// orphaned; the caller's finalizer stays until this returns.
+		stub := c.stubLB(svc)
+		if stub == nil {
+			klog.V(2).Infof("Service %s/%s cannot own a load balancer: %v", svc.Namespace, svc.Name, buildErr)
+			return nil
+		}
+		lb = stub
 	}
 	exists, err := c.cloud.LoadBalancerExists(ctx, lb)
 	switch {
