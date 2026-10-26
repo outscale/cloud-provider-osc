@@ -59,21 +59,8 @@ help:
 	@echo "  - trivy-scan         : run CVE check on Docker images"
 	@echo "  - helm-docs          : generate helm doc"
 .PHONY: build
-build: build-ccm build-labeler
-
-.PHONY: build-ccm
-build-ccm: $(SOURCES)
-	CGO_ENABLED=0 GOOS=$(GOOS) go build $(GO_ADD_OPTIONS) \
-		-ldflags $(LDFLAGS) \
-		-o osc-cloud-controller-manager \
-		cmd/osc-cloud-controller-manager/*.go
-
-.PHONY: build-labeler
-build-labeler: $(SOURCES)
-	CGO_ENABLED=0 GOOS=$(GOOS) go build $(GO_ADD_OPTIONS) \
-		-ldflags $(LDFLAGS) \
-		-o osc-labeler \
-		cmd/osc-labeler/*.go
+build: $(SOURCES)
+	goreleaser release --clean --snapshot
 
 .PHONY: verify
 verify: verify-fmt vet
@@ -93,14 +80,6 @@ mock-generate:
 .PHONY: test
 test:
 	CGO_ENABLED=0 OSC_ACCESS_KEY=test OSC_SECRET_KEY=test OSC_REGION=test go test -count=1  -v ./ccm/... ./deploy/...
-
-.PHONY: build-image
-build-image:
-	docker build --build-arg VERSION=$(VERSION) -t $(IMAGE):$(IMAGE_TAG) .
-
-.PHONY: buildx-image
-buildx-image:
-	docker buildx build  --build-arg VERSION=$(VERSION) --load -t $(IMAGE):$(IMAGE_TAG) .
 
 .PHONY: dockerlint
 dockerlint:
