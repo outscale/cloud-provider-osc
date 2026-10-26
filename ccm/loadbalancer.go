@@ -19,7 +19,7 @@ import (
 // GetLoadBalancer implements cloudprovider.LoadBalancer
 func (c *Provider) GetLoadBalancer(ctx context.Context, clusterName string, svc *v1.Service) (*v1.LoadBalancerStatus, bool, error) {
 	lb, err := cloud.NewLoadBalancer(svc, c.opts.LBTags)
-	if err != nil {
+	if lb == nil && err != nil {
 		return nil, false, fmt.Errorf("unable to build LB: %w", err)
 	}
 	ingresses, err := c.cloud.GetLoadBalancer(ctx, lb)
@@ -35,8 +35,8 @@ func (c *Provider) GetLoadBalancer(ctx context.Context, clusterName string, svc 
 
 // GetLoadBalancerName implements cloudprovider.LoadBalancer
 func (c *Provider) GetLoadBalancerName(ctx context.Context, clusterName string, svc *v1.Service) string {
-	lb, err := cloud.NewLoadBalancer(svc, c.opts.LBTags)
-	if err != nil || len(lb.Name) == 0 {
+	lb, _ := cloud.NewLoadBalancer(svc, c.opts.LBTags)
+	if lb == nil || len(lb.Name) == 0 {
 		return ""
 	}
 	return lb.Name[0]
@@ -60,7 +60,8 @@ func (c *Provider) resolveLBUHostname(ctx context.Context, hostname string) (str
 
 // EnsureLoadBalancer implements cloudprovider.LoadBalancer
 func (c *Provider) EnsureLoadBalancer(ctx context.Context, clusterName string, svc *v1.Service,
-	nodes []*v1.Node) (*v1.LoadBalancerStatus, error) {
+	nodes []*v1.Node,
+) (*v1.LoadBalancerStatus, error) {
 	lb, err := cloud.NewLoadBalancer(svc, c.opts.LBTags)
 	if err != nil {
 		return nil, fmt.Errorf("unable to build LB: %w", err)
@@ -133,9 +134,13 @@ func (c *Provider) UpdateLoadBalancer(ctx context.Context, clusterName string, s
 // EnsureLoadBalancerDeleted implements cloudprovider.LoadBalancer.
 func (c *Provider) EnsureLoadBalancerDeleted(ctx context.Context, clusterName string, svc *v1.Service) error {
 	lb, err := cloud.NewLoadBalancer(svc, c.opts.LBTags)
-	if err != nil {
+	// only return an error if a partial LB has not been built
+	if lb == nil && err != nil {
 		return fmt.Errorf("unable to build LB: %w", err)
 	}
+	// Try to remove, even if partially built, in case an existing LB has
+	// been mutated to an invalid config, provided Name is still valid and
+	// has not changed.
 	exists, err := c.cloud.LoadBalancerExists(ctx, lb)
 	switch {
 	case errors.Is(err, cloud.ErrBelongsToSomeoneElse):
