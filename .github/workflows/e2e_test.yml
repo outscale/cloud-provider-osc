@@ -30,31 +30,29 @@ jobs:
       with:
         persist-credentials: false
     - name: ⬇️ Install kubectl
-      uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
+      uses: azure/setup-kubectl@bda439f5f36b99b262ebdcd3613869bddb064c8e # v5.2.0
       with:
         version: v1.34.9
     - name: ⬇️ Install Helm
       uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
       with:
-        version: v4.2.3
-    - name: ⬇️ Install Python
-      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        version: v4.3.0
     - name: ⬇️ Install Go
       uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
       with:
         go-version-file: 'go.mod'
     - name: ⬇️ Set up Docker Buildx
-      uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+      uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
     - name: 🔐 Set AK/SK name based on runner region
       run: .github/scripts/runneraksk.sh
     - name: ⬇️ Install octl
-      uses: outscale/octl/.github/actions/setup_octl@1611a6d99b4017e59a3a5d755fdbf0147ac070e8 # v0.0.31
+      uses: outscale/octl/.github/actions/setup_octl@b5e8714f317ca1625a4a4a8705c649d90bac4f72 # v0.0.34
       with:
         OSC_ACCESS_KEY: ${{ secrets[env.OSC_ACCESS_KEY_NAME] }}
         OSC_SECRET_KEY: ${{ secrets[env.OSC_SECRET_KEY_NAME] }}
         OSC_REGION: ${{ env.OSC_REGION }}
     - name: 🧹 Frieza
-      uses: outscale/frieza-github-actions/frieza-clean@1a8eba5199913da60ae6d92d6050e17410186a38 # v0.16.1+hotfix.0
+      uses: outscale/frieza-github-actions/frieza-clean@d361dd8cc864cfb9575429ee54fde4a0e8e7b124 # v0.17.2+hotfix.0
       with:
         access_key: ${{ secrets[env.OSC_ACCESS_KEY_NAME] }}
         secret_key: ${{ secrets[env.OSC_SECRET_KEY_NAME] }}
@@ -66,7 +64,7 @@ jobs:
         registry: ${{ vars.REGISTRY }}
         username: admin
         password: ${{ secrets.HARBOR_ADMIN_PASSWORD }}
-    - name: 📦 Run GoReleaser
+    - name: 📦 Build Docker image
       uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
       with:
         version: 'v2.15.4'
