@@ -102,7 +102,7 @@ func WaitForSvc(ctx context.Context, client clientset.Interface, svc *v1.Service
 	return svc
 }
 
-// WaitForDeletedSvc waits for a svc to be deleted
-func WaitForDeletedSvc(ctx context.Context, client clientset.Interface, svc *v1.Service) {
+// DeleteSvcAndWait deletes a svc and waits until deletion has been finalized
+func DeleteSvcAndWait(ctx context.Context, client clientset.Interface, svc *v1.Service) {
 	e2esvc.WaitForServiceDeletedWithFinalizer(ctx, client, svc.Namespace, svc.Name)
 }

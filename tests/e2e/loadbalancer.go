@@ -16,6 +16,7 @@ package e2e
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"time"
 
@@ -29,7 +30,7 @@ import (
 	"github.com/outscale/osc-sdk-go/v3/pkg/osc"
 	"github.com/rs/xid"
 	appsv1 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
@@ -47,7 +48,7 @@ var _ = Describe("[e2e][loadbalancer][fast] Creating a load-balancer", func() {
 
 	var (
 		cs  clientset.Interface
-		ns  *v1.Namespace
+		ns  *corev1.Namespace
 		ctx context.Context
 		api *oapi.Client
 	)
@@ -65,14 +66,14 @@ var _ = Describe("[e2e][loadbalancer][fast] Creating a load-balancer", func() {
 		var (
 			lbName     string
 			deployment *appsv1.Deployment
-			svc        *v1.Service
+			svc        *corev1.Service
 		)
 		BeforeEach(func() {
 			lbName = "ccm-simple-" + xid.New().String()
-			deployment = e2eutils.CreateDeployment(ctx, cs, ns, 1, []v1.ContainerPort{
+			deployment = e2eutils.CreateDeployment(ctx, cs, ns, 1, []corev1.ContainerPort{
 				{
 					Name:          "tcp",
-					Protocol:      v1.ProtocolTCP,
+					Protocol:      corev1.ProtocolTCP,
 					ContainerPort: 8080,
 				},
 			})
@@ -80,10 +81,10 @@ var _ = Describe("[e2e][loadbalancer][fast] Creating a load-balancer", func() {
 
 			svc = e2eutils.CreateSvc(ctx, cs, ns, map[string]string{
 				"service.beta.kubernetes.io/osc-load-balancer-name": lbName,
-			}, []v1.ServicePort{
+			}, []corev1.ServicePort{
 				{
 					Name:       "tcp",
-					Protocol:   v1.ProtocolTCP,
+					Protocol:   corev1.ProtocolTCP,
 					TargetPort: intstr.FromInt(8080),
 					Port:       80,
 				},
@@ -119,7 +120,7 @@ var _ = Describe("[e2e][loadbalancer][fast] Creating a load-balancer", func() {
 
 		It("can update the port", func() {
 			svc = e2eutils.WaitForSvc(ctx, cs, svc)
-			_, err := e2esvc.UpdateService(ctx, cs, svc.Namespace, svc.Name, func(d *v1.Service) {
+			_, err := e2esvc.UpdateService(ctx, cs, svc.Namespace, svc.Name, func(d *corev1.Service) {
 				d.Spec.Ports[0].Port = 8080
 			})
 			framework.ExpectNoError(err)
@@ -134,7 +135,7 @@ var _ = Describe("[e2e][loadbalancer] Configuring a multi-az LBU", func() {
 
 	var (
 		cs     clientset.Interface
-		ns     *v1.Namespace
+		ns     *corev1.Namespace
 		ctx    context.Context
 		lbName string
 	)
@@ -146,10 +147,10 @@ var _ = Describe("[e2e][loadbalancer] Configuring a multi-az LBU", func() {
 		lbName = "ccm-multiaz-" + xid.New().String()
 	})
 	It("can connect to the service", func() {
-		deployment := e2eutils.CreateDeployment(ctx, cs, ns, 1, []v1.ContainerPort{
+		deployment := e2eutils.CreateDeployment(ctx, cs, ns, 1, []corev1.ContainerPort{
 			{
 				Name:          "tcp",
-				Protocol:      v1.ProtocolTCP,
+				Protocol:      corev1.ProtocolTCP,
 				ContainerPort: 8080,
 			},
 		})
@@ -161,10 +162,10 @@ var _ = Describe("[e2e][loadbalancer] Configuring a multi-az LBU", func() {
 			"service.beta.kubernetes.io/osc-load-balancer-name":       "a-" + lbName + ",b-" + lbName,
 			"service.beta.kubernetes.io/osc-load-balancer-instances":  "2",
 			"service.beta.kubernetes.io/osc-load-balancer-subregions": region + "a," + region + "a", // the CI env is single AZ
-		}, []v1.ServicePort{
+		}, []corev1.ServicePort{
 			{
 				Name:       "tcp",
-				Protocol:   v1.ProtocolTCP,
+				Protocol:   corev1.ProtocolTCP,
 				TargetPort: intstr.FromInt(8080),
 				Port:       80,
 			},
@@ -184,7 +185,7 @@ var _ = Describe("[e2e][loadbalancer] Setting a public IP", func() {
 
 	var (
 		cs     clientset.Interface
-		ns     *v1.Namespace
+		ns     *corev1.Namespace
 		ctx    context.Context
 		lbName string
 	)
@@ -199,13 +200,13 @@ var _ = Describe("[e2e][loadbalancer] Setting a public IP", func() {
 	Context("When creating service with a public ip from a pool", func() {
 		var (
 			deployment *appsv1.Deployment
-			svc        *v1.Service
+			svc        *corev1.Service
 		)
 		BeforeEach(func() {
-			deployment = e2eutils.CreateDeployment(ctx, cs, ns, 1, []v1.ContainerPort{
+			deployment = e2eutils.CreateDeployment(ctx, cs, ns, 1, []corev1.ContainerPort{
 				{
 					Name:          "tcp",
-					Protocol:      v1.ProtocolTCP,
+					Protocol:      corev1.ProtocolTCP,
 					ContainerPort: 8080,
 				},
 			})
@@ -214,10 +215,10 @@ var _ = Describe("[e2e][loadbalancer] Setting a public IP", func() {
 			svc = e2eutils.CreateSvc(ctx, cs, ns, map[string]string{
 				"service.beta.kubernetes.io/osc-load-balancer-name":           lbName,
 				"service.beta.kubernetes.io/osc-load-balancer-public-ip-pool": "ccm",
-			}, []v1.ServicePort{
+			}, []corev1.ServicePort{
 				{
 					Name:       "tcp",
-					Protocol:   v1.ProtocolTCP,
+					Protocol:   corev1.ProtocolTCP,
 					TargetPort: intstr.FromInt(8080),
 					Port:       80,
 				},
@@ -253,10 +254,10 @@ var _ = Describe("[e2e][loadbalancer] Setting a public IP", func() {
 			framework.ExpectNoError(err)
 			pip, err = sdk.AllocateIPFromPool(ctx, "ccm", api.OAPI())
 			framework.ExpectNoError(err)
-			deployment = e2eutils.CreateDeployment(ctx, cs, ns, 1, []v1.ContainerPort{
+			deployment = e2eutils.CreateDeployment(ctx, cs, ns, 1, []corev1.ContainerPort{
 				{
 					Name:          "tcp",
-					Protocol:      v1.ProtocolTCP,
+					Protocol:      corev1.ProtocolTCP,
 					ContainerPort: 8080,
 				},
 			})
@@ -275,10 +276,10 @@ var _ = Describe("[e2e][loadbalancer] Setting a public IP", func() {
 				"service.beta.kubernetes.io/osc-load-balancer-name":            lbName,
 				"service.beta.kubernetes.io/osc-load-balancer-public-ip-id":    pip.PublicIpId,
 				"service.beta.kubernetes.io/osc-load-balancer-ingress-address": "both",
-			}, []v1.ServicePort{
+			}, []corev1.ServicePort{
 				{
 					Name:       "tcp",
-					Protocol:   v1.ProtocolTCP,
+					Protocol:   corev1.ProtocolTCP,
 					TargetPort: intstr.FromInt(8080),
 					Port:       80,
 				},
@@ -296,10 +297,10 @@ var _ = Describe("[e2e][loadbalancer] Setting a public IP", func() {
 				"service.beta.kubernetes.io/osc-load-balancer-name":            lbName,
 				"service.beta.kubernetes.io/osc-load-balancer-public-ip-id":    pip.PublicIp,
 				"service.beta.kubernetes.io/osc-load-balancer-ingress-address": "ip",
-			}, []v1.ServicePort{
+			}, []corev1.ServicePort{
 				{
 					Name:       "tcp",
-					Protocol:   v1.ProtocolTCP,
+					Protocol:   corev1.ProtocolTCP,
 					TargetPort: intstr.FromInt(8080),
 					Port:       80,
 				},
@@ -320,7 +321,7 @@ var _ = Describe("[e2e][loadbalancer] Fixing annotation errors", func() {
 
 	var (
 		cs     clientset.Interface
-		ns     *v1.Namespace
+		ns     *corev1.Namespace
 		ctx    context.Context
 		lbName string
 	)
@@ -335,13 +336,13 @@ var _ = Describe("[e2e][loadbalancer] Fixing annotation errors", func() {
 	Context("When creating service with a bad annotation", func() {
 		var (
 			deployment *appsv1.Deployment
-			svc        *v1.Service
+			svc        *corev1.Service
 		)
 		BeforeEach(func() {
-			deployment = e2eutils.CreateDeployment(ctx, cs, ns, 1, []v1.ContainerPort{
+			deployment = e2eutils.CreateDeployment(ctx, cs, ns, 1, []corev1.ContainerPort{
 				{
 					Name:          "tcp",
-					Protocol:      v1.ProtocolTCP,
+					Protocol:      corev1.ProtocolTCP,
 					ContainerPort: 8080,
 				},
 			})
@@ -350,10 +351,10 @@ var _ = Describe("[e2e][loadbalancer] Fixing annotation errors", func() {
 			svc = e2eutils.CreateSvc(ctx, cs, ns, map[string]string{
 				"service.beta.kubernetes.io/osc-load-balancer-name":         lbName,
 				"service.beta.kubernetes.io/osc-load-balancer-public-ip-id": "invalid",
-			}, []v1.ServicePort{
+			}, []corev1.ServicePort{
 				{
 					Name:       "tcp",
-					Protocol:   v1.ProtocolTCP,
+					Protocol:   corev1.ProtocolTCP,
 					TargetPort: intstr.FromInt(8080),
 					Port:       80,
 				},
@@ -373,12 +374,84 @@ var _ = Describe("[e2e][loadbalancer] Fixing annotation errors", func() {
 
 		It("works after removing to bad annotation", func() {
 			e2esvc.WaitForServiceUpdatedWithFinalizer(ctx, cs, svc.Namespace, svc.Name, true)
-			svc, err := e2esvc.UpdateService(ctx, cs, svc.Namespace, svc.Name, func(d *v1.Service) {
+			svc, err := e2esvc.UpdateService(ctx, cs, svc.Namespace, svc.Name, func(d *corev1.Service) {
 				delete(svc.Annotations, "service.beta.kubernetes.io/osc-load-balancer-public-ip-id")
 			})
 			framework.ExpectNoError(err)
 			svc = e2eutils.WaitForSvc(ctx, cs, svc)
 			e2esvc.TestReachableHTTP(ctx, svc.Status.LoadBalancer.Ingress[0].Hostname, 80, testTimeout)
+		})
+	})
+})
+
+var _ = Describe("[e2e][loadbalancer] Mutating a valid LBU to an invalid config", func() {
+	f := framework.NewDefaultFramework("ccm")
+	f.NamespacePodSecurityEnforceLevel = admissionapi.LevelPrivileged
+
+	var (
+		cs     clientset.Interface
+		ns     *corev1.Namespace
+		ctx    context.Context
+		lbName string
+	)
+
+	BeforeEach(func() {
+		cs = f.ClientSet
+		ns = f.Namespace
+		ctx = context.Background()
+		lbName = "ccm-fix-" + xid.New().String()
+	})
+
+	Context("When creating a valid service", func() {
+		var (
+			deployment *appsv1.Deployment
+			svc        *corev1.Service
+		)
+		BeforeEach(func() {
+			deployment = e2eutils.CreateDeployment(ctx, cs, ns, 1, []corev1.ContainerPort{
+				{
+					Name:          "tcp",
+					Protocol:      corev1.ProtocolTCP,
+					ContainerPort: 8080,
+				},
+			})
+			e2eutils.WaitForDeploymentReady(ctx, cs, deployment)
+
+			svc = e2eutils.CreateSvc(ctx, cs, ns, map[string]string{
+				"service.beta.kubernetes.io/osc-load-balancer-name": lbName,
+			}, []corev1.ServicePort{
+				{
+					Name:       "tcp",
+					Protocol:   corev1.ProtocolTCP,
+					TargetPort: intstr.FromInt(8080),
+					Port:       80,
+				},
+			}, nil)
+
+			svc = e2eutils.WaitForSvc(ctx, cs, svc)
+			e2esvc.TestReachableHTTP(ctx, svc.Status.LoadBalancer.Ingress[0].Hostname, 80, testTimeout)
+		})
+
+		AfterEach(func() {
+			if deployment != nil {
+				e2eutils.DeleteDeployment(ctx, cs, deployment)
+				deployment = nil
+			}
+			if svc != nil {
+				e2eutils.DeleteSvc(ctx, cs, svc)
+				svc = nil
+			}
+		})
+
+		It("it can be deleted after having be mutated to an invalid config", func() {
+			By(fmt.Sprintf("Mutating service %q", svc.Name))
+			msvc, err := e2esvc.UpdateService(ctx, cs, svc.Namespace, svc.Name, func(d *corev1.Service) {
+				svc.Annotations["service.beta.kubernetes.io/osc-load-balancer-instances"] = "shouldHaveBeenAnInt"
+				svc.Spec.SessionAffinity = corev1.ServiceAffinityClientIP
+			})
+			framework.ExpectNoError(err)
+			svc = nil
+			e2eutils.DeleteSvcAndWait(ctx, cs, msvc)
 		})
 	})
 })
@@ -389,7 +462,7 @@ var _ = Describe("[e2e][loadbalancer] Creating an internal load-balancer", func(
 
 	var (
 		cs     clientset.Interface
-		ns     *v1.Namespace
+		ns     *corev1.Namespace
 		ctx    context.Context
 		lbName string
 	)
@@ -404,13 +477,13 @@ var _ = Describe("[e2e][loadbalancer] Creating an internal load-balancer", func(
 	Context("When creating an internal service", func() {
 		var (
 			deployment *appsv1.Deployment
-			svc        *v1.Service
+			svc        *corev1.Service
 		)
 		BeforeEach(func() {
-			deployment = e2eutils.CreateDeployment(ctx, cs, ns, 1, []v1.ContainerPort{
+			deployment = e2eutils.CreateDeployment(ctx, cs, ns, 1, []corev1.ContainerPort{
 				{
 					Name:          "tcp",
-					Protocol:      v1.ProtocolTCP,
+					Protocol:      corev1.ProtocolTCP,
 					ContainerPort: 8080,
 				},
 			})
@@ -419,10 +492,10 @@ var _ = Describe("[e2e][loadbalancer] Creating an internal load-balancer", func(
 			svc = e2eutils.CreateSvc(ctx, cs, ns, map[string]string{
 				"service.beta.kubernetes.io/osc-load-balancer-name":     lbName,
 				"service.beta.kubernetes.io/osc-load-balancer-internal": "true",
-			}, []v1.ServicePort{
+			}, []corev1.ServicePort{
 				{
 					Name:       "tcp",
-					Protocol:   v1.ProtocolTCP,
+					Protocol:   corev1.ProtocolTCP,
 					TargetPort: intstr.FromInt(8080),
 					Port:       80,
 				},
@@ -460,7 +533,7 @@ var _ = Describe("[e2e][loadbalancer] Checking proxy-protocol", func() {
 
 	var (
 		cs  clientset.Interface
-		ns  *v1.Namespace
+		ns  *corev1.Namespace
 		ctx context.Context
 		api *oapi.Client
 	)
@@ -475,10 +548,10 @@ var _ = Describe("[e2e][loadbalancer] Checking proxy-protocol", func() {
 	})
 
 	It("can create a service using proxy protocol", func() {
-		deployment := e2eutils.CreateProxyProtocolDeployment(ctx, cs, ns, 1, []v1.ContainerPort{
+		deployment := e2eutils.CreateProxyProtocolDeployment(ctx, cs, ns, 1, []corev1.ContainerPort{
 			{
 				Name:          "tcp",
-				Protocol:      v1.ProtocolTCP,
+				Protocol:      corev1.ProtocolTCP,
 				ContainerPort: 8080,
 			},
 		})
@@ -490,10 +563,10 @@ var _ = Describe("[e2e][loadbalancer] Checking proxy-protocol", func() {
 			"service.beta.kubernetes.io/osc-load-balancer-proxy-protocol":   "*",
 			"service.beta.kubernetes.io/osc-load-balancer-backend-protocol": "http",
 			"service.beta.kubernetes.io/osc-load-balancer-name":             lbName,
-		}, []v1.ServicePort{
+		}, []corev1.ServicePort{
 			{
 				Name:       "tcp",
-				Protocol:   v1.ProtocolTCP,
+				Protocol:   corev1.ProtocolTCP,
 				TargetPort: intstr.FromInt(8080),
 				Port:       80,
 			},
@@ -513,7 +586,7 @@ var _ = Describe("[e2e][loadbalancer] Checking cleanup of resources", func() {
 
 	var (
 		cs  clientset.Interface
-		ns  *v1.Namespace
+		ns  *corev1.Namespace
 		ctx context.Context
 		api *oapi.Client
 	)
@@ -528,10 +601,10 @@ var _ = Describe("[e2e][loadbalancer] Checking cleanup of resources", func() {
 	})
 
 	It("deletes the security group and the load-balancer", func() {
-		deployment := e2eutils.CreateDeployment(ctx, cs, ns, 1, []v1.ContainerPort{
+		deployment := e2eutils.CreateDeployment(ctx, cs, ns, 1, []corev1.ContainerPort{
 			{
 				Name:          "tcp",
-				Protocol:      v1.ProtocolTCP,
+				Protocol:      corev1.ProtocolTCP,
 				ContainerPort: 8080,
 			},
 		})
@@ -540,10 +613,10 @@ var _ = Describe("[e2e][loadbalancer] Checking cleanup of resources", func() {
 		lbName := "ccm-cleanup-" + xid.New().String()
 		svc := e2eutils.CreateSvc(ctx, cs, ns, map[string]string{
 			"service.beta.kubernetes.io/osc-load-balancer-name": lbName,
-		}, []v1.ServicePort{
+		}, []corev1.ServicePort{
 			{
 				Name:       "tcp",
-				Protocol:   v1.ProtocolTCP,
+				Protocol:   corev1.ProtocolTCP,
 				TargetPort: intstr.FromInt(8080),
 				Port:       80,
 			},
@@ -567,7 +640,7 @@ var _ = Describe("[e2e][loadbalancer] Updating backends", func() {
 
 	var (
 		cs  clientset.Interface
-		ns  *v1.Namespace
+		ns  *corev1.Namespace
 		ctx context.Context
 		api *oapi.Client
 	)
@@ -582,10 +655,10 @@ var _ = Describe("[e2e][loadbalancer] Updating backends", func() {
 	})
 
 	It("updates backends when a node is deleted", func() {
-		deployment := e2eutils.CreateDeployment(ctx, cs, ns, 1, []v1.ContainerPort{
+		deployment := e2eutils.CreateDeployment(ctx, cs, ns, 1, []corev1.ContainerPort{
 			{
 				Name:          "tcp",
-				Protocol:      v1.ProtocolTCP,
+				Protocol:      corev1.ProtocolTCP,
 				ContainerPort: 8080,
 			},
 		})
@@ -596,10 +669,10 @@ var _ = Describe("[e2e][loadbalancer] Updating backends", func() {
 		lbName := "ccm-backends-" + xid.New().String()
 		svc := e2eutils.CreateSvc(ctx, cs, ns, map[string]string{
 			"service.beta.kubernetes.io/osc-load-balancer-name": lbName,
-		}, []v1.ServicePort{
+		}, []corev1.ServicePort{
 			{
 				Name:       "tcp",
-				Protocol:   v1.ProtocolTCP,
+				Protocol:   corev1.ProtocolTCP,
 				TargetPort: intstr.FromInt(8080),
 				Port:       80,
 			},
