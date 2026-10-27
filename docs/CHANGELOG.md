@@ -1,5 +1,65 @@
 # Changelog
 
+## [v1.36.10](https://github.com/outscale/cloud-provider-osc/releases/tag/v1.36.10) - 2026-10-27
+
+### 🛠️ Changed / Refactoring
+* 🔒️ security: sanitize logs by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/765
+### 🐛 Fixed
+* 🐛 fix(loadbalancer): allow deletion of lb mutated to an invalid config by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/793
+### 📦 Dependency updates
+* ⬆️ deps(gomod): update module github.com/stretchr/testify to v1.12.1 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/737
+* ⬆️ deps(gomod): update module github.com/outscale/goutils/sdk to v0.0.10 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/778
+* ⬆️ deps(gomod): update go toolchain directive to v1.27.2 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/784
+* ⬆️ deps(gomod): update go toolchain directive to v1.27.3 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/789
+
+## [v1.35.10](https://github.com/outscale/cloud-provider-osc/releases/tag/v1.35.10) - 2026-10-27
+
+### 🛠️ Changed / Refactoring
+* 🔒️ security: sanitize logs by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/765
+### 🐛 Fixed
+* 🐛 fix(loadbalancer): allow deletion of lb mutated to an invalid config by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/793
+### 📦 Dependency updates
+* ⬆️ deps(gomod): update module github.com/stretchr/testify to v1.12.1 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/737
+* ⬆️ deps(gomod): update module github.com/outscale/goutils/sdk to v0.0.10 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/778
+* ⬆️ deps(gomod): update go toolchain directive to v1.27.2 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/784
+* ⬆️ deps(gomod): update go toolchain directive to v1.27.3 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/789
+
+## [v1.34.10](https://github.com/outscale/cloud-provider-osc/releases/tag/v1.34.10) - 2026-10-27
+
+### 🛠️ Changed / Refactoring
+* 🔒️ security: sanitize logs by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/765
+### 🐛 Fixed
+* 🐛 fix(loadbalancer): allow deletion of lb mutated to an invalid config by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/793
+### 📦 Dependency updates
+* ⬆️ deps(gomod): update module github.com/stretchr/testify to v1.12.1 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/737
+* ⬆️ deps(gomod): update module github.com/outscale/goutils/sdk to v0.0.10 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/778
+* ⬆️ deps(gomod): update go toolchain directive to v1.27.2 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/784
+* ⬆️ deps(gomod): update go toolchain directive to v1.27.3 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/789
+
+## [v1.33.10](https://github.com/outscale/cloud-provider-osc/releases/tag/v1.33.10) - 2026-10-27
+
+### 🛠️ Changed / Refactoring
+* 🔒️ security: sanitize logs by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/765
+### 🐛 Fixed
+* 🐛 fix(loadbalancer): allow deletion of lb mutated to an invalid config by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/793
+### 📦 Dependency updates
+* ⬆️ deps(gomod): update module github.com/stretchr/testify to v1.12.1 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/737
+* ⬆️ deps(gomod): update module github.com/outscale/goutils/sdk to v0.0.10 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/778
+* ⬆️ deps(gomod): update go toolchain directive to v1.27.2 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/784
+* ⬆️ deps(gomod): update go toolchain directive to v1.27.3 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/789
+
+## [v1.32.10](https://github.com/outscale/cloud-provider-osc/releases/tag/v1.32.10) - 2026-10-27
+
+### 🛠️ Changed / Refactoring
+* 🔒️ security: sanitize logs by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/765
+### 🐛 Fixed
+* 🐛 fix(loadbalancer): allow deletion of lb mutated to an invalid config by @jfbus in https://github.com/outscale/cloud-provider-osc/pull/793
+### 📦 Dependency updates
+* ⬆️ deps(gomod): update module github.com/stretchr/testify to v1.12.1 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/737
+* ⬆️ deps(gomod): update module github.com/outscale/goutils/sdk to v0.0.10 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/778
+* ⬆️ deps(gomod): update go toolchain directive to v1.27.2 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/784
+* ⬆️ deps(gomod): update go toolchain directive to v1.27.3 by @Open-Source-Bot in https://github.com/outscale/cloud-provider-osc/pull/789
+
 ## [v1.36.9](https://github.com/outscale/cloud-provider-osc/releases/tag/v1.36.9) - 2026-09-09
 
 ### ✨ Added
