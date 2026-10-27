@@ -155,11 +155,11 @@ check-helm-docs:
 	./hack/verify-helm-docs
 
 helm-manifest:
-	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.32.9 > deploy/osc-ccm-manifest-v1.32.yml
-	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.33.9 > deploy/osc-ccm-manifest-v1.33.yml
-	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.34.9 > deploy/osc-ccm-manifest-v1.34.yml
-	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.35.9 > deploy/osc-ccm-manifest-v1.35.yml
-	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.36.9 > deploy/osc-ccm-manifest-v1.36.yml
+	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.32.10 > deploy/osc-ccm-manifest-v1.32.yml
+	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.33.10 > deploy/osc-ccm-manifest-v1.33.yml
+	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.34.10 > deploy/osc-ccm-manifest-v1.34.yml
+	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.35.10 > deploy/osc-ccm-manifest-v1.35.yml
+	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.36.10 > deploy/osc-ccm-manifest-v1.36.yml
 
 check-helm-manifest:
 	./hack/verify-helm-manifest.sh
