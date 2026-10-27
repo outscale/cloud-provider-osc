@@ -32,7 +32,7 @@ jobs:
     - name: 🔎 Docker Lint
       run: bash -c "make dockerlint"
     - name: 🔎 golangci-lint
-      uses: outscale/goutils/.github/actions/lint@bd54158ec41d8d18182eb99e516353ed5ea92858 # v1.0.1
+      uses: outscale/goutils/.github/actions/lint@8372c6326b23c047417d312b859f9a0cf19b3ed9 # v1.0.3
     - name: 🔎 Reuse check
       run: make lint-reuse
       shell: bash
@@ -54,6 +54,6 @@ jobs:
     - name: ⬇️ Install Helm
       uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
       with:
-        version: v4.2.3
+        version: v4.3.0
     - name: 🧪 Test
       run: bash -c "make test"

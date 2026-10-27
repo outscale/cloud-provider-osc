@@ -59,21 +59,8 @@ help:
 	@echo "  - trivy-scan         : run CVE check on Docker images"
 	@echo "  - helm-docs          : generate helm doc"
 .PHONY: build
-build: build-ccm build-labeler
-
-.PHONY: build-ccm
-build-ccm: $(SOURCES)
-	CGO_ENABLED=0 GOOS=$(GOOS) go build $(GO_ADD_OPTIONS) \
-		-ldflags $(LDFLAGS) \
-		-o osc-cloud-controller-manager \
-		cmd/osc-cloud-controller-manager/*.go
-
-.PHONY: build-labeler
-build-labeler: $(SOURCES)
-	CGO_ENABLED=0 GOOS=$(GOOS) go build $(GO_ADD_OPTIONS) \
-		-ldflags $(LDFLAGS) \
-		-o osc-labeler \
-		cmd/osc-labeler/*.go
+build: $(SOURCES)
+	goreleaser release --clean --snapshot
 
 .PHONY: verify
 verify: verify-fmt vet
@@ -93,14 +80,6 @@ mock-generate:
 .PHONY: test
 test:
 	CGO_ENABLED=0 OSC_ACCESS_KEY=test OSC_SECRET_KEY=test OSC_REGION=test go test -count=1  -v ./ccm/... ./deploy/...
-
-.PHONY: build-image
-build-image:
-	docker build --build-arg VERSION=$(VERSION) -t $(IMAGE):$(IMAGE_TAG) .
-
-.PHONY: buildx-image
-buildx-image:
-	docker buildx build  --build-arg VERSION=$(VERSION) --load -t $(IMAGE):$(IMAGE_TAG) .
 
 .PHONY: dockerlint
 dockerlint:
@@ -176,18 +155,19 @@ check-helm-docs:
 	./hack/verify-helm-docs
 
 helm-manifest:
-	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.32.9 > deploy/osc-ccm-manifest-v1.32.yml
-	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.33.9 > deploy/osc-ccm-manifest-v1.33.yml
-	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.34.9 > deploy/osc-ccm-manifest-v1.34.yml
-	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.35.9 > deploy/osc-ccm-manifest-v1.35.yml
-	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.36.9 > deploy/osc-ccm-manifest-v1.36.yml
+	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.32.10 > deploy/osc-ccm-manifest-v1.32.yml
+	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.33.10 > deploy/osc-ccm-manifest-v1.33.yml
+	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.34.10 > deploy/osc-ccm-manifest-v1.34.yml
+	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.35.10 > deploy/osc-ccm-manifest-v1.35.yml
+	@helm template test ./deploy/k8s-osc-ccm/ --set image.tag=v1.36.10 > deploy/osc-ccm-manifest-v1.36.yml
 
 check-helm-manifest:
 	./hack/verify-helm-manifest.sh
 
 helm-package:
 # Copy docs into the archive for ArtfactHub, symlink does not work with helm-git
-	cp docs/CHANGELOG.md docs/README.md LICENSE deploy/k8s-osc-ccm/
+	cp docs/CHANGELOG.md docs/README.md deploy/k8s-osc-ccm/
+	cp LICENSES/BSD-3-Clause.txt deploy/k8s-osc-ccm/LICENSE
 	helm package deploy/k8s-osc-ccm -d out-helm
 	rm deploy/k8s-osc-ccm/CHANGELOG.md deploy/k8s-osc-ccm/README.md deploy/k8s-osc-ccm/LICENSE
 
