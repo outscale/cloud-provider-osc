@@ -20,10 +20,11 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   e2e:
-    runs-on: [self-hosted, linux]
+    runs-on: [self-hosted, linux, kube]
     steps:
     - name: ⬇️ Checkout
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -43,27 +44,24 @@ jobs:
         go-version-file: 'go.mod'
     - name: ⬇️ Set up Docker Buildx
       uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-    - name: 🔐 Set AK/SK name based on runner region
-      run: .github/scripts/runneraksk.sh
+    - name: 🧹 Frieza
+      id: secrets
+      uses: outscale/.github/vault-frieza-clean@98c7b1b43a6ffe54858f960aee70c98991035bff # v1.5.0
+      with:
+        vault_role: outscale-cloud-provider-osc
+        exclude_resource_types: access_key
     - name: ⬇️ Install octl
       uses: outscale/octl/.github/actions/setup_octl@b5e8714f317ca1625a4a4a8705c649d90bac4f72 # v0.0.34
       with:
-        OSC_ACCESS_KEY: ${{ secrets[env.OSC_ACCESS_KEY_NAME] }}
-        OSC_SECRET_KEY: ${{ secrets[env.OSC_SECRET_KEY_NAME] }}
-        OSC_REGION: ${{ env.OSC_REGION }}
-    - name: 🧹 Frieza
-      uses: outscale/frieza-github-actions/frieza-clean@d361dd8cc864cfb9575429ee54fde4a0e8e7b124 # v0.17.2+hotfix.0
-      with:
-        access_key: ${{ secrets[env.OSC_ACCESS_KEY_NAME] }}
-        secret_key: ${{ secrets[env.OSC_SECRET_KEY_NAME] }}
-        region: ${{ env.OSC_REGION }}
-        exclude_resource_types: access_key
+        OSC_ACCESS_KEY: ${{ steps.secrets.outputs.access_key }}
+        OSC_SECRET_KEY: ${{ steps.secrets.outputs.secret_key }}
+        OSC_REGION: ${{ steps.secrets.outputs.region }}
     - name: 🐳 Login to Harbor
       uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
       with:
         registry: ${{ vars.REGISTRY }}
-        username: admin
-        password: ${{ secrets.HARBOR_ADMIN_PASSWORD }}
+        username: ${{ secrets.HARBOR_USER }}
+        password: ${{ secrets.HARBOR_PASSWORD }}
     - name: 📦 Build Docker image
       uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
       with:
@@ -80,32 +78,31 @@ jobs:
 
     - name: 👷 Deploy Cluster
       id: caposc
-      uses: outscale/cluster-api-provider-outscale/.github/actions/deploy_cluster@f505cfa8d2bcc452b7a733879f27307859188ed3 # v1.5
+      uses: outscale/.github/kube-setup@98c7b1b43a6ffe54858f960aee70c98991035bff # v1.5.0
+      timeout-minutes: 40
       with:
-        RUNNER_NAME: ${{ runner.name }}
-        OKS_ACCESS_KEY: ${{ secrets.OKS_ACCESS_KEY }}
-        OKS_SECRET_KEY: ${{ secrets.OKS_SECRET_KEY }}
-        OKS_REGION: ${{ vars.OKS_REGION }}
-        OSC_ACCESS_KEY: ${{ secrets[env.OSC_ACCESS_KEY_NAME] }}
-        OSC_SECRET_KEY: ${{ secrets[env.OSC_SECRET_KEY_NAME] }}
-        OSC_REGION: ${{ env.OSC_REGION }}
-        CLUSTER_NAME: "ccm"
+        OSC_REGION: ${{ steps.secrets.outputs.region }}
+        CLUSTER_NAME: ${{ steps.secrets.outputs.osc_account }}
         IMAGE_NAME: ${{ vars.OMI_NAME }}
         WORKER_COUNT: 2
         CCM: "false"
+        ALLOW_FROM: ${{ vars.ALLOW_FROM }}
+        vault_role: outscale-cloud-provider-osc
+        vault_token: ${{ steps.secrets.outputs.vault_token }}
     - name: 🔎 Fetch Cluster ID
       id: clusterid
       run: |
-        cid=`kubectl get -n ccm osccluster.infrastructure.cluster.x-k8s.io/ccm -o json | jq -r '.metadata.labels."outscale.com/clusterUID"'`
+        cid=`kubectl get -n ${{ env.CLUSTER_NAME }} osccluster.infrastructure.cluster.x-k8s.io/${{ env.CLUSTER_NAME }} -o json | jq -r '.metadata.labels."outscale.com/clusterUID"'`
         echo "clusterid=$cid" | tee $GITHUB_OUTPUT
       shell: bash
       env:
-        KUBECONFIG: "${{ github.workspace }}/${{ steps.caposc.outputs.MANAGEMENT_KUBECONFIG }}"
+        KUBECONFIG: "${{ github.workspace }}/management.kubeconfig"
+        CLUSTER_NAME: ${{ steps.secrets.outputs.osc_account }}
     - name: 🔐 Configure credentials
       run: |
         octl kube secret --name osc-secret | kubectl apply -f -
       env:
-        KUBECONFIG: "${{ github.workspace }}/${{ steps.caposc.outputs.KUBECONFIG }}"
+        KUBECONFIG: "${{ github.workspace }}/workload.kubeconfig"
     - name: 👷 Install CCM
       run: |
         echo "installing CCM"
@@ -119,20 +116,15 @@ jobs:
         kubectl get po -A
       shell: bash
       env:
-        KUBECONFIG: "${{ github.workspace }}/${{ steps.caposc.outputs.KUBECONFIG }}"
-        OSC_ACCESS_KEY: ${{ secrets[env.OSC_ACCESS_KEY_NAME] }}
-        OSC_SECRET_KEY: ${{ secrets[env.OSC_SECRET_KEY_NAME] }}
-        OSC_REGION: ${{ env.OSC_REGION }}
+        KUBECONFIG: "${{ github.workspace }}/workload.kubeconfig"
     - name: 🧪 Run e2e tests
       id: e2etest
+      timeout-minutes: 90
       run: |
         make e2etest
       shell: bash
       env:
-        KUBECONFIG: "${{ github.workspace }}/${{ steps.caposc.outputs.KUBECONFIG }}"
-        OSC_ACCESS_KEY: ${{ secrets[env.OSC_ACCESS_KEY_NAME] }}
-        OSC_SECRET_KEY: ${{ secrets[env.OSC_SECRET_KEY_NAME] }}
-        OSC_REGION: ${{ env.OSC_REGION }}
+        KUBECONFIG: "${{ github.workspace }}/workload.kubeconfig"
         CCM_IMAGE: "${{ vars.REGISTRY }}/outscale/cloud-provider-osc:${{ github.sha }}"
     - name: 👷 Reconfigure CCM in remote mode
       id: setupremote
@@ -144,24 +136,19 @@ jobs:
         kubectl get pod -n kube-system -l "app=osc-cloud-controller-manager"
       shell: bash
       env:
-        KUBECONFIG: "${{ github.workspace }}/${{ steps.caposc.outputs.KUBECONFIG }}"
-        OSC_ACCESS_KEY: ${{ secrets[env.OSC_ACCESS_KEY_NAME] }}
-        OSC_SECRET_KEY: ${{ secrets[env.OSC_SECRET_KEY_NAME] }}
-        OSC_REGION: ${{ env.OSC_REGION }}
+        KUBECONFIG: "${{ github.workspace }}/workload.kubeconfig"
         CLUSTER_ID: ${{ steps.clusterid.outputs.clusterid }}
     - name: 🧪 Run e2e tests in remote mode
       id: e2remote
+      timeout-minutes: 45
       run: |
         E2E_FOCUS=fast make e2etest
       shell: bash
       env:
-        KUBECONFIG: "${{ github.workspace }}/${{ steps.caposc.outputs.KUBECONFIG }}"
-        OSC_ACCESS_KEY: ${{ secrets[env.OSC_ACCESS_KEY_NAME] }}
-        OSC_SECRET_KEY: ${{ secrets[env.OSC_SECRET_KEY_NAME] }}
-        OSC_REGION: ${{ env.OSC_REGION }}
+        KUBECONFIG: "${{ github.workspace }}/workload.kubeconfig"
     - name: 👷 Reconfigure CCM with credentials in profile file
       run: |
-        profile="{\"default\":{\"access_key\":\"${{ secrets[env.OSC_ACCESS_KEY_NAME] }}\",\"secret_key\":\"${{ secrets[env.OSC_SECRET_KEY_NAME] }}\"}}"
+        profile="{\"default\":{\"access_key\":\"${{ env.OSC_ACCESS_KEY }}\",\"secret_key\":\"${{ env.OSC_SECRET_KEY }}\"}}"
         kubectl create secret generic osc-secret-file --from-literal=config.json=$profile -n kube-system
         echo "updating CCM config"
         helm upgrade --wait k8s-osc-ccm deploy/k8s-osc-ccm --set oscSecretName=osc-secret-file --set oscCredentialsFromFile=true --set image.repository=${{ vars.REGISTRY }}/outscale/cloud-provider-osc --set image.tag=${{ github.sha }}\
@@ -170,24 +157,27 @@ jobs:
         kubectl get pod -n kube-system -l "app=osc-cloud-controller-manager"
       shell: bash
       env:
-        KUBECONFIG: "${{ github.workspace }}/${{ steps.caposc.outputs.KUBECONFIG }}"
-        OSC_ACCESS_KEY: ${{ secrets[env.OSC_ACCESS_KEY_NAME] }}
-        OSC_SECRET_KEY: ${{ secrets[env.OSC_SECRET_KEY_NAME] }}
-        OSC_REGION: ${{ env.OSC_REGION }}
+        KUBECONFIG: "${{ github.workspace }}/workload.kubeconfig"
+        OSC_ACCESS_KEY: ${{ steps.secrets.outputs.access_key }}
+        OSC_SECRET_KEY: ${{ steps.secrets.outputs.secret_key }}
+        OSC_REGION: ${{ steps.secrets.outputs.region }}
     - name: 🧪 Run e2e tests with credentials in profile file
       id: e2eprofile
+      timeout-minutes: 45
       run: |
         E2E_FOCUS=fast make e2etest
       shell: bash
       env:
-        KUBECONFIG: "${{ github.workspace }}/${{ steps.caposc.outputs.KUBECONFIG }}"
-        OSC_ACCESS_KEY: ${{ secrets[env.OSC_ACCESS_KEY_NAME] }}
-        OSC_SECRET_KEY: ${{ secrets[env.OSC_SECRET_KEY_NAME] }}
-        OSC_REGION: ${{ env.OSC_REGION }}
+        KUBECONFIG: "${{ github.workspace }}/workload.kubeconfig"
     - name: 📝 Get CCM logs
       run: |
         kubectl logs -l app=osc-cloud-controller-manager -n kube-system --tail=-1 | grep -v "successfully renewed lease"
       if: ${{ failure() }}
       shell: bash
       env:
-        KUBECONFIG: "${{ github.workspace }}/${{ steps.caposc.outputs.KUBECONFIG }}"
+        KUBECONFIG: "${{ github.workspace }}/workload.kubeconfig"
+    - name: 🧹 Teardown test cluster
+      if: ${{ always() }}
+      uses: outscale/.github/kube-teardown@98c7b1b43a6ffe54858f960aee70c98991035bff # v1.5.0
+      with:
+        CLUSTER_NAME: ${{ steps.secrets.outputs.osc_account }}
