@@ -39,7 +39,7 @@ jobs:
         output: 'trivy-results.sarif'
         severity: 'CRITICAL,HIGH'
         trivyignores: '.trivyignore'
-        version: 'v0.76.1'
+        version: 'v0.76.2'
     - name: ⬆️ Upload Trivy results
       if: ${{ github.event_name != 'pull_request' }}
       uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
