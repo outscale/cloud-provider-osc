@@ -20,7 +20,7 @@ require (
 	github.com/outscale/osc-sdk-go/v3 v3.0.0-rc.5
 	github.com/rs/xid v1.6.0
 	github.com/samber/lo v1.53.0
-	github.com/spf13/pflag v1.0.10
+	github.com/spf13/pflag v1.1.0
 	github.com/stretchr/testify v1.12.1
 	go.uber.org/mock v0.6.0
 	k8s.io/api v0.32.8
