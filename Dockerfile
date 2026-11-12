@@ -10,7 +10,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG DISTROLESS_IMAGE=gcr.io/distroless/static@sha256:448810357cc8e67b7208988abdba0f5ec3d3aebee0a5b13eb624979792cffc0f
+ARG DISTROLESS_IMAGE=gcr.io/distroless/static@sha256:1a64f46364620465ef9e9a8f5413757dfdf22695e050bbfd7303eeaf17a59383
 
 FROM ${DISTROLESS_IMAGE}
 ARG TARGETPLATFORM
