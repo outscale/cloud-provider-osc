@@ -65,7 +65,7 @@ jobs:
     - name: 📦 Build Docker image
       uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
       with:
-        version: 'v2.15.4'
+        version: 'v2.20.2'
         args: release --clean --snapshot
     - name: 📦 Push the Docker image
       run: |
