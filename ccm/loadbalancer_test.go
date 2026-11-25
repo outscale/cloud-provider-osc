@@ -20,16 +20,13 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func testSvc() *corev1.Service {
 	return &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: svcName,
-			Annotations: map[string]string{
-				"service.beta.kubernetes.io/osc-load-balancer-name": lbName,
-			},
+		Name: svcName,
+		Annotations: map[string]string{
+			"service.beta.kubernetes.io/osc-load-balancer-name": lbName,
 		},
 		Spec: corev1.ServiceSpec{
 			Type:            corev1.ServiceTypeLoadBalancer,

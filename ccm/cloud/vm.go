@@ -143,7 +143,7 @@ func (c *Cloud) GetVMByNodeName(ctx context.Context, nodeName string) (*VM, erro
 func (c *Cloud) GetVMsByNodeName(ctx context.Context, nodeNames ...string) ([]VM, error) {
 	resp, err := c.api.OAPI().ReadVms(ctx, osc.ReadVmsRequest{
 		Filters: &osc.FiltersVm{
-			TagKeys: ptr.To(c.clusterIDTagKeys()),
+			TagKeys: new(c.clusterIDTagKeys()),
 		},
 	})
 	switch {
