@@ -1129,6 +1129,10 @@ func (c *Cloud) updateHealthcheck(ctx context.Context, l *LoadBalancer, existing
 }
 
 func (c *Cloud) updateBackendVms(ctx context.Context, vms []VM, existing *osc.LoadBalancer) error {
+	// ensuring that VMs are in the same net as the LBU
+	vms = lo.Filter(vms, func(vm VM, _ int) bool {
+		return ptr.From(vm.NetID) == ptr.From(existing.NetId)
+	})
 	// in most cases, there will be no change, preallocating would waste an alloc
 	var add []string //nolint:prealloc
 	for _, vm := range vms {

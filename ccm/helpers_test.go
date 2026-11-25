@@ -15,11 +15,9 @@ import (
 	"github.com/outscale/goutils/k8s/role"
 	"github.com/outscale/goutils/k8s/tags"
 	"github.com/outscale/goutils/sdk/mocks_osc"
-	"github.com/outscale/goutils/sdk/ptr"
 	"github.com/outscale/osc-sdk-go/v3/pkg/osc"
 	"go.uber.org/mock/gomock"
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type MockOAPIClient struct {
@@ -59,15 +57,13 @@ var (
 		}, {
 			Key: tags.RoleKey("worker"),
 		}},
-		SubnetId:       ptr.To("subnet-bar"),
-		NetId:          ptr.To("net-bar"),
+		SubnetId:       new("subnet-foo"),
+		NetId:          new("net-foo"),
 		SecurityGroups: []osc.SecurityGroupLight{{SecurityGroupId: "sg-worker"}, {SecurityGroupId: "sg-node"}},
 		State:          osc.VmStateRunning,
 	}
 	vmNode = v1.Node{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: vmNodeName,
-		},
+		Name: vmNodeName,
 	}
 	selfNodeName = "10.0.0.11.eu-west-2.compute.internal"
 	sdkSelf      = osc.Vm{
@@ -80,8 +76,8 @@ var (
 			Value: selfNodeName,
 		}},
 		Placement:      osc.Placement{SubregionName: subRegion},
-		NetId:          ptr.To("net-bar"),
-		SubnetId:       ptr.To("subnet-bar"),
+		NetId:          new("net-foo"),
+		SubnetId:       new("subnet-foo"),
 		SecurityGroups: []osc.SecurityGroupLight{{SecurityGroupId: "sg-controlplane"}, {SecurityGroupId: "sg-node"}},
 		State:          osc.VmStateRunning,
 	}
@@ -171,6 +167,7 @@ func expectReadLoadBalancer(mock *mocks_osc.MockClient, updates ...func(*osc.Loa
 			Timeout:            5,
 			UnhealthyThreshold: 3,
 		},
+		NetId: new("net-foo"),
 	}
 	for _, update := range updates {
 		update(&desc)
@@ -210,7 +207,7 @@ func expectCreateLoadBalancer(mock *mocks_osc.MockClient, updates ...func(*osc.C
 			LoadBalancerPort:     80,
 			LoadBalancerProtocol: "TCP",
 			BackendPort:          8080,
-			BackendProtocol:      ptr.To("TCP"),
+			BackendProtocol:      new("TCP"),
 		}},
 	}
 	for _, update := range updates {
@@ -218,7 +215,7 @@ func expectCreateLoadBalancer(mock *mocks_osc.MockClient, updates ...func(*osc.C
 	}
 	mock.EXPECT().
 		CreateLoadBalancer(gomock.Any(), gomock.Eq(req)).
-		Return(&osc.CreateLoadBalancerResponse{LoadBalancer: &osc.LoadBalancer{LoadBalancerName: lbName, SecurityGroups: *req.SecurityGroups}}, nil)
+		Return(&osc.CreateLoadBalancerResponse{LoadBalancer: &osc.LoadBalancer{LoadBalancerName: lbName, SecurityGroups: *req.SecurityGroups, NetId: new("net-foo")}}, nil)
 }
 
 func expectDeleteLoadBalancer(mock *mocks_osc.MockClient) {
@@ -266,13 +263,13 @@ func expectDescribeProxyProtocol(mock *oapimocks.MockLBU, set bool, ports ...int
 			},
 		}
 		if set {
-			l.PolicyNames = []*string{ptr.To("k8s-proxyprotocol-enabled")}
+			l.PolicyNames = []*string{new("k8s-proxyprotocol-enabled")}
 		}
 		out.LoadBalancerDescriptions[0].ListenerDescriptions = append(out.LoadBalancerDescriptions[0].ListenerDescriptions, l)
 	}
 	mock.EXPECT().
 		DescribeLoadBalancersWithContext(gomock.Any(), gomock.Eq(&elb.DescribeLoadBalancersInput{
-			LoadBalancerNames: []*string{ptr.To("lb-foo")},
+			LoadBalancerNames: []*string{new("lb-foo")},
 		})).
 		Return(out, nil)
 }
@@ -282,12 +279,12 @@ func expectConfigureProxyProtocol(mock *oapimocks.MockLBU, set, need bool, ports
 		mock.EXPECT().
 			CreateLoadBalancerPolicyWithContext(gomock.Any(), gomock.Eq(&elb.CreateLoadBalancerPolicyInput{
 				PolicyAttributes: []*elb.PolicyAttribute{{
-					AttributeName:  ptr.To("ProxyProtocol"),
-					AttributeValue: ptr.To("true"),
+					AttributeName:  new("ProxyProtocol"),
+					AttributeValue: new("true"),
 				}},
-				PolicyName:       ptr.To("k8s-proxyprotocol-enabled"),
-				PolicyTypeName:   ptr.To("ProxyProtocolPolicyType"),
-				LoadBalancerName: ptr.To("lb-foo"),
+				PolicyName:       new("k8s-proxyprotocol-enabled"),
+				PolicyTypeName:   new("ProxyProtocolPolicyType"),
+				LoadBalancerName: new("lb-foo"),
 			})).
 			Return(&elb.CreateLoadBalancerPolicyOutput{}, nil)
 	}
@@ -296,16 +293,16 @@ func expectConfigureProxyProtocol(mock *oapimocks.MockLBU, set, need bool, ports
 	}
 	var policies []*string
 	if need {
-		policies = []*string{ptr.To("k8s-proxyprotocol-enabled")}
+		policies = []*string{new("k8s-proxyprotocol-enabled")}
 	} else {
 		policies = []*string{}
 	}
 	for _, port := range ports {
 		mock.EXPECT().
 			SetLoadBalancerPoliciesForBackendServerWithContext(gomock.Any(), gomock.Eq(&elb.SetLoadBalancerPoliciesForBackendServerInput{
-				InstancePort:     ptr.To[int64](port),
+				InstancePort:     new(int64(port)),
 				PolicyNames:      policies,
-				LoadBalancerName: ptr.To("lb-foo"),
+				LoadBalancerName: new("lb-foo"),
 			})).
 			Return(&elb.SetLoadBalancerPoliciesForBackendServerOutput{}, nil)
 	}
@@ -360,7 +357,7 @@ func expectFindLBSubnetWithRoleWithNetFallback(mock *mocks_osc.MockClient) {
 	mock.EXPECT().
 		ReadSubnets(gomock.Any(), gomock.Eq(osc.ReadSubnetsRequest{
 			Filters: &osc.FiltersSubnet{
-				NetIds: &[]string{"net-bar"},
+				NetIds: &[]string{"net-foo"},
 			},
 		})).
 		Return(&osc.ReadSubnetsResponse{Subnets: &[]osc.Subnet{
@@ -390,8 +387,8 @@ func expectFindRouteTables(mock *mocks_osc.MockClient) {
 			},
 		})).
 		Return(&osc.ReadRouteTablesResponse{RouteTables: &[]osc.RouteTable{
-			{LinkRouteTables: []osc.LinkRouteTable{{SubnetId: "subnet-public"}}, Routes: []osc.Route{{GatewayId: ptr.To("igw-foo")}}},
-			{LinkRouteTables: []osc.LinkRouteTable{{SubnetId: "subnet-private"}}, Routes: []osc.Route{{NatServiceId: ptr.To("nat-foo")}}},
+			{LinkRouteTables: []osc.LinkRouteTable{{SubnetId: "subnet-public"}}, Routes: []osc.Route{{GatewayId: new("igw-foo")}}},
+			{LinkRouteTables: []osc.LinkRouteTable{{SubnetId: "subnet-private"}}, Routes: []osc.Route{{NatServiceId: new("nat-foo")}}},
 		}}, nil)
 }
 
@@ -403,8 +400,8 @@ func expectFindNoPublicRouteTables(mock *mocks_osc.MockClient) {
 			},
 		})).
 		Return(&osc.ReadRouteTablesResponse{RouteTables: &[]osc.RouteTable{
-			{LinkRouteTables: []osc.LinkRouteTable{{SubnetId: "subnet-public"}}, Routes: []osc.Route{{GatewayId: ptr.To("nat-foo")}}},
-			{LinkRouteTables: []osc.LinkRouteTable{{SubnetId: "subnet-private"}}, Routes: []osc.Route{{NatServiceId: ptr.To("nat-foo")}}},
+			{LinkRouteTables: []osc.LinkRouteTable{{SubnetId: "subnet-public"}}, Routes: []osc.Route{{GatewayId: new("nat-foo")}}},
+			{LinkRouteTables: []osc.LinkRouteTable{{SubnetId: "subnet-private"}}, Routes: []osc.Route{{NatServiceId: new("nat-foo")}}},
 		}}, nil)
 }
 
@@ -413,7 +410,7 @@ func expectSGAlreadyExists(mock *mocks_osc.MockClient) {
 		CreateSecurityGroup(gomock.Any(), gomock.Eq(osc.CreateSecurityGroupRequest{
 			SecurityGroupName: "k8s-elb-lb-foo",
 			Description:       "Security group for Kubernetes service svc-foo",
-			NetId:             ptr.To("net-foo"),
+			NetId:             new("net-foo"),
 		})).
 		Return(nil, &osc.ErrorResponse{Errors: []osc.Errors{{Code: "9008"}}})
 	mock.EXPECT().
@@ -433,7 +430,7 @@ func expectCreateSecurityGroup(mock *mocks_osc.MockClient) {
 		CreateSecurityGroup(gomock.Any(), gomock.Eq(osc.CreateSecurityGroupRequest{
 			SecurityGroupName: "k8s-elb-lb-foo",
 			Description:       "Security group for Kubernetes service svc-foo",
-			NetId:             ptr.To("net-foo"),
+			NetId:             new("net-foo"),
 		})).
 		Return(&osc.CreateSecurityGroupResponse{SecurityGroup: &osc.SecurityGroup{SecurityGroupId: "sg-foo"}}, nil)
 	mock.EXPECT().
@@ -598,7 +595,7 @@ func expectCreateListener(mock *mocks_osc.MockClient, port int) {
 				LoadBalancerPort:     port,
 				LoadBalancerProtocol: "TCP",
 				BackendPort:          8080,
-				BackendProtocol:      ptr.To("TCP"),
+				BackendProtocol:      new("TCP"),
 			}},
 		})).
 		Return(&osc.CreateLoadBalancerListenersResponse{LoadBalancer: &osc.LoadBalancer{}}, nil)
@@ -606,18 +603,18 @@ func expectCreateListener(mock *mocks_osc.MockClient, port int) {
 
 func expectDescribeLoadBalancerAttributes(mock *oapimocks.MockLBU) {
 	mock.EXPECT().DescribeLoadBalancerAttributesWithContext(gomock.Any(), gomock.Eq(&elb.DescribeLoadBalancerAttributesInput{
-		LoadBalancerName: ptr.To("lb-foo"),
+		LoadBalancerName: new("lb-foo"),
 	})).
 		Return(&elb.DescribeLoadBalancerAttributesOutput{
 			LoadBalancerAttributes: &elb.LoadBalancerAttributes{
 				AccessLog: &elb.AccessLog{
-					Enabled: ptr.To(false),
+					Enabled: new(false),
 				},
 				ConnectionDraining: &elb.ConnectionDraining{
-					Enabled: ptr.To(false),
+					Enabled: new(false),
 				},
 				ConnectionSettings: &elb.ConnectionSettings{
-					IdleTimeout: ptr.To[int64](60),
+					IdleTimeout: new(int64(60)),
 				},
 			},
 		}, nil)
@@ -625,7 +622,7 @@ func expectDescribeLoadBalancerAttributes(mock *oapimocks.MockLBU) {
 
 func expectModifyLoadBalancerAttributes(mock *oapimocks.MockLBU, attrs *elb.LoadBalancerAttributes) {
 	mock.EXPECT().ModifyLoadBalancerAttributesWithContext(gomock.Any(), gomock.Eq(&elb.ModifyLoadBalancerAttributesInput{
-		LoadBalancerName:       ptr.To("lb-foo"),
+		LoadBalancerName:       new("lb-foo"),
 		LoadBalancerAttributes: attrs,
 	})).
 		Return(&elb.ModifyLoadBalancerAttributesOutput{}, nil)
@@ -674,7 +671,7 @@ func expectPurgeSecurityGroups(mock *mocks_osc.MockClient) {
 		Return(&osc.DeleteSecurityGroupRuleResponse{SecurityGroup: &osc.SecurityGroup{}}, nil)
 	mock.EXPECT().
 		DeleteSecurityGroup(gomock.Any(), gomock.Eq(osc.DeleteSecurityGroupRequest{
-			SecurityGroupId: ptr.To("sg-foo"),
+			SecurityGroupId: new("sg-foo"),
 		})).
 		Return(&osc.DeleteSecurityGroupResponse{}, nil)
 }
